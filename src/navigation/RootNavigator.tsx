@@ -20,13 +20,23 @@ import { useAuth } from '@/contexts/AuthContext';
 //   4) Premium bypasses the cap entirely.
 
 export function RootNavigator() {
-  // Boulevard opens on Explore (Spotify-style): the user lands on browse
-  // surfaces, not the full-screen player. The last song they listened to is
-  // staged in the player but doesn't auto-play — they tap to start.
-  const [tab, setTab] = useState<Tab>('explore');
   const auth = useAuth();
   const insets = useSafeAreaInsets();
+  // Default tab depends on personalization state:
+  //   • Pre-100 songs heard: Explore. The user is still teaching the
+  //     recommender, so the discovery surface is the most useful landing.
+  //   • Post-100 songs heard: Library. Their personalized playlists are the
+  //     prize they unlocked — land directly on them so the value is obvious.
+  // We compute it lazily so a returning unlocked user lands on Library
+  // immediately on cold start, before the auth context finishes hydrating.
+  const [tab, setTab] = useState<Tab>(() =>
+    auth.personalizationUnlockedAt ? 'library' : 'explore',
+  );
   const [paywallOpen, setPaywallOpen] = useState(false);
+
+  // If unlock happens DURING this session (the celebratory moment on Library),
+  // we don't auto-navigate — the user is already on Library, having just
+  // crossed the threshold. We only want the cold-start initial-tab logic.
 
   // Premium paywall — fires when the daily cap is hit. Re-fires whenever
   // `blockedAttempts` increments so that after the user dismisses the

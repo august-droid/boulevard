@@ -292,13 +292,13 @@ function formatTime(ms: number): string {
 // a soft signature.
 
 function BreathingBrandMark() {
-  const opacity = useSharedValue(0.62);
+  const opacity = useSharedValue(0.65);
 
   useEffect(() => {
     // ~3.6s out, ~3.6s back, forever. inOut easing makes the turnaround
     // feel like breath rather than a bounce.
     opacity.value = withRepeat(
-      withTiming(0.92, { duration: 3600, easing: Easing.inOut(Easing.ease) }),
+      withTiming(0.95, { duration: 3600, easing: Easing.inOut(Easing.ease) }),
       -1,
       true,
     );
@@ -307,9 +307,17 @@ function BreathingBrandMark() {
   const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   return (
-    <Animated.Text style={[styles.brandWordmark, style]} allowFontScaling={false}>
-      boulevard
-    </Animated.Text>
+    <Animated.View style={[styles.brandRow, style]}>
+      <Image
+        source={require('../../assets/icon.png')}
+        style={styles.brandIcon}
+        contentFit="contain"
+        cachePolicy="memory-disk"
+      />
+      <Text style={styles.brandWordmark} allowFontScaling={false}>
+        BOULEVARD
+      </Text>
+    </Animated.View>
   );
 }
 
@@ -363,12 +371,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  brandRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  brandIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
+  },
   brandWordmark: {
     color: metals.goldSolid,
-    fontSize: 13,
-    fontWeight: fonts.weight.medium,
-    letterSpacing: 5.5,
-    textTransform: 'lowercase',
+    fontSize: 15,
+    fontWeight: fonts.weight.bold,
+    letterSpacing: 4.5,
   },
 
   bottomStack: {

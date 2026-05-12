@@ -7,16 +7,18 @@ import {
   StyleSheet,
   Dimensions,
   ListRenderItem,
+  Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, metals, radii, spacing } from '@/theme';
 import { usePlayer } from '@/contexts/PlayerContext';
 import { buildExplore, ExploreSection, pickHero, RankedSong } from '@/lib/ranking/Trending';
 import { fetchTodayStats } from '@/lib/stats/SongStats';
 import { SongStats } from '@/types';
-import { PlayIcon, SparkleIcon, FlameIcon, TrendingIcon } from '@/components/Icon';
+import { PlayIcon, SparkleIcon, FlameIcon, TrendingIcon, ShuffleIcon } from '@/components/Icon';
 import { BrandHeader } from '@/components/BrandHeader';
 import { Song } from '@/types';
 
@@ -115,6 +117,10 @@ export function ExploreScreen() {
       ListHeaderComponent={
         <View style={{ paddingTop: spacing.md }}>
           <BrandHeader />
+          <RandomMixButton onPress={() => {
+            if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
+            player.shufflePlay();
+          }} />
           <GenreGrid
             catalog={player.catalog}
             onPick={(_genre, song) => {
@@ -167,6 +173,44 @@ export function ExploreScreen() {
 // Visual: 2-column grid of image-backed banner tiles. The tile's background
 // image is the cover art of the highest-launch-score song in that genre,
 // dimmed with a dark gradient so the genre label reads clearly on top.
+
+// ---- Random Mix button ---------------------------------------------
+//
+// Prominent CTA at the top of Explore. One tap → personalized random
+// playlist (taste-fit pool of 60, shuffled, top 30 play). The button is
+// the single highest-affordance action on the screen — when the user
+// doesn't know what they want, this is the right answer.
+
+function RandomMixButton({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.randomMix,
+        pressed && { opacity: 0.92, transform: [{ scale: 0.992 }] },
+      ]}
+      accessibilityLabel="Play a random mix"
+    >
+      {/* Warm gold gradient pulled from the Boulevard brand metals. */}
+      <LinearGradient
+        colors={['#e0c898', '#c8ae7a', '#8a6f3f']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={styles.randomMixIcon}>
+        <ShuffleIcon size={22} color="#1a1408" />
+      </View>
+      <View style={styles.randomMixBody}>
+        <Text style={styles.randomMixTitle}>Random Mix</Text>
+        <Text style={styles.randomMixSub}>30 songs tuned to your taste — instant play</Text>
+      </View>
+      <View style={styles.randomMixPlay}>
+        <PlayIcon size={18} color="#1a1408" />
+      </View>
+    </Pressable>
+  );
+}
 
 interface MainGenre {
   label: string;
@@ -473,6 +517,56 @@ const styles = StyleSheet.create({
   },
 
   // Genre grid — 2-column image-backed tiles
+  // ---- Random Mix button (top of Explore) ----
+  randomMix: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    borderRadius: radii.lg,
+    overflow: 'hidden',
+    // Soft lift so it reads as the screen's hero affordance.
+    shadowColor: '#000',
+    shadowOpacity: 0.45,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
+  },
+  randomMixIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(26,20,8,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  randomMixBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  randomMixTitle: {
+    color: '#1a1408',
+    fontSize: fonts.size.lg,
+    fontWeight: fonts.weight.bold,
+    letterSpacing: -0.2,
+  },
+  randomMixSub: {
+    color: 'rgba(26,20,8,0.78)',
+    fontSize: 12,
+    marginTop: 2,
+  },
+  randomMixPlay: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
   genreGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',

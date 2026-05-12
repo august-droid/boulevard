@@ -1,13 +1,13 @@
 import React from 'react';
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
+import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, metals, spacing } from '@/theme';
 
-// Subtle "boulevard" wordmark for the top of every primary tab screen.
-//
-// Deliberately quiet — small, wide-tracked, gold-tinted text. Reads as a
-// brand watermark rather than a UI element. Centered horizontally so it
-// doesn't compete with the content below.
+// Boulevard mark for the top of every primary tab screen — the brushed-
+// metal B icon paired with a wide-tracked "BOULEVARD" wordmark, matching
+// the marketing assets. Deliberately small but readable — reads as a
+// brand watermark on the page without competing with content.
 
 interface Props {
   /** Adds the safe-area top inset to the wrapper. Default true. */
@@ -27,9 +27,17 @@ export function BrandHeader({ withSafeArea = true, style }: Props) {
       ]}
       pointerEvents="none"
     >
-      <Text style={styles.wordmark} allowFontScaling={false}>
-        boulevard
-      </Text>
+      <View style={styles.row}>
+        <Image
+          source={require('../../assets/icon.png')}
+          style={styles.icon}
+          contentFit="contain"
+          cachePolicy="memory-disk"
+        />
+        <Text style={styles.wordmark} allowFontScaling={false}>
+          BOULEVARD
+        </Text>
+      </View>
     </View>
   );
 }
@@ -38,15 +46,23 @@ const styles = StyleSheet.create({
   wrap: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingBottom: spacing.xs,
+    paddingBottom: spacing.sm,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  icon: {
+    width: 28,
+    height: 28,
+    borderRadius: 7,
   },
   wordmark: {
     color: metals.goldSolid,
-    // Small, thin, wide-tracked — premium-watch-dial energy.
-    fontSize: 13,
-    fontWeight: fonts.weight.medium,
-    letterSpacing: 5.5,
-    textTransform: 'lowercase',
-    opacity: 0.78,
+    fontSize: 15,
+    fontWeight: fonts.weight.bold,
+    letterSpacing: 4.5,
+    opacity: 0.92,
   },
 });

@@ -59,6 +59,9 @@ interface PlayerActions {
   playSpecific: (song: Song) => Promise<void>;
   /** Play a curated list of songs in order — first song plays, rest queue. */
   playPlaylist: (songs: Song[]) => Promise<void>;
+  /** Build and play a personalized random mix — taste-fit candidates,
+   *  shuffled, ~30 songs deep. The Explore-page "Random Mix" button. */
+  shufflePlay: () => Promise<void>;
   /**
    * Hint to the audio preloader that these songs may be tapped soon — used
    * by screens like Explore to prefetch likely targets so tap-to-play is
@@ -604,6 +607,58 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }
   }, [playInternal, recordEndOfSong, checkDailyLimit]);
 
+  // "Random Mix" / shuffle play from Explore. Builds a personalized random
+  // mix on the fly: take the top-N ranked candidates from the recommender
+  // (taste-weighted), shuffle them, hand them to playPlaylist. The result
+  // feels random in *order* but stays within the user's taste neighborhood.
+  // When taste is empty (new user), the candidate pool falls back to the
+  // catalog's editorial launch_score so the first mix still feels curated.
+  const shufflePlay = useCallback(async () => {
+    if (!queueRef.current) return;
+    if (await checkDailyLimit()) return;
+    const catalog = stateRef.current.catalog;
+    if (catalog.length === 0) return;
+
+    // Pull a generous candidate pool from the ranker so the shuffle has
+    // room to surprise the user — 60 fits taste, ~30 land in the mix.
+    let candidates: Song[] = [];
+    if (stateRef.current.taste) {
+      candidates = rankCandidates(
+        catalog,
+        {
+          taste: stateRef.current.taste,
+          vibe: vibeRef.current,
+          recentSongIds: recentIdsRef.current,
+          interactionCount: interactionCountRef.current,
+          stats: statsRef.current,
+        },
+        [],
+        60,
+      );
+    }
+    if (candidates.length < 30) {
+      // Fall back to editorial-quality sort for cold-start mixes.
+      const seen = new Set(candidates.map((s) => s.id));
+      const editorial = [...catalog]
+        .filter((s) => !seen.has(s.id))
+        .sort((a, b) => (b.launch_score ?? 0) - (a.launch_score ?? 0));
+      candidates = [...candidates, ...editorial].slice(0, 60);
+    }
+
+    // Fisher–Yates shuffle in place.
+    for (let i = candidates.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [candidates[i], candidates[j]] = [candidates[j], candidates[i]];
+    }
+    const mix = candidates.slice(0, 30);
+    if (mix.length === 0) return;
+
+    audioRef.current?.suspendCurrent();
+    recordEndOfSong(true);
+    await queueRef.current.setQueue(mix);
+    await playInternal(mix[0]);
+  }, [playInternal, recordEndOfSong, checkDailyLimit]);
+
   // Play an explicit list of songs (Library playlist tap). The first plays
   // immediately; the rest sit in the QueueManager so skip / auto-advance
   // walks the playlist in the curated order. Beyond the tail of the
@@ -671,10 +726,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setVibe,
     playSpecific,
     playPlaylist,
+    shufflePlay,
     warmSongs,
   }), [
     state, togglePlay, skip, previous, toggleShuffle, replay, save, recordShare,
-    seek, setVibe, playSpecific, playPlaylist, warmSongs,
+    seek, setVibe, playSpecific, playPlaylist, shufflePlay, warmSongs,
   ]);
 
   return <PlayerCtx.Provider value={value}>{children}</PlayerCtx.Provider>;
