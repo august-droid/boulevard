@@ -57,6 +57,8 @@ interface PlayerActions {
   seek: (positionMillis: number) => Promise<void>;
   setVibe: (v: Activity | null) => Promise<void>;
   playSpecific: (song: Song) => Promise<void>;
+  /** Play a curated list of songs in order — first song plays, rest queue. */
+  playPlaylist: (songs: Song[]) => Promise<void>;
   /**
    * Hint to the audio preloader that these songs may be tapped soon — used
    * by screens like Explore to prefetch likely targets so tap-to-play is
@@ -602,6 +604,19 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }
   }, [playInternal, recordEndOfSong, checkDailyLimit]);
 
+  // Play an explicit list of songs (Library playlist tap). The first plays
+  // immediately; the rest sit in the QueueManager so skip / auto-advance
+  // walks the playlist in the curated order. Beyond the tail of the
+  // playlist the regular ranker refill kicks back in.
+  const playPlaylist = useCallback(async (songs: Song[]) => {
+    if (!queueRef.current || songs.length === 0) return;
+    if (await checkDailyLimit()) return;
+    audioRef.current?.suspendCurrent();
+    recordEndOfSong(true);
+    await queueRef.current.setQueue(songs);
+    await playInternal(songs[0]);
+  }, [playInternal, recordEndOfSong, checkDailyLimit]);
+
   const playSpecific = useCallback(async (song: Song) => {
     if (!queueRef.current) return;
     // Limit gate FIRST — never stop the current song if we can't actually
@@ -655,10 +670,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     seek,
     setVibe,
     playSpecific,
+    playPlaylist,
     warmSongs,
   }), [
     state, togglePlay, skip, previous, toggleShuffle, replay, save, recordShare,
-    seek, setVibe, playSpecific, warmSongs,
+    seek, setVibe, playSpecific, playPlaylist, warmSongs,
   ]);
 
   return <PlayerCtx.Provider value={value}>{children}</PlayerCtx.Provider>;

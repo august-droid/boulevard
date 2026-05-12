@@ -87,6 +87,21 @@ export class QueueManager {
     this.notify();
   }
 
+  /**
+   * Replace the queue with an explicit ordered list (playlist tap). The first
+   * song becomes current; the rest sit in the queue and are walked by skip /
+   * auto-advance before the ranker refills from beyond the playlist's tail.
+   */
+  async setQueue(songs: Song[]) {
+    if (songs.length === 0) return;
+    this.preloader.clear();
+    // Cap at TOTAL_DEPTH so the queue stays the right size — we still refill
+    // beyond the playlist's end so the user never hits dead air.
+    this.queue = songs.slice(0, TOTAL_DEPTH);
+    await this.refill();
+    this.notify();
+  }
+
   /** Ensure queue is full and the next PRELOAD_DEPTH songs are decoding. */
   private async refill() {
     const need = TOTAL_DEPTH - this.queue.length;

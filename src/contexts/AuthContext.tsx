@@ -18,6 +18,9 @@ const SKIP_COUNT_KEY = 'boulevard.skip_count';
 const TRIAL_KEY = 'boulevard.trial_started_at';
 const PAYWALL_SHOWN_KEY = 'boulevard.paywall_shown_at';
 const SIGNED_UP_KEY = 'boulevard.signed_up_at';
+// Set once songsHeard crosses 100 — flips the Library into "AI ready" mode
+// and tells the Music Factory cron to start generating personalized drops.
+const PERSONALIZATION_UNLOCKED_KEY = 'boulevard.personalization_unlocked_at';
 
 export interface AuthValue {
   userId: string | null;
@@ -41,6 +44,8 @@ export interface AuthValue {
    */
   blockedAttempts: number;
   paywallShownAt: string | null;
+  /** ISO timestamp when songsHeard first crossed 100. Null until then. */
+  personalizationUnlockedAt: string | null;
   bumpEngagement: () => Promise<void>;
   bumpSongsHeard: () => Promise<void>;
   bumpSkipCount: () => Promise<void>;
@@ -48,6 +53,8 @@ export interface AuthValue {
   setDailyState: (count: number, limitHit: boolean) => void;
   markPaywallShown: () => Promise<void>;
   markSignedUp: () => Promise<void>;
+  /** Called once when the user crosses 100 songs heard. */
+  markPersonalizationUnlocked: () => Promise<void>;
   startTrial: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -63,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [trialStartedAt, setTrialStartedAt] = useState<string | null>(null);
   const [paywallShownAt, setPaywallShownAt] = useState<string | null>(null);
   const [signedUpAt, setSignedUpAt] = useState<string | null>(null);
+  const [personalizationUnlockedAt, setPersonalizationUnlockedAt] = useState<string | null>(null);
   const [dailyCount, setDailyCount] = useState(0);
   const [dailyLimitHit, setDailyLimitHit] = useState(false);
   const [blockedAttempts, setBlockedAttempts] = useState(0);
@@ -116,6 +124,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const signed = await AsyncStorage.getItem(SIGNED_UP_KEY);
       if (signed) setSignedUpAt(signed);
+
+      const unlocked = await AsyncStorage.getItem(PERSONALIZATION_UNLOCKED_KEY);
+      if (unlocked) setPersonalizationUnlockedAt(unlocked);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -140,6 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       dailyLimitHit,
       blockedAttempts,
       paywallShownAt,
+      personalizationUnlockedAt,
       bumpEngagement: async () => {
         const next = engagementCount + 1;
         setEngagementCount(next);
@@ -170,6 +182,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSignedUpAt(now);
         await AsyncStorage.setItem(SIGNED_UP_KEY, now);
       },
+      markPersonalizationUnlocked: async () => {
+        if (personalizationUnlockedAt) return;
+        const now = new Date().toISOString();
+        setPersonalizationUnlockedAt(now);
+        await AsyncStorage.setItem(PERSONALIZATION_UNLOCKED_KEY, now);
+        // Best-effort mirror to Supabase — this is the flag the Music Factory
+        // cron polls to know which users to generate personalized drops for.
+        if (HAS_SUPABASE && supabase && userId) {
+          try {
+            await supabase
+              .from('user_profiles')
+              .upsert(
+                { user_id: userId, personalization_unlocked_at: now },
+                { onConflict: 'user_id' },
+              );
+          } catch {
+            // Best-effort — local flag is authoritative for the UI gate.
+          }
+        }
+      },
       startTrial: async () => {
         const now = new Date().toISOString();
         setTrialStartedAt(now);
@@ -180,6 +212,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await AsyncStorage.multiRemove([
           ANON_ID_KEY, SAVE_COUNT_KEY, SONGS_HEARD_KEY,
           SKIP_COUNT_KEY, TRIAL_KEY, PAYWALL_SHOWN_KEY, SIGNED_UP_KEY,
+          PERSONALIZATION_UNLOCKED_KEY,
         ]);
         const id = String(uuid.v4());
         await AsyncStorage.setItem(ANON_ID_KEY, id);
@@ -191,14 +224,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setTrialStartedAt(null);
         setPaywallShownAt(null);
         setSignedUpAt(null);
+        setPersonalizationUnlockedAt(null);
         setDailyCount(0);
         setDailyLimitHit(false);
       },
     };
   }, [
     userId, isAnonymous, engagementCount, songsHeard, skipCount,
-    trialStartedAt, paywallShownAt, signedUpAt, dailyCount, dailyLimitHit,
-    blockedAttempts,
+    trialStartedAt, paywallShownAt, signedUpAt, personalizationUnlockedAt,
+    dailyCount, dailyLimitHit, blockedAttempts,
   ]);
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;

@@ -1,267 +1,478 @@
-import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, FlatList } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useEffect, useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ScrollView,
+  Modal,
+  Platform,
+} from 'react-native';
+import { Image } from 'expo-image';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Haptics from 'expo-haptics';
 import { colors, fonts, metals, radii, spacing } from '@/theme';
 import { usePlayer } from '@/contexts/PlayerContext';
-import { SongRow } from '@/components/SongRow';
-import { BookmarkIcon, HomeIcon, SparkleIcon } from '@/components/Icon';
+import { useAuth } from '@/contexts/AuthContext';
 import { BrandHeader } from '@/components/BrandHeader';
-import { Song } from '@/types';
+import { PlayIcon, SparkleIcon, CheckIcon, CloseIcon } from '@/components/Icon';
+import {
+  buildNewForYou,
+  buildYourBestOnes,
+  buildGymBeast,
+  buildCeoMode,
+  BuiltPlaylist,
+} from '@/lib/playlists/builders';
 
-type Section = 'saved' | 'recent' | 'vibes';
+// Library — the personal hub. Top half is the AI personalization tracker; the
+// rest is the four dynamic playlists computed from the user's listening data
+// and the live catalog.
+//
+// The playlists rebuild whenever the underlying inputs change (catalog,
+// taste profile, library), so saves and skips immediately influence what
+// shows up the next time the user lands here.
 
-const SECTIONS: { id: Section; label: string }[] = [
-  { id: 'saved',  label: 'Saved' },
-  { id: 'recent', label: 'Recent' },
-  { id: 'vibes',  label: 'Your Vibes' },
-];
+const UNLOCK_THRESHOLD = 100;
 
 export function LibraryScreen() {
-  const insets = useSafeAreaInsets();
   const player = usePlayer();
-  const [section, setSection] = useState<Section>('saved');
+  const auth = useAuth();
+  const [unlockModalOpen, setUnlockModalOpen] = useState(false);
 
-  const lib = player.library;
+  // The four library playlists. Each rebuilds when its inputs change — saves
+  // immediately reshape "Your Best Ones", and skips flow through into "New
+  // For You" via the taste profile the recommender reads.
+  const playlists: BuiltPlaylist[] = useMemo(() => [
+    buildNewForYou(
+      player.catalog,
+      player.library,
+      player.taste,
+      [],                       // recent — pulled inside via library
+      auth.songsHeard,
+    ),
+    buildYourBestOnes(player.library),
+    buildGymBeast(player.catalog),
+    buildCeoMode(player.catalog),
+  ], [
+    player.catalog,
+    player.library,
+    player.libraryVersion,
+    player.taste,
+    auth.songsHeard,
+  ]);
 
-  const data: Song[] = useMemo(() => {
-    if (!lib) return [];
-    if (section === 'saved') return lib.saved();
-    if (section === 'recent') return lib.recent();
-    return [];
-    // libraryVersion changes whenever the underlying store mutates.
-  }, [lib, section, player.libraryVersion]);
+  // Fire the unlock celebration the first time songsHeard crosses the
+  // threshold. The flag itself is persisted via auth so this only ever shows
+  // once per account (across app launches).
+  useEffect(() => {
+    if (auth.personalizationUnlockedAt) return;
+    if (auth.songsHeard < UNLOCK_THRESHOLD) return;
+    setUnlockModalOpen(true);
+    auth.markPersonalizationUnlocked().catch(() => {});
+    if (Platform.OS !== 'web') {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+        .catch(() => {});
+    }
+  }, [auth.songsHeard, auth.personalizationUnlockedAt, auth.markPersonalizationUnlocked]);
 
-  const counts = useMemo(() => ({
-    saved: lib?.saved().length ?? 0,
-    recent: lib?.recent().length ?? 0,
-  }), [lib, player.libraryVersion]);
-
-  // Aggregate top vibes from taste profile for "Your Vibes" tab.
-  const vibes = useMemo(() => {
-    const a = player.taste?.activity_scores ?? {};
-    return Object.entries(a)
-      .filter(([, v]) => v > 0)
-      .sort((x, y) => y[1] - x[1])
-      .slice(0, 6)
-      .map(([key]) => key);
-  }, [player.taste]);
+  const onPlayPlaylist = (p: BuiltPlaylist) => {
+    if (p.songs.length === 0) return;
+    if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
+    player.playPlaylist(p.songs);
+  };
 
   return (
     <View style={[styles.root, { paddingTop: spacing.md }]}>
       <BrandHeader />
-      <Text style={styles.h1}>Library</Text>
-      <Text style={styles.sub}>
-        {counts.saved} saved · {counts.recent} played recently
+
+      <ScrollView
+        contentContainerStyle={{ paddingBottom: 160 }}
+        showsVerticalScrollIndicator={false}
+      >
+        <Text style={styles.h1}>Library</Text>
+
+        <PersonalizationCard
+          songsHeard={auth.songsHeard}
+          unlocked={Boolean(auth.personalizationUnlockedAt)}
+        />
+
+        <View style={styles.playlistGroup}>
+          {playlists.map((p) => (
+            <PlaylistTile key={p.id} playlist={p} onPress={() => onPlayPlaylist(p)} />
+          ))}
+        </View>
+      </ScrollView>
+
+      <UnlockModal
+        visible={unlockModalOpen}
+        onClose={() => setUnlockModalOpen(false)}
+      />
+    </View>
+  );
+}
+
+// ---- AI Personalization card ----------------------------------------
+
+interface PersonalizationCardProps {
+  songsHeard: number;
+  unlocked: boolean;
+}
+
+function PersonalizationCard({ songsHeard, unlocked }: PersonalizationCardProps) {
+  const progress = Math.min(1, songsHeard / UNLOCK_THRESHOLD);
+  const count = Math.min(UNLOCK_THRESHOLD, songsHeard);
+
+  return (
+    <View style={styles.persoCard}>
+      {/* Soft gold halo so the card reads as "this is the prize moment". */}
+      <LinearGradient
+        colors={['rgba(200,174,122,0.10)', 'rgba(10,10,12,0)']}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+      <View style={styles.persoHeader}>
+        <View style={styles.persoIcon}>
+          <SparkleIcon size={14} color={metals.goldSolidHi} />
+        </View>
+        <Text style={styles.persoTitle}>AI Personalization</Text>
+        {unlocked && (
+          <View style={styles.persoBadge}>
+            <CheckIcon size={11} color={colors.bg} />
+            <Text style={styles.persoBadgeText}>READY</Text>
+          </View>
+        )}
+      </View>
+      <Text style={styles.persoSub}>
+        {unlocked
+          ? 'Your AI music profile is ready. New personalized playlists are generated daily.'
+          : 'Listen to 100 songs to unlock daily AI-generated music made specifically for your taste.'}
       </Text>
 
-      {/* Tabs — flex row with naturally-sized pills. No ScrollView. */}
-      <View style={styles.tabsRow}>
-        {SECTIONS.map((s) => {
-          const active = section === s.id;
-          return (
-            <Pressable
-              key={s.id}
-              onPress={() => setSection(s.id)}
-              style={[styles.tab, active && styles.tabActive]}
-              hitSlop={4}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: active }}
-            >
-              <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{s.label}</Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      {section === 'vibes' ? (
-        <ScrollView
-          contentContainerStyle={{ paddingBottom: 160 }}
-          showsVerticalScrollIndicator={false}
-        >
-          {vibes.length === 0 ? (
-            <EmptyState
-              icon={<SparkleIcon size={28} color={colors.textMuted} />}
-              title="Your vibes will appear here"
-              body="Play a few songs and Boulevard learns which vibes you reach for most."
+      {!unlocked && (
+        <>
+          <View style={styles.progressTrack}>
+            <LinearGradient
+              colors={['#dde0e6', '#c5b489', '#b89762']}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={[styles.progressFill, { width: `${progress * 100}%` }]}
             />
-          ) : (
-            <View style={styles.vibeGrid}>
-              {vibes.map((v) => (
-                <Pressable
-                  key={v}
-                  onPress={() => player.setVibe(v as never)}
-                  style={({ pressed }) => [styles.vibeCard, pressed && { opacity: 0.85 }]}
-                >
-                  <Text style={styles.vibeLabel}>{labelOf(v)}</Text>
-                  <Text style={styles.vibeHint}>Play this vibe</Text>
-                </Pressable>
-              ))}
-            </View>
-          )}
-        </ScrollView>
-      ) : (
-        <FlatList
-          data={data}
-          keyExtractor={(s) => s.id}
-          renderItem={({ item }) => (
-            <SongRow song={item} onPress={() => player.playSpecific(item)} />
-          )}
-          ListEmptyComponent={
-            section === 'saved' ? (
-              <EmptyState
-                icon={<BookmarkIcon size={28} color={colors.textMuted} />}
-                title="No saved songs yet"
-                body="Tap Save on a song to keep it here for later."
-              />
-            ) : (
-              <EmptyState
-                icon={<HomeIcon size={28} color={colors.textMuted} />}
-                title="Nothing played yet"
-                body="The songs you listen to will show up here in the order you heard them."
-              />
-            )
-          }
-          ItemSeparatorComponent={() => <View style={styles.rowDivider} />}
-          contentContainerStyle={{ paddingBottom: 160, paddingTop: spacing.xs }}
-          showsVerticalScrollIndicator={false}
-        />
+          </View>
+          <View style={styles.progressMeta}>
+            <Text style={styles.progressCount}>{count} / {UNLOCK_THRESHOLD} songs analyzed</Text>
+          </View>
+          <Text style={styles.persoHint}>The more you listen, the better your music gets.</Text>
+        </>
       )}
     </View>
   );
 }
 
-function labelOf(v: string) {
-  return v.replace('_', ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+// ---- Playlist tile ---------------------------------------------------
+
+interface PlaylistTileProps {
+  playlist: BuiltPlaylist;
+  onPress: () => void;
 }
 
-interface EmptyStateProps {
-  icon: React.ReactNode;
-  title: string;
-  body: string;
-}
-
-function EmptyState({ icon, title, body }: EmptyStateProps) {
+function PlaylistTile({ playlist, onPress }: PlaylistTileProps) {
   return (
-    <View style={styles.empty}>
-      <View style={styles.emptyIcon}>{icon}</View>
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={styles.emptyBody}>{body}</Text>
-    </View>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.tile, pressed && { opacity: 0.85 }]}
+    >
+      {playlist.coverUrl ? (
+        <Image
+          source={{ uri: playlist.coverUrl }}
+          style={styles.tileCover}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          recyclingKey={playlist.id}
+        />
+      ) : (
+        <View style={[styles.tileCover, styles.tileCoverPlaceholder]}>
+          <SparkleIcon size={20} color={colors.textMuted} />
+        </View>
+      )}
+      <View style={styles.tileBody}>
+        <Text style={styles.tileName} numberOfLines={1}>{playlist.name}</Text>
+        <Text style={styles.tileDesc} numberOfLines={2}>{playlist.description}</Text>
+        <Text style={styles.tileCount}>{playlist.songs.length} songs</Text>
+      </View>
+      <View style={styles.tilePlayBtn}>
+        <PlayIcon size={16} color={colors.bg} />
+      </View>
+    </Pressable>
   );
 }
 
+// ---- Unlock celebration modal ---------------------------------------
+
+interface UnlockModalProps {
+  visible: boolean;
+  onClose: () => void;
+}
+
+function UnlockModal({ visible, onClose }: UnlockModalProps) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalBackdrop}>
+        <View style={styles.modalCard}>
+          <LinearGradient
+            colors={['rgba(200,174,122,0.18)', 'rgba(10,10,12,0)']}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+          <Pressable onPress={onClose} style={styles.modalClose} hitSlop={10}>
+            <CloseIcon size={20} color={colors.textDim} />
+          </Pressable>
+          <View style={styles.modalIcon}>
+            <SparkleIcon size={28} color={metals.goldSolidHi} />
+          </View>
+          <Text style={styles.modalEyebrow}>PERSONALIZATION READY</Text>
+          <Text style={styles.modalTitle}>Your AI is now listening for you.</Text>
+          <Text style={styles.modalBody}>
+            We've analyzed your first 100 songs. Boulevard will now generate
+            new personalized music for your taste — fresh drops every day.
+          </Text>
+          <Pressable
+            onPress={onClose}
+            style={({ pressed }) => [styles.modalCta, pressed && { opacity: 0.85 }]}
+          >
+            <Text style={styles.modalCtaText}>Let's go</Text>
+          </Pressable>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+// ---- styles ---------------------------------------------------------
+
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg, paddingHorizontal: spacing.lg },
+  root: {
+    flex: 1,
+    backgroundColor: colors.bg,
+    paddingHorizontal: spacing.lg,
+  },
 
   h1: {
     color: colors.text,
     fontSize: fonts.size.display,
     fontWeight: fonts.weight.bold,
     letterSpacing: -0.6,
-  },
-  sub: {
-    color: colors.textMuted,
-    fontSize: fonts.size.sm,
-    marginTop: 4,
     marginBottom: spacing.lg,
-    letterSpacing: 0.1,
   },
 
-  // Tabs — flex row, natural height. The previous bug was a horizontal
-  // ScrollView with no height constraint stretching its children vertically.
-  tabsRow: {
+  // ---- Personalization card ----
+  persoCard: {
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: metals.gold,
+    padding: spacing.lg,
+    overflow: 'hidden',
+    marginBottom: spacing.lg,
+  },
+  persoHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    marginBottom: spacing.md,
+    marginBottom: 6,
   },
-  tab: {
-    paddingHorizontal: spacing.lg,
-    paddingVertical: 9,
-    borderRadius: radii.pill,
-    backgroundColor: colors.surface,
+  persoIcon: {
+    width: 24,
+    height: 24,
+    borderRadius: 6,
+    backgroundColor: 'rgba(200,174,122,0.10)',
     borderWidth: StyleSheet.hairlineWidth,
-    // Warm gold hairline on inactive tabs — picks up the Boulevard brand
-    // temperature without committing to a colored fill.
     borderColor: metals.gold,
-  },
-  tabActive: {
-    // Active tab keeps the white pill, but the inactive ones get a warm
-    // gold hairline (see borderColor on `tab`) so the brand color is felt
-    // throughout the section header.
-    backgroundColor: colors.text,
-    borderColor: colors.text,
-  },
-  tabLabel: {
-    color: colors.textMuted,
-    fontWeight: fonts.weight.semibold,
-    fontSize: fonts.size.sm,
-    letterSpacing: 0.1,
-  },
-  tabLabelActive: { color: colors.bg },
-
-  rowDivider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.divider,
-    marginLeft: 48 + spacing.md + spacing.md, // align past the row's cover thumbnail
-  },
-
-  empty: {
-    paddingVertical: spacing.xxl * 1.5,
-    alignItems: 'center',
-    paddingHorizontal: spacing.lg,
-  },
-  emptyIcon: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: colors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: metals.platinum,
-    marginBottom: spacing.md,
   },
-  emptyTitle: {
+  persoTitle: {
+    flex: 1,
     color: colors.text,
     fontSize: fonts.size.lg,
-    fontWeight: fonts.weight.semibold,
-    textAlign: 'center',
+    fontWeight: fonts.weight.bold,
     letterSpacing: -0.2,
   },
-  emptyBody: {
+  persoBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radii.pill,
+    backgroundColor: metals.goldSolidHi,
+  },
+  persoBadgeText: {
+    color: colors.bg,
+    fontSize: 10,
+    fontWeight: fonts.weight.bold,
+    letterSpacing: 1,
+  },
+  persoSub: {
     color: colors.textMuted,
     fontSize: fonts.size.sm,
-    textAlign: 'center',
-    marginTop: 6,
-    maxWidth: 280,
     lineHeight: 20,
+    marginBottom: spacing.md,
   },
-
-  vibeGrid: {
+  progressTrack: {
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+  },
+  progressMeta: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.md,
-    paddingVertical: spacing.sm,
+    justifyContent: 'flex-start',
+    marginTop: 10,
   },
-  vibeCard: {
-    width: '47%',
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.md,
-    borderRadius: radii.md,
-    backgroundColor: colors.surface,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: metals.platinum,
-  },
-  vibeLabel: {
+  progressCount: {
     color: colors.text,
+    fontSize: fonts.size.sm,
     fontWeight: fonts.weight.semibold,
-    fontSize: fonts.size.md,
-    letterSpacing: -0.1,
+    fontVariant: ['tabular-nums'],
   },
-  vibeHint: {
+  persoHint: {
     color: colors.textDim,
     fontSize: fonts.size.xs,
     marginTop: 6,
+    letterSpacing: 0.2,
+  },
+
+  // ---- Playlists ----
+  playlistGroup: {
+    gap: spacing.sm + 2,
+  },
+  tile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: colors.surface,
+    borderRadius: radii.lg,
+    padding: spacing.sm + 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: metals.platinum,
+  },
+  tileCover: {
+    width: 72,
+    height: 72,
+    borderRadius: radii.md,
+    backgroundColor: colors.bg,
+  },
+  tileCoverPlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileBody: {
+    flex: 1,
+    minWidth: 0,
+  },
+  tileName: {
+    color: colors.text,
+    fontSize: fonts.size.md,
+    fontWeight: fonts.weight.bold,
+    letterSpacing: -0.1,
+  },
+  tileDesc: {
+    color: colors.textMuted,
+    fontSize: fonts.size.xs,
+    marginTop: 2,
+    lineHeight: 16,
+  },
+  tileCount: {
+    color: metals.goldSolid,
+    fontSize: 11,
+    fontWeight: fonts.weight.semibold,
+    letterSpacing: 0.3,
+    marginTop: 6,
+  },
+  tilePlayBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.text,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginLeft: spacing.xs,
+  },
+
+  // ---- Unlock modal ----
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing.lg,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 380,
+    borderRadius: radii.xl,
+    backgroundColor: colors.bgElevated,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: metals.gold,
+    padding: spacing.xl,
+    overflow: 'hidden',
+    alignItems: 'center',
+  },
+  modalClose: {
+    position: 'absolute',
+    top: spacing.md,
+    right: spacing.md,
+    zIndex: 2,
+  },
+  modalIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: 'rgba(200,174,122,0.12)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: metals.gold,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: spacing.md,
+  },
+  modalEyebrow: {
+    color: metals.goldSolid,
+    fontSize: 11,
+    fontWeight: fonts.weight.bold,
+    letterSpacing: 2.4,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  modalTitle: {
+    color: colors.text,
+    fontSize: 22,
+    fontWeight: fonts.weight.bold,
+    letterSpacing: -0.4,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  modalBody: {
+    color: colors.textMuted,
+    fontSize: fonts.size.sm,
+    lineHeight: 21,
+    textAlign: 'center',
+    marginBottom: spacing.lg,
+  },
+  modalCta: {
+    paddingHorizontal: spacing.xl,
+    paddingVertical: spacing.md,
+    borderRadius: radii.pill,
+    backgroundColor: colors.text,
+    alignSelf: 'stretch',
+    alignItems: 'center',
+  },
+  modalCtaText: {
+    color: colors.bg,
+    fontSize: fonts.size.md,
+    fontWeight: fonts.weight.bold,
+    letterSpacing: 0.1,
   },
 });
