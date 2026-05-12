@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -37,7 +37,12 @@ const UNLOCK_THRESHOLD = 100;
 export function LibraryScreen() {
   const player = usePlayer();
   const auth = useAuth();
+  // The modal opens exactly once per account, the moment songsHeard crosses
+  // 100 while `personalizationUnlockedAt` is still null. We do NOT key off
+  // a local boolean alone — a tab re-mount would re-open the modal. Once
+  // we've marked unlock in AsyncStorage, the effect's guard prevents re-firing.
   const [unlockModalOpen, setUnlockModalOpen] = useState(false);
+  const unlockShownRef = useRef(false);
 
   // The four library playlists. Each rebuilds when its inputs change — saves
   // immediately reshape "Your Best Ones", and skips flow through into "New
@@ -62,11 +67,14 @@ export function LibraryScreen() {
   ]);
 
   // Fire the unlock celebration the first time songsHeard crosses the
-  // threshold. The flag itself is persisted via auth so this only ever shows
-  // once per account (across app launches).
+  // threshold WITHIN THIS SESSION. The persistent flag ensures we never
+  // re-show across launches; the per-session ref ensures we don't re-show
+  // on Library re-mount during the same session.
   useEffect(() => {
+    if (unlockShownRef.current) return;
     if (auth.personalizationUnlockedAt) return;
     if (auth.songsHeard < UNLOCK_THRESHOLD) return;
+    unlockShownRef.current = true;
     setUnlockModalOpen(true);
     auth.markPersonalizationUnlocked().catch(() => {});
     if (Platform.OS !== 'web') {

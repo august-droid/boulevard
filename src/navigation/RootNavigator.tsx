@@ -26,17 +26,29 @@ export function RootNavigator() {
   //   • Pre-100 songs heard: Explore. The user is still teaching the
   //     recommender, so the discovery surface is the most useful landing.
   //   • Post-100 songs heard: Library. Their personalized playlists are the
-  //     prize they unlocked — land directly on them so the value is obvious.
-  // We compute it lazily so a returning unlocked user lands on Library
-  // immediately on cold start, before the auth context finishes hydrating.
-  const [tab, setTab] = useState<Tab>(() =>
-    auth.personalizationUnlockedAt ? 'library' : 'explore',
-  );
+  //     prize they unlocked, so we land on it directly.
+  // AuthProvider hydrates from AsyncStorage asynchronously, so the lazy
+  // initializer will see `personalizationUnlockedAt: null` on cold start
+  // even for returning unlocked users. We re-route once hydration finishes
+  // — but only if the user hasn't manually navigated yet.
+  const [tab, setTab] = useState<Tab>('explore');
+  const [userHasNavigated, setUserHasNavigated] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
 
-  // If unlock happens DURING this session (the celebratory moment on Library),
-  // we don't auto-navigate — the user is already on Library, having just
-  // crossed the threshold. We only want the cold-start initial-tab logic.
+  // Once AuthProvider populates personalizationUnlockedAt from AsyncStorage,
+  // route the user to Library if they're already unlocked AND haven't yet
+  // manually tapped a tab. Won't fire again after the user touches the nav.
+  useEffect(() => {
+    if (userHasNavigated) return;
+    if (auth.personalizationUnlockedAt && tab !== 'library') {
+      setTab('library');
+    }
+  }, [auth.personalizationUnlockedAt, userHasNavigated, tab]);
+
+  const handleTabChange = (next: Tab) => {
+    setUserHasNavigated(true);
+    setTab(next);
+  };
 
   // Premium paywall — fires when the daily cap is hit. Re-fires whenever
   // `blockedAttempts` increments so that after the user dismisses the
@@ -68,11 +80,11 @@ export function RootNavigator() {
       </View>
       {showMini && (
         <MiniPlayer
-          onPress={() => setTab('home')}
+          onPress={() => handleTabChange('home')}
           bottomOffset={NAV_HEIGHT + 6}
         />
       )}
-      <BottomNav active={tab} onChange={setTab} />
+      <BottomNav active={tab} onChange={handleTabChange} />
       <PaywallScreen visible={paywallOpen} onClose={() => setPaywallOpen(false)} />
     </View>
   );

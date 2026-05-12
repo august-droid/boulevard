@@ -612,6 +612,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   //   1) server-side trending_score from song_daily_stats (preferred)
   //   2) raw plays from song_daily_stats (next-best)
   //   3) editorial launch_score (cold-start fallback)
+  //   4) stable hash on song.id (final fallback so the button always plays
+  //      *something* even on a fresh catalog with no server data and no
+  //      editorial scores).
   // No shuffle: we want the actual chart, not a random sample.
   const playPopular = useCallback(async () => {
     if (!queueRef.current) return;
@@ -620,17 +623,31 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (catalog.length === 0) return;
 
     const stats = statsRef.current;
+    const hashScore = (id: string) => {
+      let h = 0;
+      for (let i = 0; i < id.length; i++) {
+        h = ((h << 5) - h) + id.charCodeAt(i);
+        h |= 0;
+      }
+      return Math.abs(h) / 0x7fffffff;
+    };
     const scored = catalog.map((song) => {
       const s = stats.get(song.id);
-      // Server score dominates when present; popularity-derived plays carry
-      // some weight too so brand-new tracks with high velocity still surface.
       const serverScore = s ? (s.trending_score * 1.0 + Math.log10(1 + s.plays) * 0.1) : 0;
       const editorial = song.launch_score ?? 0;
-      return { song, score: serverScore > 0 ? serverScore : editorial };
+      // Pick the strongest signal available; if nothing else fires, the hash
+      // gives every song a stable, distinct ordering so the slice is never
+      // empty and the button always plays something.
+      const score = serverScore > 0
+        ? serverScore
+        : editorial > 0
+          ? editorial
+          : hashScore(song.id);
+      return { song, score };
     });
     scored.sort((a, b) => b.score - a.score);
     const top = scored.slice(0, 30).map((r) => r.song);
-    if (top.length === 0) return;
+    if (top.length === 0) return;  // catalog was 0 — already guarded above
 
     audioRef.current?.suspendCurrent();
     recordEndOfSong(true);
