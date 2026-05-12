@@ -16,7 +16,6 @@ import {
   InfinityIcon,
   WaveformIcon,
   BookmarkIcon,
-  DownloadIcon,
   BoltIcon,
   ArrowRightIcon,
 } from '@/components/Icon';
@@ -31,7 +30,6 @@ const FEATURES = [
   { Icon: InfinityIcon,  label: 'Unlimited listening' },
   { Icon: WaveformIcon,  label: 'Full access to all vibes' },
   { Icon: BookmarkIcon,  label: 'Save & build your library' },
-  { Icon: DownloadIcon,  label: 'Offline listening' },
   { Icon: BoltIcon,      label: 'Early access to new drops' },
 ];
 

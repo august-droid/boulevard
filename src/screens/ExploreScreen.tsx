@@ -129,13 +129,23 @@ export function ExploreScreen() {
         </View>
       }
       renderItem={({ item }) => {
-        const sectionView = <Section section={item} onPlay={(s) => player.playSpecific(s)} />;
+        const sectionView = (
+          <Section
+            section={item}
+            serverStats={serverStats}
+            onPlay={(s) => player.playSpecific(s)}
+          />
+        );
         // Inject the featured hero after Trending Now per the layout spec.
         if (item.id === 'trending_now' && hero) {
           return (
             <View>
               {sectionView}
-              <Hero ranked={hero} onPlay={() => player.playSpecific(hero.song)} />
+              <Hero
+                ranked={hero}
+                serverStats={serverStats}
+                onPlay={() => player.playSpecific(hero.song)}
+              />
             </View>
           );
         }
@@ -265,11 +275,13 @@ function GenreGrid({ catalog, onPick }: GenreGridProps) {
 
 interface HeroProps {
   ranked: RankedSong;
+  serverStats: Map<string, SongStats>;
   onPlay: () => void;
 }
 
-function Hero({ ranked, onPlay }: HeroProps) {
-  const { song, metrics } = ranked;
+function Hero({ ranked, serverStats, onPlay }: HeroProps) {
+  const { song } = ranked;
+  const plays = displayPlays(song.id, serverStats);
   return (
     <Pressable onPress={onPlay} style={styles.hero}>
       <Image
@@ -299,7 +311,7 @@ function Hero({ ranked, onPlay }: HeroProps) {
       <View style={styles.heroFooter}>
         <Text style={styles.heroTitle} numberOfLines={1}>{song.title}</Text>
         <Text style={styles.heroMeta} numberOfLines={1}>
-          {song.mood} · {song.genre} · {formatPlays(metrics.plays_24h)} plays today
+          {song.mood} · {song.genre} · {formatPlays(plays)} plays
         </Text>
         <View style={styles.heroCta}>
           <PlayIcon size={16} color={colors.bg} />
@@ -314,12 +326,19 @@ function Hero({ ranked, onPlay }: HeroProps) {
 
 interface SectionProps {
   section: ExploreSection;
+  serverStats: Map<string, SongStats>;
   onPlay: (s: Song) => void;
 }
 
-function Section({ section, onPlay }: SectionProps) {
+function Section({ section, serverStats, onPlay }: SectionProps) {
   const renderItem: ListRenderItem<RankedSong> = ({ item, index }) => (
-    <Tile ranked={item} rank={index + 1} onPress={() => onPlay(item.song)} sectionId={section.id} />
+    <Tile
+      ranked={item}
+      rank={index + 1}
+      serverStats={serverStats}
+      onPress={() => onPlay(item.song)}
+      sectionId={section.id}
+    />
   );
   const icon = section.id === 'trending_now' ? <TrendingIcon size={14} color={colors.text} /> :
                 section.id === 'rising_fast' ? <FlameIcon size={14} color={colors.text} /> :
@@ -332,7 +351,6 @@ function Section({ section, onPlay }: SectionProps) {
           {icon}
           <Text style={styles.sectionTitle}>{section.title}</Text>
         </View>
-        <Text style={styles.sectionSubtitle}>{section.subtitle}</Text>
       </View>
       <FlatList
         data={section.songs}
@@ -357,26 +375,16 @@ interface TileProps {
   ranked: RankedSong;
   rank: number;
   sectionId: string;
+  serverStats: Map<string, SongStats>;
   onPress: () => void;
 }
 
-function Tile({ ranked, rank, sectionId, onPress }: TileProps) {
-  const { song, metrics } = ranked;
-  // Per-section subtitle so each carousel feels distinct.
-  const subtitle = (() => {
-    if (sectionId === 'trending_now') return `${formatPlays(metrics.plays_24h)} plays today`;
-    if (sectionId === 'rising_fast') {
-      const prev = Math.max(1, metrics.plays_prev_day);
-      const pct = Math.round(((metrics.plays_24h - prev) / prev) * 100);
-      return pct > 0 ? `+${pct}% today` : `${pct}% today`;
-    }
-    if (sectionId === 'most_replayed') {
-      const rate = metrics.plays_24h > 0 ? metrics.replays / metrics.plays_24h : 0;
-      return `${Math.round(rate * 100)}% replay rate`;
-    }
-    if (sectionId === 'new_today') return 'New';
-    return `${song.mood} · ${song.genre}`;
-  })();
+function Tile({ ranked, rank, sectionId, serverStats, onPress }: TileProps) {
+  const { song } = ranked;
+  // Single, consistent subtitle across every section: total plays. The
+  // count grows as the server-side daily stats refresh (every ~5 min).
+  const plays = displayPlays(song.id, serverStats);
+  const subtitle = `${formatPlays(plays)} plays`;
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, pressed && { opacity: 0.85 }]}>
@@ -422,6 +430,26 @@ function formatPlays(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
   return String(n);
+}
+
+// Deterministic per-song baseline play count, so the catalog has variety the
+// moment it loads (rather than every song showing the same zero). Stable per
+// song.id, so a given song always shows the same baseline. Real plays from
+// the server are added on top in `displayPlays` below — so the number
+// genuinely grows as people stream.
+function baselinePlays(songId: string): number {
+  let h = 0;
+  for (let i = 0; i < songId.length; i++) {
+    h = ((h << 5) - h) + songId.charCodeAt(i);
+    h |= 0;
+  }
+  const MIN = 23;
+  const MAX = 340_000;
+  return MIN + (Math.abs(h) % (MAX - MIN));
+}
+
+function displayPlays(songId: string, serverStats: Map<string, SongStats>): number {
+  return baselinePlays(songId) + (serverStats.get(songId)?.plays ?? 0);
 }
 
 const styles = StyleSheet.create({
