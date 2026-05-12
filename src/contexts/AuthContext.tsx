@@ -2,6 +2,13 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import uuid from 'react-native-uuid';
 import { supabase, HAS_SUPABASE } from '@/lib/supabase';
+import {
+  configureBilling,
+  onCustomerInfo,
+  isPremium as customerIsPremium,
+  getCustomerInfo,
+  HAS_BILLING,
+} from '@/lib/billing/Billing';
 
 // Auth model for Boulevard.
 //
@@ -71,6 +78,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [paywallShownAt, setPaywallShownAt] = useState<string | null>(null);
   const [signedUpAt, setSignedUpAt] = useState<string | null>(null);
   const [personalizationUnlockedAt, setPersonalizationUnlockedAt] = useState<string | null>(null);
+  // True when the user has an active "premium" entitlement in RevenueCat.
+  // Updates live via the customer-info listener wired below.
+  const [billingPremium, setBillingPremium] = useState(false);
   const [dailyCount, setDailyCount] = useState(0);
   const [dailyLimitHit, setDailyLimitHit] = useState(false);
   const [blockedAttempts, setBlockedAttempts] = useState(0);
@@ -131,6 +141,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Wire RevenueCat: configure once the user id resolves, then mirror the
+  // active-entitlement state into local `billingPremium`. The listener
+  // fires on every server-side change (renewal, refund, expire), so the
+  // app reacts in real time without needing to poll.
+  useEffect(() => {
+    if (!HAS_BILLING) return;
+    if (!userId) return;
+    let cancelled = false;
+    configureBilling(userId).then(async () => {
+      if (cancelled) return;
+      const info = await getCustomerInfo();
+      if (info) setBillingPremium(customerIsPremium(info));
+    });
+    const off = onCustomerInfo((info) => {
+      setBillingPremium(customerIsPremium(info));
+    });
+    return () => {
+      cancelled = true;
+      off();
+    };
+  }, [userId]);
+
   const value = useMemo<AuthValue>(() => {
     const trialActive = (() => {
       if (!trialStartedAt) return false;
@@ -142,7 +174,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       userId,
       isAnonymous: isAnonymous && !signedUpAt,
       hasSignedUp: Boolean(signedUpAt),
-      isPremium: trialActive, // wire to real entitlement later
+      // Premium is whichever signal says so:
+      //   • billingPremium: live RevenueCat entitlement (the real source of truth)
+      //   • trialActive: legacy 3-day local flag, used until billing lands
+      // Either being true unblocks the daily cap.
+      isPremium: billingPremium || trialActive,
       trialStartedAt,
       engagementCount,
       songsHeard,
@@ -232,7 +268,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [
     userId, isAnonymous, engagementCount, songsHeard, skipCount,
     trialStartedAt, paywallShownAt, signedUpAt, personalizationUnlockedAt,
-    dailyCount, dailyLimitHit, blockedAttempts,
+    billingPremium, dailyCount, dailyLimitHit, blockedAttempts,
   ]);
 
   return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;

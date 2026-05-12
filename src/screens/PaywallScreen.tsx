@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Modal,
   View,
@@ -6,9 +6,11 @@ import {
   Pressable,
   StyleSheet,
   Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import type { PurchasesPackage } from 'react-native-purchases';
 import { colors, fonts, metals, radii, spacing } from '@/theme';
 import {
   CloseIcon,
@@ -20,6 +22,13 @@ import {
   ArrowRightIcon,
 } from '@/components/Icon';
 import { useAuth } from '@/contexts/AuthContext';
+import {
+  HAS_BILLING,
+  getOffering,
+  packageToPlan,
+  purchasePackage,
+  restorePurchases,
+} from '@/lib/billing/Billing';
 
 interface Props {
   visible: boolean;
@@ -58,10 +67,81 @@ export function PaywallScreen({ visible, onClose }: Props) {
   const auth = useAuth();
   // Yearly is selected by default — it's the better deal and the better LTV.
   const [plan, setPlan] = useState<Plan>('yearly');
+  const [packages, setPackages] = useState<Record<Plan, PurchasesPackage | null>>(
+    { yearly: null, monthly: null },
+  );
+  const [purchasing, setPurchasing] = useState(false);
+  const [restoring, setRestoring] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Pull live offerings from RevenueCat when the paywall opens. We map them
+  // by our PlanId so the UI can show the actual localized prices coming back
+  // from the Play Store (e.g. "€36.99/year" instead of the hardcoded "$39").
+  useEffect(() => {
+    if (!visible || !HAS_BILLING) return;
+    let cancelled = false;
+    getOffering().then((offering) => {
+      if (cancelled || !offering) return;
+      const next: Record<Plan, PurchasesPackage | null> = { yearly: null, monthly: null };
+      for (const pkg of offering.availablePackages) {
+        const plan = packageToPlan(pkg);
+        if (plan) next[plan] = pkg;
+      }
+      setPackages(next);
+    });
+    return () => { cancelled = true; };
+  }, [visible]);
+
+  const displayPrice = (p: Plan): string => {
+    return packages[p]?.product.priceString ?? PLAN_DETAILS[p].price;
+  };
 
   const startTrial = async () => {
-    await auth.startTrial();
-    onClose();
+    setError(null);
+    // Without billing configured (dev / TestFlight), fall through to the legacy
+    // local 3-day flag so the team can iterate without a working SDK key.
+    if (!HAS_BILLING) {
+      await auth.startTrial();
+      onClose();
+      return;
+    }
+    const pkg = packages[plan];
+    if (!pkg) {
+      setError('Subscriptions are temporarily unavailable. Please try again in a moment.');
+      return;
+    }
+    setPurchasing(true);
+    try {
+      await purchasePackage(pkg);
+      // The RevenueCat customer-info listener in AuthContext flips
+      // `isPremium` automatically — we just close the sheet.
+      onClose();
+    } catch (e: any) {
+      // User-cancel is the most common error and shouldn't show a banner.
+      const userCancelled = e?.userCancelled === true || e?.code === '1';
+      if (!userCancelled) {
+        setError(e?.message ?? 'Purchase failed. Please try again.');
+      }
+    } finally {
+      setPurchasing(false);
+    }
+  };
+
+  const onRestore = async () => {
+    setError(null);
+    setRestoring(true);
+    try {
+      const info = await restorePurchases();
+      // If the user did have an active sub, the listener already flipped
+      // isPremium and the paywall would close from the parent useEffect.
+      if (info && info.entitlements.active['premium']) {
+        onClose();
+      } else {
+        setError('No active subscription found to restore.');
+      }
+    } finally {
+      setRestoring(false);
+    }
   };
 
   return (
@@ -124,7 +204,7 @@ export function PaywallScreen({ visible, onClose }: Props) {
               <View style={styles.plans}>
                 <PlanPill
                   label="Yearly"
-                  price="$39"
+                  price={displayPrice('yearly')}
                   cadence="/year"
                   badge="Save 67%"
                   selected={plan === 'yearly'}
@@ -132,7 +212,7 @@ export function PaywallScreen({ visible, onClose }: Props) {
                 />
                 <PlanPill
                   label="Monthly"
-                  price="$9.99"
+                  price={displayPrice('monthly')}
                   cadence="/mo"
                   selected={plan === 'monthly'}
                   onPress={() => setPlan('monthly')}
@@ -140,28 +220,53 @@ export function PaywallScreen({ visible, onClose }: Props) {
               </View>
 
               {/* CTA */}
-              <Pressable onPress={startTrial} style={styles.ctaWrap}>
+              <Pressable
+                onPress={purchasing ? undefined : startTrial}
+                disabled={purchasing}
+                style={[styles.ctaWrap, purchasing && { opacity: 0.7 }]}
+              >
                 <LinearGradient
                   colors={[GOLD.ctaA, GOLD.ctaB, GOLD.ctaC]}
                   start={{ x: 0, y: 0 }}
                   end={{ x: 1, y: 1 }}
                   style={styles.cta}
                 >
-                  <Text style={styles.ctaText}>Start Free Trial</Text>
-                  <View style={styles.ctaArrow}>
-                    <ArrowRightIcon size={20} color="#0a0a0c" />
-                  </View>
+                  {purchasing ? (
+                    <ActivityIndicator color="#0a0a0c" />
+                  ) : (
+                    <>
+                      <Text style={styles.ctaText}>Start Free Trial</Text>
+                      <View style={styles.ctaArrow}>
+                        <ArrowRightIcon size={20} color="#0a0a0c" />
+                      </View>
+                    </>
+                  )}
                 </LinearGradient>
               </Pressable>
 
-              <Text style={styles.fine}>3 days free, then {PLAN_DETAILS[plan].afterTrial}</Text>
+              <Text style={styles.fine}>3 days free, then {displayPrice(plan)}{plan === 'yearly' ? '/year' : '/month'} after trial</Text>
+
+              {error ? <Text style={styles.errorText}>{error}</Text> : null}
             </View>
           </LinearGradient>
         </View>
 
-        <Pressable onPress={onClose} hitSlop={12} style={styles.maybeLater}>
-          <Text style={styles.maybeLaterText}>Maybe later</Text>
-        </Pressable>
+        <View style={styles.bottomLinks}>
+          <Pressable
+            onPress={restoring ? undefined : onRestore}
+            disabled={restoring}
+            hitSlop={12}
+            style={styles.linkBtn}
+          >
+            <Text style={styles.linkText}>
+              {restoring ? 'Restoring…' : 'Restore purchases'}
+            </Text>
+          </Pressable>
+          <Text style={styles.linkDot}>·</Text>
+          <Pressable onPress={onClose} hitSlop={12} style={styles.linkBtn}>
+            <Text style={styles.linkText}>Maybe later</Text>
+          </Pressable>
+        </View>
       </View>
     </Modal>
   );
@@ -395,14 +500,30 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 
-  maybeLater: {
-    alignSelf: 'center',
+  bottomLinks: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
     marginTop: spacing.sm,
-    paddingVertical: 6,
   },
-  maybeLaterText: {
+  linkBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+  },
+  linkText: {
     color: colors.text,
     fontSize: fonts.size.sm,
     textDecorationLine: 'underline',
+  },
+  linkDot: {
+    color: colors.textMuted,
+    fontSize: fonts.size.sm,
+  },
+  errorText: {
+    color: '#ff8585',
+    fontSize: fonts.size.xs,
+    textAlign: 'center',
+    marginTop: 8,
   },
 });
