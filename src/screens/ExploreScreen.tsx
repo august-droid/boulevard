@@ -17,6 +17,7 @@ import { buildExplore, ExploreSection, pickHero, RankedSong } from '@/lib/rankin
 import { fetchTodayStats } from '@/lib/stats/SongStats';
 import { SongStats } from '@/types';
 import { PlayIcon, SparkleIcon, FlameIcon, TrendingIcon } from '@/components/Icon';
+import { BrandHeader } from '@/components/BrandHeader';
 import { Song } from '@/types';
 
 const { width } = Dimensions.get('window');
@@ -112,7 +113,8 @@ export function ExploreScreen() {
       data={sections}
       keyExtractor={(s) => s.id}
       ListHeaderComponent={
-        <View style={{ paddingTop: insets.top + spacing.md }}>
+        <View style={{ paddingTop: spacing.md }}>
+          <BrandHeader />
           <GenreGrid
             catalog={player.catalog}
             onPick={(_genre, song) => {
@@ -160,15 +162,44 @@ interface MainGenre {
   label: string;
   /** Lowercase slugs in the catalog that count as this surface genre. */
   slugs: string[];
+  /** Locally-bundled cover image — bound via require() so Metro bundles it. */
+  image: number;
 }
 
+// Each tile's image is curated to instantly communicate the genre at a
+// glance — pop concert microphone, city-night rap mic, R&B neon dusk, indie
+// bedroom poster wall, Texas cowboy at sunset, big-room DJ set.
 const MAIN_GENRES: MainGenre[] = [
-  { label: 'Pop',        slugs: ['pop', 'dance pop', 'female pop', 'dark alt-pop', 'country pop', 'dream pop'] },
-  { label: 'Rap',        slugs: ['rap', 'hiphop', 'hip-hop', 'melodic rap', 'southern rap', 'trap', 'psy-trap'] },
-  { label: 'R&B',        slugs: ['rnb', 'r&b', 'late-night r&b'] },
-  { label: 'Indie',      slugs: ['indie', 'indiepop', 'indie pop'] },
-  { label: 'Country',    slugs: ['country', 'country pop', 'americana'] },
-  { label: 'Electronic', slugs: ['edm', 'electronic', 'house', 'techno', 'dance', 'experimental fusion'] },
+  {
+    label: 'Pop',
+    slugs: ['pop', 'dance pop', 'female pop', 'dark alt-pop', 'country pop', 'dream pop'],
+    image: require('../../assets/genres/pop.jpg'),
+  },
+  {
+    label: 'Rap',
+    slugs: ['rap', 'hiphop', 'hip-hop', 'melodic rap', 'southern rap', 'trap', 'psy-trap'],
+    image: require('../../assets/genres/rap.jpg'),
+  },
+  {
+    label: 'R&B',
+    slugs: ['rnb', 'r&b', 'late-night r&b'],
+    image: require('../../assets/genres/rnb.jpg'),
+  },
+  {
+    label: 'Indie',
+    slugs: ['indie', 'indiepop', 'indie pop'],
+    image: require('../../assets/genres/indie.jpg'),
+  },
+  {
+    label: 'Country',
+    slugs: ['country', 'country pop', 'americana'],
+    image: require('../../assets/genres/country.jpg'),
+  },
+  {
+    label: 'House',
+    slugs: ['edm', 'electronic', 'house', 'techno', 'dance', 'experimental fusion'],
+    image: require('../../assets/genres/house.jpg'),
+  },
 ];
 
 interface GenreGridProps {
@@ -198,36 +229,28 @@ function GenreGrid({ catalog, onPick }: GenreGridProps) {
     <View style={styles.genreGrid}>
       {MAIN_GENRES.map((g) => {
         const top = topPerGenre.get(g.label) ?? null;
-        // Fall back to first catalog song's cover if we don't have a real
-        // match yet (factory hasn't generated this genre). Genre tile still
-        // looks like a tile rather than an empty placeholder.
-        const cover = top?.cover_url ?? catalog[0]?.cover_url ?? null;
         return (
           <Pressable
             key={g.label}
             onPress={() => onPick(g, top)}
-            style={({ pressed }) => [styles.genreTile, pressed && { opacity: 0.92 }]}
+            style={({ pressed }) => [
+              styles.genreTile,
+              pressed && { opacity: 0.92, transform: [{ scale: 0.985 }] },
+            ]}
           >
-            {cover ? (
-              <Image
-                source={{ uri: cover }}
-                style={StyleSheet.absoluteFill}
-                contentFit="cover"
-                cachePolicy="memory-disk"
-                transition={120}
-                recyclingKey={g.label}
-              />
-            ) : null}
-            <LinearGradient
-              colors={['rgba(10,10,12,0.35)', 'rgba(10,10,12,0.85)']}
-              locations={[0, 1]}
+            {/* Full-bleed curated cover for this genre. */}
+            <Image
+              source={g.image}
               style={StyleSheet.absoluteFill}
-              pointerEvents="none"
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              recyclingKey={g.label}
             />
+            {/* Bottom-up dark wash so the genre label always reads cleanly. */}
             <LinearGradient
-              colors={[metals.glassHi, 'transparent']}
-              locations={[0, 0.35]}
-              style={styles.genreTileGloss}
+              colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.78)']}
+              locations={[0.45, 1]}
+              style={StyleSheet.absoluteFill}
               pointerEvents="none"
             />
             <Text style={styles.genreTileLabel}>{g.label}</Text>
@@ -431,7 +454,8 @@ const styles = StyleSheet.create({
   },
   genreTile: {
     width: '48.5%',
-    height: 86,
+    // Taller tile gives the gradient + emoji watermark room to breathe.
+    height: 110,
     borderRadius: radii.md,
     overflow: 'hidden',
     justifyContent: 'flex-end',
@@ -446,21 +470,16 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 5 },
     elevation: 4,
   },
-  genreTileGloss: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0,
-    height: '45%',
-  },
   genreTileLabel: {
-    color: colors.text,
-    fontSize: fonts.size.lg,
+    color: '#ffffff',
+    // Bumped up — bolder label balances the larger tile + emoji watermark.
+    fontSize: 22,
     fontWeight: fonts.weight.bold,
     letterSpacing: -0.3,
-    // The drop-shadow keeps the label readable on busy cover art without
-    // needing a full opaque scrim.
-    textShadowColor: 'rgba(0,0,0,0.7)',
-    textShadowRadius: 6,
-    textShadowOffset: { width: 0, height: 1 },
+    // Drop-shadow keeps the label readable against any gradient stop.
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowRadius: 8,
+    textShadowOffset: { width: 0, height: 2 },
   },
 
   // Hero

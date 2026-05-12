@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Delete account — Boulevard</title>
+  <meta name="theme-color" content="#0a0a0c" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .request-form {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 28px;
+      margin: 28px 0 12px;
+    }
+    .request-form label {
+      display: block;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin: 0 0 6px;
+      letter-spacing: 0.2px;
+    }
+    .request-form input,
+    .request-form textarea {
+      width: 100%;
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      margin-bottom: 16px;
+      resize: vertical;
+    }
+    .request-form input:focus,
+    .request-form textarea:focus {
+      outline: none;
+      border-color: rgba(200, 174, 122, 0.5);
+    }
+    .request-form button {
+      background: linear-gradient(180deg, var(--gold-hi) 0%, var(--gold) 100%);
+      color: #1a1408;
+      border: none;
+      padding: 12px 22px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      cursor: pointer;
+      transition: filter 0.15s ease;
+    }
+    .request-form button:hover { filter: brightness(1.08); }
+
+    .data-list {
+      background: var(--bg-elev);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin: 14px 0 8px;
+    }
+    .data-list li { color: var(--text); }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <header class="site-header">
+    <div class="container">
+      <a class="wordmark" href="/">boulevard</a>
+    </div>
+  </header>
+
+  <main class="doc">
+    <div class="container">
+      <h1>Delete your account</h1>
+      <p class="meta">Permanently remove your Boulevard account and the data associated with it.</p>
+
+      <p>Boulevard takes deletion requests seriously. If you no longer want to use the Service, you can request deletion of your account and the data we hold about you at any time. There are two ways to do it.</p>
+
+      <h2>Option 1 — In-app (recommended)</h2>
+      <p>If you're signed in on the Boulevard app:</p>
+      <ul>
+        <li>Open the <strong>Profile</strong> tab.</li>
+        <li>Tap <strong>Sign out / Delete account</strong>.</li>
+        <li>Confirm. Your account and listening history are removed from our servers within 30 days. Most data is removed immediately; some operational logs roll out of our system within that window.</li>
+      </ul>
+
+      <h2>Option 2 — Email request</h2>
+      <p>If you can't access the app, send a deletion request from the email address associated with your Boulevard account to:</p>
+      <p><strong>august@magnamarketing.io</strong></p>
+      <p>Subject line: <code>Delete account</code>. We'll process the request within 30 days and email you a confirmation when it's complete.</p>
+
+      <div class="request-form">
+        <label for="email">Your account email</label>
+        <input id="email" type="email" placeholder="you@example.com" />
+
+        <label for="reason">Reason (optional)</label>
+        <textarea id="reason" rows="3" placeholder="Anything we should know — e.g. a problem we should fix."></textarea>
+
+        <a href="#" id="submit-btn" class="cta primary" style="display:inline-block;">Send deletion request</a>
+      </div>
+
+      <h2>What gets deleted</h2>
+      <ul class="data-list">
+        <li>Your account identifier and any linked social provider records (Apple, Google, Facebook).</li>
+        <li>Your taste profile, saved songs, recents, and full listening history.</li>
+        <li>Subscription state held by Boulevard (your Google Play subscription itself is managed separately — cancel it in your Google Play account).</li>
+      </ul>
+
+      <h2>What we may retain</h2>
+      <p>For up to 90 days after deletion we may retain a small amount of information necessary to:</p>
+      <ul>
+        <li>Resolve disputes, prevent fraud, or comply with our legal obligations.</li>
+        <li>Roll deletion through our backups, which expire on a fixed schedule.</li>
+      </ul>
+      <p>After this window the data is permanently and irrecoverably removed.</p>
+
+      <h2>Questions</h2>
+      <p>If you have any questions about deletion or what we hold about you, email <a href="mailto:august@magnamarketing.io">august@magnamarketing.io</a>.</p>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container wide">
+      <div class="footer-row">
+        <div class="footer-links">
+          <a href="/privacy-policy">Privacy</a>
+          <a href="/terms">Terms</a>
+          <a href="/delete-account">Delete account</a>
+          <a href="mailto:august@magnamarketing.io">Contact</a>
+        </div>
+        <div class="copyright">© 2026 Boulevard · boulevardai.app</div>
+      </div>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+  // Inline mailto handoff — turns the form into a pre-filled email so we don't
+  // need a backend. Netlify can serve this statically without any forms API.
+  document.getElementById('submit-btn').addEventListener('click', function (e) {
+    e.preventDefault();
+    var email = document.getElementById('email').value.trim();
+    var reason = document.getElementById('reason').value.trim();
+    var body = 'Account email: ' + (email || '(not provided)') + '\n\n';
+    if (reason) body += 'Reason:\n' + reason + '\n\n';
+    body += 'Please delete my Boulevard account and associated data.';
+    var url = 'mailto:august@magnamarketing.io'
+      + '?subject=' + encodeURIComponent('Delete account')
+      + '&body=' + encodeURIComponent(body);
+    window.location.href = url;
+  });
+</script>
+
+</body>
+</html>

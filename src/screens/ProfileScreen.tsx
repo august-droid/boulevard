@@ -7,6 +7,7 @@ import { usePlayer } from '@/contexts/PlayerContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { topEntries, energyLabel } from '@/lib/taste/TasteProfile';
 import { SparkleIcon, CheckIcon } from '@/components/Icon';
+import { BrandHeader } from '@/components/BrandHeader';
 import { PaywallScreen } from '@/screens/PaywallScreen';
 import { ReviewScreen } from '@/screens/ReviewScreen';
 import { isAdmin } from '@/lib/admin/adminClient';
@@ -68,7 +69,8 @@ export function ProfileScreen() {
   const level = Math.min(10, Math.floor(auth.engagementCount));
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + spacing.md }]}>
+    <View style={[styles.root, { paddingTop: spacing.md }]}>
+      <BrandHeader />
       <Text style={styles.h1}>Profile</Text>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 140 }} showsVerticalScrollIndicator={false}>

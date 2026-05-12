@@ -5,6 +5,7 @@ import { colors, fonts, metals, radii, spacing } from '@/theme';
 import { usePlayer } from '@/contexts/PlayerContext';
 import { SongRow } from '@/components/SongRow';
 import { BookmarkIcon, HomeIcon, SparkleIcon } from '@/components/Icon';
+import { BrandHeader } from '@/components/BrandHeader';
 import { Song } from '@/types';
 
 type Section = 'saved' | 'recent' | 'vibes';
@@ -46,7 +47,8 @@ export function LibraryScreen() {
   }, [player.taste]);
 
   return (
-    <View style={[styles.root, { paddingTop: insets.top + spacing.md }]}>
+    <View style={[styles.root, { paddingTop: spacing.md }]}>
+      <BrandHeader />
       <Text style={styles.h1}>Library</Text>
       <Text style={styles.sub}>
         {counts.saved} saved · {counts.recent} played recently

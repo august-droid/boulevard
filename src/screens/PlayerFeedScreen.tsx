@@ -285,44 +285,30 @@ function formatTime(ms: number): string {
 
 // ---- Breathing brand mark -------------------------------------------
 //
-// Subtle Boulevard logo at the top of the now-playing surface. Loops a slow
-// scale + opacity pulse so the screen feels alive even when the cover is
+// Subtle "boulevard" wordmark at the top of the now-playing surface. Loops
+// a slow opacity pulse so the screen feels alive even when the cover is
 // motionless. Deliberately quiet — the cover art is the hero; this is just
 // a soft signature.
 
-const AnimatedBrandImage = Animated.createAnimatedComponent(Image);
-
 function BreathingBrandMark() {
-  const scale = useSharedValue(1);
-  const opacity = useSharedValue(0.78);
+  const opacity = useSharedValue(0.62);
 
   useEffect(() => {
     // ~3.6s out, ~3.6s back, forever. inOut easing makes the turnaround
     // feel like breath rather than a bounce.
-    scale.value = withRepeat(
-      withTiming(1.10, { duration: 3600, easing: Easing.inOut(Easing.ease) }),
-      -1,
-      true,
-    );
     opacity.value = withRepeat(
-      withTiming(0.95, { duration: 3600, easing: Easing.inOut(Easing.ease) }),
+      withTiming(0.92, { duration: 3600, easing: Easing.inOut(Easing.ease) }),
       -1,
       true,
     );
-  }, [scale, opacity]);
+  }, [opacity]);
 
-  const style = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-    opacity: opacity.value,
-  }));
+  const style = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
   return (
-    <AnimatedBrandImage
-      source={require('../../assets/icon.png')}
-      style={[styles.brandMark, style]}
-      contentFit="contain"
-      cachePolicy="memory-disk"
-    />
+    <Animated.Text style={[styles.brandWordmark, style]} allowFontScaling={false}>
+      boulevard
+    </Animated.Text>
   );
 }
 
@@ -404,11 +390,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  brandMark: {
-    // Slightly larger so it reads as a brand mark, not a stray icon.
-    width: 38,
-    height: 38,
-    borderRadius: 9,
+  brandWordmark: {
+    color: metals.goldSolid,
+    fontSize: 13,
+    fontWeight: fonts.weight.medium,
+    letterSpacing: 5.5,
+    textTransform: 'lowercase',
   },
 
   bottomStack: {
