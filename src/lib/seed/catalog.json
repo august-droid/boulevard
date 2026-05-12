@@ -1,0 +1,3706 @@
+[
+  {
+    "id": "sng_001",
+    "title": "Velvet Mornings",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_001/800/800",
+    "genre": "lofi",
+    "genres": [
+      "lofi"
+    ],
+    "bpm": 78,
+    "mood": "calm",
+    "moods": [
+      "calm"
+    ],
+    "energy_score": 0.2,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 0,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "sleep"
+    ],
+    "duration_seconds": 198,
+    "is_featured": false,
+    "launch_score": 0.42
+  },
+  {
+    "id": "sng_002",
+    "title": "Coastal Glass",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_002/800/800",
+    "genre": "lofi",
+    "genres": [
+      "lofi"
+    ],
+    "bpm": 80,
+    "mood": "calm",
+    "moods": [
+      "calm"
+    ],
+    "energy_score": 0.22,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 0,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "late_night"
+    ],
+    "duration_seconds": 212,
+    "is_featured": false,
+    "launch_score": 0.41
+  },
+  {
+    "id": "sng_003",
+    "title": "Paper Lantern",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_003/800/800",
+    "genre": "lofi",
+    "genres": [
+      "lofi"
+    ],
+    "bpm": 72,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.18,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 0,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "sleep",
+      "calm"
+    ],
+    "duration_seconds": 224,
+    "is_featured": false,
+    "launch_score": 0.41
+  },
+  {
+    "id": "sng_004",
+    "title": "Slow Tide",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_004/800/800",
+    "genre": "ambient",
+    "genres": [
+      "ambient"
+    ],
+    "bpm": 65,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.15,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 0,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "sleep",
+      "calm"
+    ],
+    "duration_seconds": 240,
+    "is_featured": false,
+    "launch_score": 0.41
+  },
+  {
+    "id": "sng_005",
+    "title": "Neon Skyline",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_005/800/800",
+    "genre": "pop",
+    "genres": [
+      "pop"
+    ],
+    "bpm": 118,
+    "mood": "euphoric",
+    "moods": [
+      "euphoric"
+    ],
+    "energy_score": 0.78,
+    "vocal_type": "female",
+    "voice_gender": "female",
+    "similarity_cluster": 1,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "driving",
+      "euphoric",
+      "party"
+    ],
+    "duration_seconds": 204,
+    "is_featured": true,
+    "launch_score": 0.6
+  },
+  {
+    "id": "sng_006",
+    "title": "Sun Chaser",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_006/800/800",
+    "genre": "pop",
+    "genres": [
+      "pop"
+    ],
+    "bpm": 122,
+    "mood": "happy",
+    "moods": [
+      "happy"
+    ],
+    "energy_score": 0.74,
+    "vocal_type": "female",
+    "voice_gender": "female",
+    "similarity_cluster": 1,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "driving",
+      "euphoric"
+    ],
+    "duration_seconds": 196,
+    "is_featured": false,
+    "launch_score": 0.6
+  },
+  {
+    "id": "sng_007",
+    "title": "Open Window",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_007/800/800",
+    "genre": "pop",
+    "genres": [
+      "pop"
+    ],
+    "bpm": 114,
+    "mood": "happy",
+    "moods": [
+      "happy"
+    ],
+    "energy_score": 0.66,
+    "vocal_type": "mixed",
+    "voice_gender": null,
+    "similarity_cluster": 1,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "driving",
+      "calm",
+      "euphoric"
+    ],
+    "duration_seconds": 210,
+    "is_featured": false,
+    "launch_score": 0.6
+  },
+  {
+    "id": "sng_008",
+    "title": "Westside Bloom",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_008/800/800",
+    "genre": "pop",
+    "genres": [
+      "pop"
+    ],
+    "bpm": 120,
+    "mood": "euphoric",
+    "moods": [
+      "euphoric"
+    ],
+    "energy_score": 0.8,
+    "vocal_type": "female",
+    "voice_gender": "female",
+    "similarity_cluster": 1,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "party",
+      "euphoric",
+      "driving"
+    ],
+    "duration_seconds": 188,
+    "is_featured": false,
+    "launch_score": 0.59
+  },
+  {
+    "id": "sng_009",
+    "title": "Midnight Drive",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_009/800/800",
+    "genre": "house",
+    "genres": [
+      "house"
+    ],
+    "bpm": 124,
+    "mood": "energetic",
+    "moods": [
+      "energetic"
+    ],
+    "energy_score": 0.85,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 2,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "party",
+      "driving",
+      "late_night"
+    ],
+    "duration_seconds": 230,
+    "is_featured": true,
+    "launch_score": 0.59
+  },
+  {
+    "id": "sng_010",
+    "title": "Glass Tower",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_010/800/800",
+    "genre": "house",
+    "genres": [
+      "house"
+    ],
+    "bpm": 126,
+    "mood": "energetic",
+    "moods": [
+      "energetic"
+    ],
+    "energy_score": 0.88,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 2,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "party",
+      "gym",
+      "euphoric"
+    ],
+    "duration_seconds": 244,
+    "is_featured": false,
+    "launch_score": 0.63
+  },
+  {
+    "id": "sng_011",
+    "title": "Pulse Engine",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_011/800/800",
+    "genre": "house",
+    "genres": [
+      "house"
+    ],
+    "bpm": 128,
+    "mood": "energetic",
+    "moods": [
+      "energetic"
+    ],
+    "energy_score": 0.9,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 2,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "gym",
+      "party"
+    ],
+    "duration_seconds": 252,
+    "is_featured": false,
+    "launch_score": 0.63
+  },
+  {
+    "id": "sng_012",
+    "title": "Berlin Air",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_012/800/800",
+    "genre": "techno",
+    "genres": [
+      "techno"
+    ],
+    "bpm": 130,
+    "mood": "energetic",
+    "moods": [
+      "energetic"
+    ],
+    "energy_score": 0.92,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 2,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "gym",
+      "party",
+      "late_night"
+    ],
+    "duration_seconds": 268,
+    "is_featured": false,
+    "launch_score": 0.42
+  },
+  {
+    "id": "sng_013",
+    "title": "Late Plates",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_013/800/800",
+    "genre": "hiphop",
+    "genres": [
+      "hiphop"
+    ],
+    "bpm": 92,
+    "mood": "moody",
+    "moods": [
+      "moody"
+    ],
+    "energy_score": 0.62,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 3,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "driving",
+      "late_night"
+    ],
+    "duration_seconds": 198,
+    "is_featured": false,
+    "launch_score": 0.63
+  },
+  {
+    "id": "sng_014",
+    "title": "Brown Sugar Sky",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_014/800/800",
+    "genre": "rnb",
+    "genres": [
+      "rnb"
+    ],
+    "bpm": 88,
+    "mood": "romantic",
+    "moods": [
+      "romantic"
+    ],
+    "energy_score": 0.5,
+    "vocal_type": "female",
+    "voice_gender": "female",
+    "similarity_cluster": 3,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "late_night",
+      "calm"
+    ],
+    "duration_seconds": 222,
+    "is_featured": false,
+    "launch_score": 0.62
+  },
+  {
+    "id": "sng_015",
+    "title": "East Ave",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_015/800/800",
+    "genre": "hiphop",
+    "genres": [
+      "hiphop"
+    ],
+    "bpm": 95,
+    "mood": "moody",
+    "moods": [
+      "moody"
+    ],
+    "energy_score": 0.66,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 3,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "driving",
+      "aggressive"
+    ],
+    "duration_seconds": 184,
+    "is_featured": false,
+    "launch_score": 0.62
+  },
+  {
+    "id": "sng_016",
+    "title": "Smoke & Velvet",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_016/800/800",
+    "genre": "rnb",
+    "genres": [
+      "rnb"
+    ],
+    "bpm": 84,
+    "mood": "romantic",
+    "moods": [
+      "romantic"
+    ],
+    "energy_score": 0.45,
+    "vocal_type": "mixed",
+    "voice_gender": null,
+    "similarity_cluster": 3,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "late_night",
+      "calm"
+    ],
+    "duration_seconds": 216,
+    "is_featured": false,
+    "launch_score": 0.61
+  },
+  {
+    "id": "sng_017",
+    "title": "North Wing",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_017/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 96,
+    "mood": "epic",
+    "moods": [
+      "epic"
+    ],
+    "energy_score": 0.7,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 4,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "driving"
+    ],
+    "duration_seconds": 240,
+    "is_featured": true,
+    "launch_score": 0.41
+  },
+  {
+    "id": "sng_018",
+    "title": "Library Hours",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_018/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 84,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.4,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 4,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 264,
+    "is_featured": false,
+    "launch_score": 0.4
+  },
+  {
+    "id": "sng_019",
+    "title": "Iron Garden",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_019/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 100,
+    "mood": "epic",
+    "moods": [
+      "epic"
+    ],
+    "energy_score": 0.74,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 4,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "aggressive"
+    ],
+    "duration_seconds": 252,
+    "is_featured": false,
+    "launch_score": 0.41
+  },
+  {
+    "id": "sng_020",
+    "title": "Slow Architecture",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_020/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 78,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.35,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 4,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "sleep"
+    ],
+    "duration_seconds": 276,
+    "is_featured": false,
+    "launch_score": 0.54
+  },
+  {
+    "id": "sng_021",
+    "title": "Cigarette Rain",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_021/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 76,
+    "mood": "sad",
+    "moods": [
+      "sad"
+    ],
+    "energy_score": 0.32,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 5,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "sad",
+      "late_night"
+    ],
+    "duration_seconds": 218,
+    "is_featured": false,
+    "launch_score": 0.74
+  },
+  {
+    "id": "sng_022",
+    "title": "Quiet Letters",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_022/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 82,
+    "mood": "sad",
+    "moods": [
+      "sad"
+    ],
+    "energy_score": 0.3,
+    "vocal_type": "female",
+    "voice_gender": "female",
+    "similarity_cluster": 5,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "sad",
+      "calm"
+    ],
+    "duration_seconds": 232,
+    "is_featured": false,
+    "launch_score": 0.75
+  },
+  {
+    "id": "sng_023",
+    "title": "Long November",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_023/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 80,
+    "mood": "sad",
+    "moods": [
+      "sad"
+    ],
+    "energy_score": 0.35,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 5,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "sad",
+      "late_night"
+    ],
+    "duration_seconds": 226,
+    "is_featured": false,
+    "launch_score": 0.74
+  },
+  {
+    "id": "sng_024",
+    "title": "Folded Maps",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_024/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 88,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.42,
+    "vocal_type": "mixed",
+    "voice_gender": null,
+    "similarity_cluster": 5,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "calm",
+      "sad"
+    ],
+    "duration_seconds": 208,
+    "is_featured": false,
+    "launch_score": 0.73
+  },
+  {
+    "id": "sng_025",
+    "title": "Hammer Lane",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_025/800/800",
+    "genre": "rock",
+    "genres": [
+      "rock"
+    ],
+    "bpm": 140,
+    "mood": "aggressive",
+    "moods": [
+      "aggressive"
+    ],
+    "energy_score": 0.95,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 6,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "gym",
+      "aggressive"
+    ],
+    "duration_seconds": 220,
+    "is_featured": false,
+    "launch_score": 0.52
+  },
+  {
+    "id": "sng_026",
+    "title": "Concrete Jaw",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_026/800/800",
+    "genre": "rock",
+    "genres": [
+      "rock"
+    ],
+    "bpm": 142,
+    "mood": "aggressive",
+    "moods": [
+      "aggressive"
+    ],
+    "energy_score": 0.96,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 6,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "gym",
+      "aggressive"
+    ],
+    "duration_seconds": 214,
+    "is_featured": false,
+    "launch_score": 0.53
+  },
+  {
+    "id": "sng_027",
+    "title": "Bear Trap",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_027/800/800",
+    "genre": "trap",
+    "genres": [
+      "trap"
+    ],
+    "bpm": 150,
+    "mood": "aggressive",
+    "moods": [
+      "aggressive"
+    ],
+    "energy_score": 0.93,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 6,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "gym",
+      "aggressive",
+      "party"
+    ],
+    "duration_seconds": 198,
+    "is_featured": false,
+    "launch_score": 0.53
+  },
+  {
+    "id": "sng_028",
+    "title": "Skyline Anthem",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_028/800/800",
+    "genre": "edm",
+    "genres": [
+      "edm"
+    ],
+    "bpm": 128,
+    "mood": "euphoric",
+    "moods": [
+      "euphoric"
+    ],
+    "energy_score": 0.9,
+    "vocal_type": "mixed",
+    "voice_gender": null,
+    "similarity_cluster": 7,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "party",
+      "euphoric",
+      "gym"
+    ],
+    "duration_seconds": 248,
+    "is_featured": true,
+    "launch_score": 0.71
+  },
+  {
+    "id": "sng_029",
+    "title": "Festival Heart",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_029/800/800",
+    "genre": "edm",
+    "genres": [
+      "edm"
+    ],
+    "bpm": 126,
+    "mood": "euphoric",
+    "moods": [
+      "euphoric"
+    ],
+    "energy_score": 0.92,
+    "vocal_type": "female",
+    "voice_gender": "female",
+    "similarity_cluster": 7,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "party",
+      "euphoric"
+    ],
+    "duration_seconds": 256,
+    "is_featured": false,
+    "launch_score": 0.71
+  },
+  {
+    "id": "sng_030",
+    "title": "Atlas Hands",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_030/800/800",
+    "genre": "edm",
+    "genres": [
+      "edm"
+    ],
+    "bpm": 124,
+    "mood": "euphoric",
+    "moods": [
+      "euphoric"
+    ],
+    "energy_score": 0.86,
+    "vocal_type": "mixed",
+    "voice_gender": null,
+    "similarity_cluster": 7,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "party",
+      "euphoric",
+      "driving"
+    ],
+    "duration_seconds": 236,
+    "is_featured": false,
+    "launch_score": 0.75
+  },
+  {
+    "id": "sng_031",
+    "title": "Forest Whisper",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_031/800/800",
+    "genre": "ambient",
+    "genres": [
+      "ambient"
+    ],
+    "bpm": 60,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.12,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 0,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "sleep",
+      "calm",
+      "focus"
+    ],
+    "duration_seconds": 280,
+    "is_featured": false,
+    "launch_score": 0.55
+  },
+  {
+    "id": "sng_032",
+    "title": "On My Way",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_032/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 92,
+    "mood": "hopeful",
+    "moods": [
+      "hopeful"
+    ],
+    "energy_score": 0.55,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 5,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "driving",
+      "calm",
+      "euphoric"
+    ],
+    "duration_seconds": 225,
+    "is_featured": true,
+    "launch_score": 0.76
+  },
+  {
+    "id": "sng_033",
+    "title": "Thin Nocturne",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_033/800/800",
+    "genre": "postrock",
+    "genres": [
+      "postrock"
+    ],
+    "bpm": 74,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.36,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 8,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "late_night"
+    ],
+    "duration_seconds": 310,
+    "is_featured": true,
+    "launch_score": 0.48
+  },
+  {
+    "id": "sng_034",
+    "title": "Quiet Anchor",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_034/800/800",
+    "genre": "neoclassical",
+    "genres": [
+      "neoclassical"
+    ],
+    "bpm": 81,
+    "mood": "reflective",
+    "moods": [
+      "reflective"
+    ],
+    "energy_score": 0.26,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 230,
+    "is_featured": false,
+    "launch_score": 0.45
+  },
+  {
+    "id": "sng_035",
+    "title": "Patient Threshold",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_035/800/800",
+    "genre": "neoclassical",
+    "genres": [
+      "neoclassical"
+    ],
+    "bpm": 93,
+    "mood": "hopeful",
+    "moods": [
+      "hopeful"
+    ],
+    "energy_score": 0.23,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "late_night",
+      "sleep"
+    ],
+    "duration_seconds": 270,
+    "is_featured": false,
+    "launch_score": 0.5
+  },
+  {
+    "id": "sng_036",
+    "title": "Silver Pebble",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_036/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 86,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.32,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 259,
+    "is_featured": false,
+    "launch_score": 0.76
+  },
+  {
+    "id": "sng_037",
+    "title": "Far Nocturne",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_037/800/800",
+    "genre": "postrock",
+    "genres": [
+      "postrock"
+    ],
+    "bpm": 64,
+    "mood": "contemplative",
+    "moods": [
+      "contemplative"
+    ],
+    "energy_score": 0.29,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 8,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 291,
+    "is_featured": false,
+    "launch_score": 0.84
+  },
+  {
+    "id": "sng_038",
+    "title": "Sleepless Atlas",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_038/800/800",
+    "genre": "postrock",
+    "genres": [
+      "postrock"
+    ],
+    "bpm": 84,
+    "mood": "reflective",
+    "moods": [
+      "reflective"
+    ],
+    "energy_score": 0.25,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "late_night"
+    ],
+    "duration_seconds": 205,
+    "is_featured": false,
+    "launch_score": 0.51
+  },
+  {
+    "id": "sng_039",
+    "title": "Linen Atrium",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_039/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 72,
+    "mood": "melancholic",
+    "moods": [
+      "melancholic"
+    ],
+    "energy_score": 0.51,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 220,
+    "is_featured": false,
+    "launch_score": 0.6
+  },
+  {
+    "id": "sng_040",
+    "title": "Pewter Veil",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_040/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 94,
+    "mood": "contemplative",
+    "moods": [
+      "contemplative"
+    ],
+    "energy_score": 0.16,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 8,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "late_night"
+    ],
+    "duration_seconds": 218,
+    "is_featured": false,
+    "launch_score": 0.56
+  },
+  {
+    "id": "sng_041",
+    "title": "Linen Veil",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_041/800/800",
+    "genre": "ambient",
+    "genres": [
+      "ambient"
+    ],
+    "bpm": 94,
+    "mood": "reflective",
+    "moods": [
+      "reflective"
+    ],
+    "energy_score": 0.34,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 8,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 196,
+    "is_featured": false,
+    "launch_score": 0.74
+  },
+  {
+    "id": "sng_042",
+    "title": "Velvet Meadow",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_042/800/800",
+    "genre": "postrock",
+    "genres": [
+      "postrock"
+    ],
+    "bpm": 80,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.47,
+    "vocal_type": "mixed",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "late_night"
+    ],
+    "duration_seconds": 231,
+    "is_featured": false,
+    "launch_score": 0.65
+  },
+  {
+    "id": "sng_043",
+    "title": "Patient Anchor",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_043/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 74,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.48,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 194,
+    "is_featured": false,
+    "launch_score": 0.55
+  },
+  {
+    "id": "sng_044",
+    "title": "Slow Whisper",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_044/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 62,
+    "mood": "contemplative",
+    "moods": [
+      "contemplative"
+    ],
+    "energy_score": 0.45,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "late_night"
+    ],
+    "duration_seconds": 358,
+    "is_featured": false,
+    "launch_score": 0.74
+  },
+  {
+    "id": "sng_045",
+    "title": "Gentle Ledge",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_045/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 76,
+    "mood": "contemplative",
+    "moods": [
+      "contemplative"
+    ],
+    "energy_score": 0.41,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "late_night"
+    ],
+    "duration_seconds": 350,
+    "is_featured": false,
+    "launch_score": 0.43
+  },
+  {
+    "id": "sng_046",
+    "title": "Silver Cascade",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_046/800/800",
+    "genre": "lofi",
+    "genres": [
+      "lofi"
+    ],
+    "bpm": 90,
+    "mood": "melancholic",
+    "moods": [
+      "melancholic"
+    ],
+    "energy_score": 0.15,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 8,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 202,
+    "is_featured": false,
+    "launch_score": 0.56
+  },
+  {
+    "id": "sng_047",
+    "title": "Northern Ridgeline",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_047/800/800",
+    "genre": "ambient",
+    "genres": [
+      "ambient"
+    ],
+    "bpm": 87,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.43,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 242,
+    "is_featured": false,
+    "launch_score": 0.77
+  },
+  {
+    "id": "sng_048",
+    "title": "Glass Lintel",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_048/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 68,
+    "mood": "contemplative",
+    "moods": [
+      "contemplative"
+    ],
+    "energy_score": 0.17,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "sleep"
+    ],
+    "duration_seconds": 261,
+    "is_featured": true,
+    "launch_score": 0.79
+  },
+  {
+    "id": "sng_049",
+    "title": "Thin Tundra",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_049/800/800",
+    "genre": "neoclassical",
+    "genres": [
+      "neoclassical"
+    ],
+    "bpm": 82,
+    "mood": "contemplative",
+    "moods": [
+      "contemplative"
+    ],
+    "energy_score": 0.42,
+    "vocal_type": "mixed",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 227,
+    "is_featured": false,
+    "launch_score": 0.72
+  },
+  {
+    "id": "sng_050",
+    "title": "Long Pendant",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_050/800/800",
+    "genre": "neoclassical",
+    "genres": [
+      "neoclassical"
+    ],
+    "bpm": 69,
+    "mood": "hopeful",
+    "moods": [
+      "hopeful"
+    ],
+    "energy_score": 0.32,
+    "vocal_type": "mixed",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "late_night"
+    ],
+    "duration_seconds": 291,
+    "is_featured": false,
+    "launch_score": 0.75
+  },
+  {
+    "id": "sng_051",
+    "title": "Distant Cypress",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_051/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 68,
+    "mood": "reflective",
+    "moods": [
+      "reflective"
+    ],
+    "energy_score": 0.47,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 348,
+    "is_featured": false,
+    "launch_score": 0.61
+  },
+  {
+    "id": "sng_052",
+    "title": "Soft Bloom",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_052/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 81,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.41,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "late_night"
+    ],
+    "duration_seconds": 313,
+    "is_featured": false,
+    "launch_score": 0.76
+  },
+  {
+    "id": "sng_053",
+    "title": "Thin Pendant",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_053/800/800",
+    "genre": "ambient",
+    "genres": [
+      "ambient"
+    ],
+    "bpm": 100,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.46,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 339,
+    "is_featured": false,
+    "launch_score": 0.71
+  },
+  {
+    "id": "sng_054",
+    "title": "Patient Spire",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_054/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 92,
+    "mood": "contemplative",
+    "moods": [
+      "contemplative"
+    ],
+    "energy_score": 0.41,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 8,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "late_night"
+    ],
+    "duration_seconds": 213,
+    "is_featured": false,
+    "launch_score": 0.6
+  },
+  {
+    "id": "sng_055",
+    "title": "Soft Bloom",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_055/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 80,
+    "mood": "reflective",
+    "moods": [
+      "reflective"
+    ],
+    "energy_score": 0.49,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 352,
+    "is_featured": false,
+    "launch_score": 0.71
+  },
+  {
+    "id": "sng_056",
+    "title": "Distant Pebble",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_056/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 94,
+    "mood": "calm",
+    "moods": [
+      "calm"
+    ],
+    "energy_score": 0.48,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 236,
+    "is_featured": false,
+    "launch_score": 0.81
+  },
+  {
+    "id": "sng_057",
+    "title": "Gentle Cartograph",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_057/800/800",
+    "genre": "neoclassical",
+    "genres": [
+      "neoclassical"
+    ],
+    "bpm": 97,
+    "mood": "calm",
+    "moods": [
+      "calm"
+    ],
+    "energy_score": 0.37,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "sleep"
+    ],
+    "duration_seconds": 215,
+    "is_featured": false,
+    "launch_score": 0.49
+  },
+  {
+    "id": "sng_058",
+    "title": "Early Pavilion",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_058/800/800",
+    "genre": "neoclassical",
+    "genres": [
+      "neoclassical"
+    ],
+    "bpm": 74,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.36,
+    "vocal_type": "mixed",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "sleep"
+    ],
+    "duration_seconds": 251,
+    "is_featured": false,
+    "launch_score": 0.59
+  },
+  {
+    "id": "sng_059",
+    "title": "Thin Lintel",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_059/800/800",
+    "genre": "ambient",
+    "genres": [
+      "ambient"
+    ],
+    "bpm": 87,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.36,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 8,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "late_night"
+    ],
+    "duration_seconds": 205,
+    "is_featured": false,
+    "launch_score": 0.73
+  },
+  {
+    "id": "sng_060",
+    "title": "Soft Stillwater",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_060/800/800",
+    "genre": "postrock",
+    "genres": [
+      "postrock"
+    ],
+    "bpm": 99,
+    "mood": "contemplative",
+    "moods": [
+      "contemplative"
+    ],
+    "energy_score": 0.21,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 333,
+    "is_featured": false,
+    "launch_score": 0.8
+  },
+  {
+    "id": "sng_061",
+    "title": "Pale Nocturne",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_061/800/800",
+    "genre": "lofi",
+    "genres": [
+      "lofi"
+    ],
+    "bpm": 77,
+    "mood": "calm",
+    "moods": [
+      "calm"
+    ],
+    "energy_score": 0.26,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 196,
+    "is_featured": false,
+    "launch_score": 0.63
+  },
+  {
+    "id": "sng_062",
+    "title": "Marble Foundry",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_062/800/800",
+    "genre": "ambient",
+    "genres": [
+      "ambient"
+    ],
+    "bpm": 62,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.24,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 8,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 312,
+    "is_featured": false,
+    "launch_score": 0.49
+  },
+  {
+    "id": "sng_063",
+    "title": "Soft Crescent",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_063/800/800",
+    "genre": "ambient",
+    "genres": [
+      "ambient"
+    ],
+    "bpm": 85,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.45,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "late_night"
+    ],
+    "duration_seconds": 304,
+    "is_featured": true,
+    "launch_score": 0.61
+  },
+  {
+    "id": "sng_064",
+    "title": "Slow Cascade",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_064/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 85,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.23,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 341,
+    "is_featured": false,
+    "launch_score": 0.73
+  },
+  {
+    "id": "sng_065",
+    "title": "Late Meadow",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_065/800/800",
+    "genre": "postrock",
+    "genres": [
+      "postrock"
+    ],
+    "bpm": 73,
+    "mood": "contemplative",
+    "moods": [
+      "contemplative"
+    ],
+    "energy_score": 0.36,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 8,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 273,
+    "is_featured": false,
+    "launch_score": 0.5
+  },
+  {
+    "id": "sng_066",
+    "title": "Glass Anchor",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_066/800/800",
+    "genre": "postrock",
+    "genres": [
+      "postrock"
+    ],
+    "bpm": 90,
+    "mood": "hopeful",
+    "moods": [
+      "hopeful"
+    ],
+    "energy_score": 0.32,
+    "vocal_type": "female",
+    "voice_gender": "female",
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 347,
+    "is_featured": false,
+    "launch_score": 0.8
+  },
+  {
+    "id": "sng_067",
+    "title": "Half Nocturne",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_067/800/800",
+    "genre": "postrock",
+    "genres": [
+      "postrock"
+    ],
+    "bpm": 76,
+    "mood": "reflective",
+    "moods": [
+      "reflective"
+    ],
+    "energy_score": 0.41,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 230,
+    "is_featured": false,
+    "launch_score": 0.84
+  },
+  {
+    "id": "sng_068",
+    "title": "Linen Cipher",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_068/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 97,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.48,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 8,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "late_night"
+    ],
+    "duration_seconds": 244,
+    "is_featured": false,
+    "launch_score": 0.67
+  },
+  {
+    "id": "sng_069",
+    "title": "Far Whisper",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_069/800/800",
+    "genre": "postrock",
+    "genres": [
+      "postrock"
+    ],
+    "bpm": 82,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.53,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "late_night"
+    ],
+    "duration_seconds": 277,
+    "is_featured": false,
+    "launch_score": 0.64
+  },
+  {
+    "id": "sng_070",
+    "title": "Lonely Drift",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_070/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 76,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.23,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "sleep"
+    ],
+    "duration_seconds": 297,
+    "is_featured": false,
+    "launch_score": 0.66
+  },
+  {
+    "id": "sng_071",
+    "title": "Patient Veil",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_071/800/800",
+    "genre": "lofi",
+    "genres": [
+      "lofi"
+    ],
+    "bpm": 79,
+    "mood": "calm",
+    "moods": [
+      "calm"
+    ],
+    "energy_score": 0.45,
+    "vocal_type": "mixed",
+    "voice_gender": null,
+    "similarity_cluster": 8,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 327,
+    "is_featured": false,
+    "launch_score": 0.45
+  },
+  {
+    "id": "sng_072",
+    "title": "Coastal Cypress",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_072/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 96,
+    "mood": "reflective",
+    "moods": [
+      "reflective"
+    ],
+    "energy_score": 0.24,
+    "vocal_type": "mixed",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "late_night"
+    ],
+    "duration_seconds": 181,
+    "is_featured": false,
+    "launch_score": 0.46
+  },
+  {
+    "id": "sng_073",
+    "title": "Thin Filament",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_073/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 89,
+    "mood": "reflective",
+    "moods": [
+      "reflective"
+    ],
+    "energy_score": 0.37,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 288,
+    "is_featured": false,
+    "launch_score": 0.61
+  },
+  {
+    "id": "sng_074",
+    "title": "Thin Cypress",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_074/800/800",
+    "genre": "ambient",
+    "genres": [
+      "ambient"
+    ],
+    "bpm": 88,
+    "mood": "contemplative",
+    "moods": [
+      "contemplative"
+    ],
+    "energy_score": 0.43,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 329,
+    "is_featured": false,
+    "launch_score": 0.71
+  },
+  {
+    "id": "sng_075",
+    "title": "Open Quill",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_075/800/800",
+    "genre": "neoclassical",
+    "genres": [
+      "neoclassical"
+    ],
+    "bpm": 74,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.26,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 315,
+    "is_featured": false,
+    "launch_score": 0.58
+  },
+  {
+    "id": "sng_076",
+    "title": "Sleepless Meadow",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_076/800/800",
+    "genre": "postrock",
+    "genres": [
+      "postrock"
+    ],
+    "bpm": 77,
+    "mood": "calm",
+    "moods": [
+      "calm"
+    ],
+    "energy_score": 0.41,
+    "vocal_type": "female",
+    "voice_gender": "female",
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 252,
+    "is_featured": false,
+    "launch_score": 0.82
+  },
+  {
+    "id": "sng_077",
+    "title": "Lonely Embers",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_077/800/800",
+    "genre": "lofi",
+    "genres": [
+      "lofi"
+    ],
+    "bpm": 79,
+    "mood": "reflective",
+    "moods": [
+      "reflective"
+    ],
+    "energy_score": 0.37,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 262,
+    "is_featured": false,
+    "launch_score": 0.52
+  },
+  {
+    "id": "sng_078",
+    "title": "Slow Polaris",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_078/800/800",
+    "genre": "postrock",
+    "genres": [
+      "postrock"
+    ],
+    "bpm": 64,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.23,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 296,
+    "is_featured": true,
+    "launch_score": 0.47
+  },
+  {
+    "id": "sng_079",
+    "title": "Slow Tide",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_079/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 97,
+    "mood": "melancholic",
+    "moods": [
+      "melancholic"
+    ],
+    "energy_score": 0.15,
+    "vocal_type": "female",
+    "voice_gender": "female",
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "sleep"
+    ],
+    "duration_seconds": 303,
+    "is_featured": false,
+    "launch_score": 0.56
+  },
+  {
+    "id": "sng_080",
+    "title": "Lateral Pavilion",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_080/800/800",
+    "genre": "postrock",
+    "genres": [
+      "postrock"
+    ],
+    "bpm": 98,
+    "mood": "hopeful",
+    "moods": [
+      "hopeful"
+    ],
+    "energy_score": 0.18,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "late_night"
+    ],
+    "duration_seconds": 274,
+    "is_featured": false,
+    "launch_score": 0.46
+  },
+  {
+    "id": "sng_081",
+    "title": "Sleepless Lattice",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_081/800/800",
+    "genre": "ambient",
+    "genres": [
+      "ambient"
+    ],
+    "bpm": 71,
+    "mood": "contemplative",
+    "moods": [
+      "contemplative"
+    ],
+    "energy_score": 0.45,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "late_night",
+      "sleep"
+    ],
+    "duration_seconds": 211,
+    "is_featured": false,
+    "launch_score": 0.75
+  },
+  {
+    "id": "sng_082",
+    "title": "Hidden Atlas",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_082/800/800",
+    "genre": "lofi",
+    "genres": [
+      "lofi"
+    ],
+    "bpm": 81,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.53,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "sleep"
+    ],
+    "duration_seconds": 274,
+    "is_featured": false,
+    "launch_score": 0.84
+  },
+  {
+    "id": "sng_083",
+    "title": "Silver Pebble",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_083/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 74,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.53,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 332,
+    "is_featured": false,
+    "launch_score": 0.48
+  },
+  {
+    "id": "sng_084",
+    "title": "Patient Bloom",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_084/800/800",
+    "genre": "lofi",
+    "genres": [
+      "lofi"
+    ],
+    "bpm": 72,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.41,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "sleep"
+    ],
+    "duration_seconds": 234,
+    "is_featured": false,
+    "launch_score": 0.72
+  },
+  {
+    "id": "sng_085",
+    "title": "Northern Margin",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_085/800/800",
+    "genre": "neoclassical",
+    "genres": [
+      "neoclassical"
+    ],
+    "bpm": 62,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.37,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "sleep"
+    ],
+    "duration_seconds": 212,
+    "is_featured": false,
+    "launch_score": 0.74
+  },
+  {
+    "id": "sng_086",
+    "title": "Northern Whisper",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_086/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 89,
+    "mood": "reflective",
+    "moods": [
+      "reflective"
+    ],
+    "energy_score": 0.43,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 211,
+    "is_featured": false,
+    "launch_score": 0.83
+  },
+  {
+    "id": "sng_087",
+    "title": "Half Whisper",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_087/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 78,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.3,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 355,
+    "is_featured": false,
+    "launch_score": 0.57
+  },
+  {
+    "id": "sng_088",
+    "title": "Lateral Atlas",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_088/800/800",
+    "genre": "neoclassical",
+    "genres": [
+      "neoclassical"
+    ],
+    "bpm": 81,
+    "mood": "hopeful",
+    "moods": [
+      "hopeful"
+    ],
+    "energy_score": 0.17,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "late_night",
+      "sleep"
+    ],
+    "duration_seconds": 337,
+    "is_featured": false,
+    "launch_score": 0.45
+  },
+  {
+    "id": "sng_089",
+    "title": "Lower Lattice",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_089/800/800",
+    "genre": "lofi",
+    "genres": [
+      "lofi"
+    ],
+    "bpm": 63,
+    "mood": "hopeful",
+    "moods": [
+      "hopeful"
+    ],
+    "energy_score": 0.22,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "late_night"
+    ],
+    "duration_seconds": 348,
+    "is_featured": false,
+    "launch_score": 0.44
+  },
+  {
+    "id": "sng_090",
+    "title": "Glass Veil",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_090/800/800",
+    "genre": "ambient",
+    "genres": [
+      "ambient"
+    ],
+    "bpm": 93,
+    "mood": "calm",
+    "moods": [
+      "calm"
+    ],
+    "energy_score": 0.45,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "sleep"
+    ],
+    "duration_seconds": 317,
+    "is_featured": false,
+    "launch_score": 0.54
+  },
+  {
+    "id": "sng_091",
+    "title": "Late Embers",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_091/800/800",
+    "genre": "ambient",
+    "genres": [
+      "ambient"
+    ],
+    "bpm": 65,
+    "mood": "melancholic",
+    "moods": [
+      "melancholic"
+    ],
+    "energy_score": 0.46,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "late_night"
+    ],
+    "duration_seconds": 257,
+    "is_featured": false,
+    "launch_score": 0.59
+  },
+  {
+    "id": "sng_092",
+    "title": "Empty Halcyon",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_092/800/800",
+    "genre": "ambient",
+    "genres": [
+      "ambient"
+    ],
+    "bpm": 65,
+    "mood": "melancholic",
+    "moods": [
+      "melancholic"
+    ],
+    "energy_score": 0.32,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 8,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 260,
+    "is_featured": false,
+    "launch_score": 0.79
+  },
+  {
+    "id": "sng_093",
+    "title": "Marble Foundry",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_093/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 66,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.48,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "sleep"
+    ],
+    "duration_seconds": 272,
+    "is_featured": true,
+    "launch_score": 0.59
+  },
+  {
+    "id": "sng_094",
+    "title": "Velvet Pendant",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_094/800/800",
+    "genre": "lofi",
+    "genres": [
+      "lofi"
+    ],
+    "bpm": 87,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.26,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 190,
+    "is_featured": false,
+    "launch_score": 0.41
+  },
+  {
+    "id": "sng_095",
+    "title": "Pewter Foundry",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_095/800/800",
+    "genre": "neoclassical",
+    "genres": [
+      "neoclassical"
+    ],
+    "bpm": 93,
+    "mood": "melancholic",
+    "moods": [
+      "melancholic"
+    ],
+    "energy_score": 0.45,
+    "vocal_type": "mixed",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 278,
+    "is_featured": false,
+    "launch_score": 0.75
+  },
+  {
+    "id": "sng_096",
+    "title": "Hidden Bloom",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_096/800/800",
+    "genre": "lofi",
+    "genres": [
+      "lofi"
+    ],
+    "bpm": 68,
+    "mood": "contemplative",
+    "moods": [
+      "contemplative"
+    ],
+    "energy_score": 0.54,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 229,
+    "is_featured": false,
+    "launch_score": 0.48
+  },
+  {
+    "id": "sng_097",
+    "title": "Patient Cypress",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_097/800/800",
+    "genre": "lofi",
+    "genres": [
+      "lofi"
+    ],
+    "bpm": 95,
+    "mood": "reflective",
+    "moods": [
+      "reflective"
+    ],
+    "energy_score": 0.34,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 8,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 256,
+    "is_featured": false,
+    "launch_score": 0.52
+  },
+  {
+    "id": "sng_098",
+    "title": "Long Cypress",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_098/800/800",
+    "genre": "lofi",
+    "genres": [
+      "lofi"
+    ],
+    "bpm": 96,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.36,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "late_night"
+    ],
+    "duration_seconds": 248,
+    "is_featured": false,
+    "launch_score": 0.66
+  },
+  {
+    "id": "sng_099",
+    "title": "Long Polaris",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_099/800/800",
+    "genre": "lofi",
+    "genres": [
+      "lofi"
+    ],
+    "bpm": 96,
+    "mood": "contemplative",
+    "moods": [
+      "contemplative"
+    ],
+    "energy_score": 0.47,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "late_night"
+    ],
+    "duration_seconds": 256,
+    "is_featured": false,
+    "launch_score": 0.77
+  },
+  {
+    "id": "sng_100",
+    "title": "Distant Lintel",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_100/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 80,
+    "mood": "hopeful",
+    "moods": [
+      "hopeful"
+    ],
+    "energy_score": 0.37,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "late_night"
+    ],
+    "duration_seconds": 213,
+    "is_featured": false,
+    "launch_score": 0.62
+  },
+  {
+    "id": "sng_101",
+    "title": "Quiet Heron",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_101/800/800",
+    "genre": "ambient",
+    "genres": [
+      "ambient"
+    ],
+    "bpm": 85,
+    "mood": "contemplative",
+    "moods": [
+      "contemplative"
+    ],
+    "energy_score": 0.29,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 341,
+    "is_featured": false,
+    "launch_score": 0.67
+  },
+  {
+    "id": "sng_102",
+    "title": "Glass Ridgeline",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_102/800/800",
+    "genre": "ambient",
+    "genres": [
+      "ambient"
+    ],
+    "bpm": 98,
+    "mood": "reflective",
+    "moods": [
+      "reflective"
+    ],
+    "energy_score": 0.2,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "late_night"
+    ],
+    "duration_seconds": 339,
+    "is_featured": false,
+    "launch_score": 0.55
+  },
+  {
+    "id": "sng_103",
+    "title": "Thin Halcyon",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_103/800/800",
+    "genre": "postrock",
+    "genres": [
+      "postrock"
+    ],
+    "bpm": 82,
+    "mood": "calm",
+    "moods": [
+      "calm"
+    ],
+    "energy_score": 0.18,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 8,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "late_night"
+    ],
+    "duration_seconds": 303,
+    "is_featured": false,
+    "launch_score": 0.45
+  },
+  {
+    "id": "sng_104",
+    "title": "Distant Aubade",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_104/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 64,
+    "mood": "calm",
+    "moods": [
+      "calm"
+    ],
+    "energy_score": 0.24,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "late_night"
+    ],
+    "duration_seconds": 254,
+    "is_featured": false,
+    "launch_score": 0.84
+  },
+  {
+    "id": "sng_105",
+    "title": "Silver Aperture",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_105/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 85,
+    "mood": "calm",
+    "moods": [
+      "calm"
+    ],
+    "energy_score": 0.42,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 313,
+    "is_featured": false,
+    "launch_score": 0.52
+  },
+  {
+    "id": "sng_106",
+    "title": "Velvet Salt",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_106/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 61,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.25,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 357,
+    "is_featured": false,
+    "launch_score": 0.51
+  },
+  {
+    "id": "sng_107",
+    "title": "Half Cartograph",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_107/800/800",
+    "genre": "postrock",
+    "genres": [
+      "postrock"
+    ],
+    "bpm": 95,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.42,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 359,
+    "is_featured": false,
+    "launch_score": 0.52
+  },
+  {
+    "id": "sng_108",
+    "title": "Far Veil",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_108/800/800",
+    "genre": "neoclassical",
+    "genres": [
+      "neoclassical"
+    ],
+    "bpm": 99,
+    "mood": "contemplative",
+    "moods": [
+      "contemplative"
+    ],
+    "energy_score": 0.45,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 8,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 263,
+    "is_featured": true,
+    "launch_score": 0.41
+  },
+  {
+    "id": "sng_109",
+    "title": "Gentle Cartograph",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_109/800/800",
+    "genre": "neoclassical",
+    "genres": [
+      "neoclassical"
+    ],
+    "bpm": 86,
+    "mood": "hopeful",
+    "moods": [
+      "hopeful"
+    ],
+    "energy_score": 0.27,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "late_night"
+    ],
+    "duration_seconds": 274,
+    "is_featured": false,
+    "launch_score": 0.8
+  },
+  {
+    "id": "sng_110",
+    "title": "Paper Atlas",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_110/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 75,
+    "mood": "calm",
+    "moods": [
+      "calm"
+    ],
+    "energy_score": 0.26,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "late_night",
+      "sleep"
+    ],
+    "duration_seconds": 187,
+    "is_featured": false,
+    "launch_score": 0.46
+  },
+  {
+    "id": "sng_111",
+    "title": "Empty Cascade",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_111/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 83,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.21,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 232,
+    "is_featured": false,
+    "launch_score": 0.76
+  },
+  {
+    "id": "sng_112",
+    "title": "First Cartograph",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_112/800/800",
+    "genre": "postrock",
+    "genres": [
+      "postrock"
+    ],
+    "bpm": 98,
+    "mood": "calm",
+    "moods": [
+      "calm"
+    ],
+    "energy_score": 0.35,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "late_night",
+      "sleep"
+    ],
+    "duration_seconds": 284,
+    "is_featured": false,
+    "launch_score": 0.69
+  },
+  {
+    "id": "sng_113",
+    "title": "Late Atlas",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_113/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 85,
+    "mood": "reflective",
+    "moods": [
+      "reflective"
+    ],
+    "energy_score": 0.27,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "late_night"
+    ],
+    "duration_seconds": 313,
+    "is_featured": false,
+    "launch_score": 0.52
+  },
+  {
+    "id": "sng_114",
+    "title": "Half Nocturne",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_114/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 68,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.32,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 287,
+    "is_featured": false,
+    "launch_score": 0.68
+  },
+  {
+    "id": "sng_115",
+    "title": "Silver Stillwater",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_115/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 84,
+    "mood": "calm",
+    "moods": [
+      "calm"
+    ],
+    "energy_score": 0.48,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "sleep"
+    ],
+    "duration_seconds": 255,
+    "is_featured": false,
+    "launch_score": 0.46
+  },
+  {
+    "id": "sng_116",
+    "title": "Lower Drift",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_116/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 85,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.33,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 8,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "late_night"
+    ],
+    "duration_seconds": 347,
+    "is_featured": false,
+    "launch_score": 0.52
+  },
+  {
+    "id": "sng_117",
+    "title": "Hidden Crescent",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_117/800/800",
+    "genre": "ambient",
+    "genres": [
+      "ambient"
+    ],
+    "bpm": 64,
+    "mood": "hopeful",
+    "moods": [
+      "hopeful"
+    ],
+    "energy_score": 0.46,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "sleep"
+    ],
+    "duration_seconds": 318,
+    "is_featured": false,
+    "launch_score": 0.42
+  },
+  {
+    "id": "sng_118",
+    "title": "Lateral Salt",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_118/800/800",
+    "genre": "neoclassical",
+    "genres": [
+      "neoclassical"
+    ],
+    "bpm": 74,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.41,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 8,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "late_night"
+    ],
+    "duration_seconds": 334,
+    "is_featured": false,
+    "launch_score": 0.77
+  },
+  {
+    "id": "sng_119",
+    "title": "Distant Glasswork",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_119/800/800",
+    "genre": "lofi",
+    "genres": [
+      "lofi"
+    ],
+    "bpm": 70,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.21,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 223,
+    "is_featured": false,
+    "launch_score": 0.52
+  },
+  {
+    "id": "sng_120",
+    "title": "First Meadow",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_120/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 94,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.32,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "sleep"
+    ],
+    "duration_seconds": 225,
+    "is_featured": false,
+    "launch_score": 0.52
+  },
+  {
+    "id": "sng_121",
+    "title": "Long Cinder",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_121/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 81,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.45,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 357,
+    "is_featured": false,
+    "launch_score": 0.41
+  },
+  {
+    "id": "sng_122",
+    "title": "Hollow Ridgeline",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_122/800/800",
+    "genre": "neoclassical",
+    "genres": [
+      "neoclassical"
+    ],
+    "bpm": 90,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.33,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "late_night"
+    ],
+    "duration_seconds": 319,
+    "is_featured": false,
+    "launch_score": 0.82
+  },
+  {
+    "id": "sng_123",
+    "title": "Far Halcyon",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_123/800/800",
+    "genre": "postrock",
+    "genres": [
+      "postrock"
+    ],
+    "bpm": 91,
+    "mood": "contemplative",
+    "moods": [
+      "contemplative"
+    ],
+    "energy_score": 0.21,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 257,
+    "is_featured": true,
+    "launch_score": 0.74
+  },
+  {
+    "id": "sng_124",
+    "title": "Half Cascade",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_124/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 77,
+    "mood": "melancholic",
+    "moods": [
+      "melancholic"
+    ],
+    "energy_score": 0.31,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 272,
+    "is_featured": false,
+    "launch_score": 0.71
+  },
+  {
+    "id": "sng_125",
+    "title": "Coastal Lantern",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-6.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_125/800/800",
+    "genre": "indie",
+    "genres": [
+      "indie"
+    ],
+    "bpm": 99,
+    "mood": "calm",
+    "moods": [
+      "calm"
+    ],
+    "energy_score": 0.3,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 192,
+    "is_featured": false,
+    "launch_score": 0.63
+  },
+  {
+    "id": "sng_126",
+    "title": "Far Bloom",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_126/800/800",
+    "genre": "lofi",
+    "genres": [
+      "lofi"
+    ],
+    "bpm": 98,
+    "mood": "melancholic",
+    "moods": [
+      "melancholic"
+    ],
+    "energy_score": 0.46,
+    "vocal_type": "male",
+    "voice_gender": "male",
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 347,
+    "is_featured": false,
+    "launch_score": 0.56
+  },
+  {
+    "id": "sng_127",
+    "title": "Long Lantern",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-8.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_127/800/800",
+    "genre": "lofi",
+    "genres": [
+      "lofi"
+    ],
+    "bpm": 64,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.15,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 250,
+    "is_featured": false,
+    "launch_score": 0.63
+  },
+  {
+    "id": "sng_128",
+    "title": "Thin Polaris",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_128/800/800",
+    "genre": "neoclassical",
+    "genres": [
+      "neoclassical"
+    ],
+    "bpm": 61,
+    "mood": "contemplative",
+    "moods": [
+      "contemplative"
+    ],
+    "energy_score": 0.38,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 8,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 240,
+    "is_featured": false,
+    "launch_score": 0.77
+  },
+  {
+    "id": "sng_129",
+    "title": "Inner Polaris",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-10.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_129/800/800",
+    "genre": "lofi",
+    "genres": [
+      "lofi"
+    ],
+    "bpm": 78,
+    "mood": "focused",
+    "moods": [
+      "focused"
+    ],
+    "energy_score": 0.28,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 10,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "sleep"
+    ],
+    "duration_seconds": 235,
+    "is_featured": false,
+    "launch_score": 0.77
+  },
+  {
+    "id": "sng_130",
+    "title": "Inner Lintel",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-11.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_130/800/800",
+    "genre": "neoclassical",
+    "genres": [
+      "neoclassical"
+    ],
+    "bpm": 81,
+    "mood": "reflective",
+    "moods": [
+      "reflective"
+    ],
+    "energy_score": 0.39,
+    "vocal_type": "instrumental",
+    "voice_gender": null,
+    "similarity_cluster": 11,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm"
+    ],
+    "duration_seconds": 306,
+    "is_featured": false,
+    "launch_score": 0.62
+  },
+  {
+    "id": "sng_131",
+    "title": "Sunken Margin",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-12.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_131/800/800",
+    "genre": "neoclassical",
+    "genres": [
+      "neoclassical"
+    ],
+    "bpm": 86,
+    "mood": "dreamy",
+    "moods": [
+      "dreamy"
+    ],
+    "energy_score": 0.21,
+    "vocal_type": "female",
+    "voice_gender": "female",
+    "similarity_cluster": 9,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus",
+      "calm",
+      "late_night"
+    ],
+    "duration_seconds": 310,
+    "is_featured": false,
+    "launch_score": 0.69
+  },
+  {
+    "id": "sng_132",
+    "title": "Thin Memoir",
+    "audio_url": "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+    "cover_url": "https://picsum.photos/seed/boulevard-sng_132/800/800",
+    "genre": "cinematic",
+    "genres": [
+      "cinematic"
+    ],
+    "bpm": 68,
+    "mood": "reflective",
+    "moods": [
+      "reflective"
+    ],
+    "energy_score": 0.21,
+    "vocal_type": "female",
+    "voice_gender": "female",
+    "similarity_cluster": 8,
+    "drop_timestamps": [],
+    "intro_length": 0,
+    "activity_fit": [
+      "focus"
+    ],
+    "duration_seconds": 191,
+    "is_featured": false,
+    "launch_score": 0.8
+  }
+]

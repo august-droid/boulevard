@@ -1,0 +1,26 @@
+[
+  {
+    "title": "Atrium Light",
+    "genre": "neoclassical",
+    "mood": "focused",
+    "vocal_gender": "instrumental",
+    "target_duration_seconds": 220,
+    "suno_prompt": "Slow neoclassical piano with subtle warm strings. Cinematic but minimal. Contemplative, focus-friendly, late afternoon mood."
+  },
+  {
+    "title": "Coastal Drift",
+    "genre": "ambient",
+    "mood": "calm",
+    "vocal_gender": "instrumental",
+    "target_duration_seconds": 240,
+    "suno_prompt": "Soft ambient pad layers with distant ocean texture. Slow swells, no drums. Calm, hypnotic, suitable for deep work."
+  },
+  {
+    "title": "Glass Window",
+    "genre": "indie",
+    "mood": "reflective",
+    "vocal_gender": "male",
+    "target_duration_seconds": 200,
+    "suno_prompt": "Indie folk with a single male vocalist. Acoustic guitar, soft fingerpicking, breathy delivery. Melancholic but hopeful, no big drums."
+  }
+]

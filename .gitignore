@@ -1,0 +1,29 @@
+node_modules/
+.expo/
+dist/
+npm-debug.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+.DS_Store
+.env
+.env.local
+
+# Music Factory is a separate repo / backend service — not part of the app bundle.
+boulevard-music-factory/
+
+# Build artifacts.
+android/
+ios/
+*.aab
+*.apk
+*.ipa
+play-service-account.json
+
+# Claude Code internal state.
+.claude/
+

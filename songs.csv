@@ -1,0 +1,6 @@
+title,audio_url,cover_url,genre,genres,mood,moods,bpm,energy_score,vocal_type,voice_gender,similarity_cluster,activity_fit,duration_seconds,drop_timestamps,intro_length
+Velvet Mornings,https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3,https://picsum.photos/seed/boulevard-sng_001/800/800,lofi,lofi,calm,calm,78,2.0,instrumental,,0,focus|calm|sleep,198,,0
+Neon Skyline,https://www.soundhelix.com/examples/mp3/SoundHelix-Song-5.mp3,https://picsum.photos/seed/boulevard-sng_005/800/800,pop,pop|edm,euphoric,euphoric|happy,118,7.8,female,female,1,driving|euphoric|party,204,,0
+Midnight Drive,https://www.soundhelix.com/examples/mp3/SoundHelix-Song-9.mp3,https://picsum.photos/seed/boulevard-sng_009/800/800,house,house,energetic,energetic,124,8.5,male,male,2,party|driving|late_night,230,,0
+Hammer Lane,https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3,https://picsum.photos/seed/boulevard-sng_025/800/800,rock,rock,aggressive,aggressive,140,9.5,male,male,6,gym|aggressive,220,,0
+Forest Whisper,https://www.soundhelix.com/examples/mp3/SoundHelix-Song-7.mp3,https://picsum.photos/seed/boulevard-sng_031/800/800,ambient,ambient,dreamy,dreamy,,1.2,instrumental,,0,sleep|calm|focus,280,,0
