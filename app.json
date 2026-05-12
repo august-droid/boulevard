@@ -49,6 +49,12 @@
         {
           "microphonePermission": false
         }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#c8ae7a"
+        }
       ]
     ],
     "extra": {

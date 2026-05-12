@@ -11,6 +11,7 @@ import {
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
+import * as Notifications from 'expo-notifications';
 import { colors, fonts, metals, radii, spacing } from '@/theme';
 import { usePlayer } from '@/contexts/PlayerContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -70,6 +71,9 @@ export function LibraryScreen() {
   // threshold WITHIN THIS SESSION. The persistent flag ensures we never
   // re-show across launches; the per-session ref ensures we don't re-show
   // on Library re-mount during the same session.
+  //
+  // Also fires a local push notification so the unlock lands as a "real"
+  // milestone even if the user is in the background when they hit 100.
   useEffect(() => {
     if (unlockShownRef.current) return;
     if (auth.personalizationUnlockedAt) return;
@@ -81,6 +85,16 @@ export function LibraryScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
         .catch(() => {});
     }
+    // Best-effort local notification. Permission was requested at app
+    // launch (App.tsx); if the user denied, this resolves silently.
+    Notifications.scheduleNotificationAsync({
+      content: {
+        title: 'Your AI is now listening',
+        body: 'Boulevard learned your taste. Your personalized playlists are ready.',
+        sound: 'default',
+      },
+      trigger: null, // fire immediately
+    }).catch(() => {});
   }, [auth.songsHeard, auth.personalizationUnlockedAt, auth.markPersonalizationUnlocked]);
 
   const onPlayPlaylist = (p: BuiltPlaylist) => {
@@ -152,8 +166,8 @@ function PersonalizationCard({ songsHeard, unlocked }: PersonalizationCardProps)
       </View>
       <Text style={styles.persoSub}>
         {unlocked
-          ? 'Your AI music profile is ready. New personalized playlists are generated daily.'
-          : 'Listen to 100 songs to unlock daily AI-generated music made specifically for your taste.'}
+          ? 'Your AI is now learning your taste. Your playlists below adapt to every save, skip and replay.'
+          : 'Listen to 100 songs and Boulevard will start tuning your library to your taste.'}
       </Text>
 
       {!unlocked && (
@@ -239,8 +253,9 @@ function UnlockModal({ visible, onClose }: UnlockModalProps) {
           <Text style={styles.modalEyebrow}>PERSONALIZATION READY</Text>
           <Text style={styles.modalTitle}>Your AI is now listening for you.</Text>
           <Text style={styles.modalBody}>
-            We've analyzed your first 100 songs. Boulevard will now generate
-            new personalized music for your taste. Fresh drops every day.
+            We've analyzed your first 100 songs. From here on, your library
+            adapts to every save, skip and replay. The more you listen, the
+            sharper it gets.
           </Text>
           <Pressable
             onPress={onClose}
