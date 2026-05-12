@@ -175,54 +175,43 @@ export function PlayerFeedScreen() {
         ]}
       >
         <View style={styles.titleBlock}>
-          {/* Title and the action column share the same row so the title's
-              baseline sits next to the Share/Save buttons rather than
-              floating above them. */}
-          <View style={styles.titleRow}>
-            <Text style={styles.title} numberOfLines={1}>
-              {song?.title ?? '—'}
-            </Text>
-            <View style={styles.actionRow}>
-              <ActionButton
-                icon={<ShareIcon size={20} color={colors.text} />}
-                label="Share"
-                labelColor={colors.textMuted}
-                onPress={onShare}
-              />
-              <ActionButton
-                icon={
-                  <BookmarkIcon
-                    size={20}
-                    color={colors.text}
-                    filled={player.saved}
-                  />
-                }
-                label={player.saved ? 'Saved' : 'Save'}
-                labelColor={colors.textMuted}
-                onPress={() => player.save()}
-              />
-            </View>
-          </View>
+          <Text style={styles.title} numberOfLines={1}>
+            {song?.title ?? '—'}
+          </Text>
           <View style={styles.brandPill}>
             <SparkleIcon size={11} color={metals.goldHi} />
             <Text style={styles.brandPillText}>Boulevard Original</Text>
           </View>
         </View>
 
-        {/* Transport — dark circular play button matching the mockup.
-            Every button uses pressed-state scale + haptic on press-in so the
-            tap feels physical, not just a flat color change. */}
+        {/* Single transport row — Share / Shuffle / Prev / Play / Skip / Save.
+            All controls on one horizontal axis. Share + Save are plain icons
+            matching the others' visual weight so the row reads as a unified
+            control surface rather than two stacked groups. */}
         <View style={styles.transport}>
+          <Pressable
+            hitSlop={14}
+            onPressIn={tapFeedback}
+            onPress={onShare}
+            style={({ pressed }) => pressed ? styles.transportPressed : undefined}
+            accessibilityLabel="Share"
+          >
+            <ShareIcon size={22} color={colors.text} />
+          </Pressable>
           <Pressable
             hitSlop={12}
             onPressIn={tapFeedback}
-            onPress={() => {}}
+            onPress={() => player.toggleShuffle()}
             style={({ pressed }) => pressed ? styles.transportPressed : undefined}
+            accessibilityLabel="Shuffle"
           >
-            <ShuffleIcon size={20} color={colors.textMuted} />
+            <ShuffleIcon
+              size={22}
+              color={player.isShuffling ? metals.goldSolidHi : colors.textMuted}
+            />
           </Pressable>
           <Pressable
-            hitSlop={16}
+            hitSlop={14}
             onPressIn={tapFeedback}
             onPress={() => player.previous()}
             style={({ pressed }) => pressed ? styles.transportPressed : undefined}
@@ -230,7 +219,7 @@ export function PlayerFeedScreen() {
             <PrevIcon size={30} color={colors.text} />
           </Pressable>
           <Pressable
-            hitSlop={16}
+            hitSlop={14}
             onPressIn={tapFeedback}
             onPress={() => player.togglePlay()}
             style={({ pressed }) => [styles.playBtn, pressed && styles.playBtnPressed]}
@@ -244,14 +233,26 @@ export function PlayerFeedScreen() {
             </View>
           </Pressable>
           <Pressable
-            hitSlop={16}
+            hitSlop={14}
             onPressIn={tapFeedback}
             onPress={skip}
             style={({ pressed }) => pressed ? styles.transportPressed : undefined}
           >
             <SkipIcon size={30} color={colors.text} />
           </Pressable>
-          <View style={{ width: 20 }} />
+          <Pressable
+            hitSlop={14}
+            onPressIn={tapFeedback}
+            onPress={() => player.save()}
+            style={({ pressed }) => pressed ? styles.transportPressed : undefined}
+            accessibilityLabel={player.saved ? 'Unsave' : 'Save'}
+          >
+            <BookmarkIcon
+              size={22}
+              color={player.saved ? metals.goldSolidHi : colors.text}
+              filled={player.saved}
+            />
+          </Pressable>
         </View>
 
         {/* Platinum→gold progress bar — sits between the transport row and
@@ -309,34 +310,6 @@ function BreathingBrandMark() {
     <Animated.Text style={[styles.brandWordmark, style]} allowFontScaling={false}>
       boulevard
     </Animated.Text>
-  );
-}
-
-// ---- Small components ------------------------------------------------
-
-interface ActionButtonProps {
-  icon: React.ReactNode;
-  label: string;
-  labelColor?: string;
-  onPress: () => void;
-}
-
-function ActionButton({ icon, label, labelColor, onPress }: ActionButtonProps) {
-  return (
-    <Pressable onPress={onPress} hitSlop={6} style={styles.actionBtn}>
-      <View style={styles.actionCircle}>
-        <LinearGradient
-          colors={[metals.glassHi, 'transparent']}
-          locations={[0, 0.55]}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
-        {icon}
-      </View>
-      <Text style={[styles.actionLabel, labelColor ? { color: labelColor } : null]}>
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 
@@ -409,23 +382,11 @@ const styles = StyleSheet.create({
   titleBlock: {
     marginBottom: spacing.lg,
   },
-  titleRow: {
-    flexDirection: 'row',
-    // Sit the title's baseline next to the Share/Save icons (the icons live
-    // at the top of each action stack, with their labels below). flex-end
-    // bottom-aligns the title with the label baseline of the action buttons.
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-  },
   title: {
-    flex: 1,
     color: colors.text,
     fontSize: 34,
     fontWeight: fonts.weight.bold,
     letterSpacing: -0.5,
-    // Nudge down so the title's cap-height aligns with the action icon row.
-    paddingBottom: 4,
   },
   brandPill: {
     alignSelf: 'flex-start',
@@ -445,32 +406,6 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.xs,
     fontWeight: fonts.weight.semibold,
     letterSpacing: 0.3,
-  },
-
-  actionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-  },
-  actionBtn: {
-    alignItems: 'center',
-  },
-  actionCircle: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: 'rgba(28,28,34,0.78)',
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: metals.platinum,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  actionLabel: {
-    color: colors.textMuted,
-    fontSize: 11,
-    marginTop: 4,
-    fontWeight: fonts.weight.medium,
   },
 
   transport: {

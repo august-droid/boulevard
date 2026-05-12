@@ -32,11 +32,16 @@ interface PlayerState {
   taste: TasteProfile | null;
   library: LibraryStore | null;
   libraryVersion: number;
+  /** When true, the producer ignores ranking and serves random songs. */
+  isShuffling: boolean;
 }
 
 interface PlayerActions {
   togglePlay: () => Promise<void>;
   skip: () => Promise<void>;
+  /** Flip shuffle. When turning on, the queue is reshuffled immediately so
+   *  the very next track is random, not the previously-ranked next. */
+  toggleShuffle: () => Promise<void>;
   /**
    * Spotify-style previous:
    *  • If current position > 3 s, seek back to 0 (replay current).
@@ -111,7 +116,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     taste: null,
     library: null,
     libraryVersion: 0,
+    isShuffling: false,
   });
+
+  // Mirrored ref so the long-lived producer closure sees the current shuffle
+  // setting without needing to rebind the QueueManager each toggle.
+  const isShufflingRef = useRef(false);
 
   // Mirror state into a ref so async callbacks and long-lived closures
   // (producer, tick listener, etc.) can read the latest snapshot without
@@ -203,7 +213,20 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
       // The producer reads the latest taste via stateRef and the latest vibe
       // via vibeRef (which setVibe writes synchronously so it's never stale).
+      // When shuffle is on, we bypass ranking entirely and serve a random
+      // sample so the next song is unpredictable.
       const producer = async (avoidIds: string[], count: number) => {
+        if (isShufflingRef.current) {
+          const avoid = new Set(avoidIds);
+          const pool = stateRef.current.catalog.filter((s) => !avoid.has(s.id));
+          // Fisher-Yates partial shuffle — enough randomness for `count` picks
+          // without rearranging the entire catalog every refill.
+          for (let i = 0; i < Math.min(count, pool.length); i++) {
+            const j = i + Math.floor(Math.random() * (pool.length - i));
+            [pool[i], pool[j]] = [pool[j], pool[i]];
+          }
+          return pool.slice(0, count);
+        }
         return rankCandidates(
           catalog,
           {
@@ -502,6 +525,21 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     await playInternal(prevSong);
   }, [playInternal, checkDailyLimit]);
 
+  // Flip shuffle. When turning ON, drop the queued upcoming tracks (keeping
+  // the current one) and refill from the now-randomized producer — otherwise
+  // the user would tap shuffle and still hear the pre-ranked queue. When
+  // turning OFF, the queue is also refilled so the ranker can re-engage.
+  const toggleShuffle = useCallback(async () => {
+    const next = !isShufflingRef.current;
+    isShufflingRef.current = next;
+    setState((s) => ({ ...s, isShuffling: next }));
+    const queue = queueRef.current;
+    const cur = stateRef.current.current;
+    if (queue && cur) {
+      await queue.reset(cur);
+    }
+  }, []);
+
   // Hint the audio preloader that these songs are likely to be tapped soon.
   // Used by screens like Explore to prefetch top trending tiles so the
   // tap-to-play feels instant. Fire-and-forget; Preloader dedupes by id.
@@ -610,6 +648,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     togglePlay,
     skip,
     previous,
+    toggleShuffle,
     replay,
     save,
     recordShare,
@@ -618,7 +657,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     playSpecific,
     warmSongs,
   }), [
-    state, togglePlay, skip, previous, replay, save, recordShare,
+    state, togglePlay, skip, previous, toggleShuffle, replay, save, recordShare,
     seek, setVibe, playSpecific, warmSongs,
   ]);
 
