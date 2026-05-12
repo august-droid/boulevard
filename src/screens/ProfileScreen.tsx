@@ -174,7 +174,7 @@ export function ProfileScreen() {
           <Text style={styles.devCardLabel}>Your user ID</Text>
           <Pressable onPress={copyUserId} style={styles.devIdRow}>
             <Text style={styles.devIdText} numberOfLines={1}>
-              {auth.userId ?? '—'}
+              {auth.userId ?? ''}
             </Text>
             <Text style={styles.devCopyHint}>Tap to copy</Text>
           </Pressable>

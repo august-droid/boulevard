@@ -90,7 +90,7 @@ export function SignupSheet({ visible, onClose }: Props) {
           <Text style={styles.eyebrow}>YOU'VE HEARD 10 SONGS</Text>
           <Text style={styles.h1}>Keep listening</Text>
           <Text style={styles.sub}>
-            Sign up free — no card required.
+            Sign up free. No card required.
           </Text>
 
           <View style={styles.bullets}>

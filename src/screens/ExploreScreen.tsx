@@ -117,9 +117,9 @@ export function ExploreScreen() {
       ListHeaderComponent={
         <View style={{ paddingTop: spacing.md }}>
           <BrandHeader />
-          <RandomMixButton onPress={() => {
+          <PopularNowButton onPress={() => {
             if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
-            player.shufflePlay();
+            player.playPopular();
           }} />
           <GenreGrid
             catalog={player.catalog}
@@ -174,22 +174,22 @@ export function ExploreScreen() {
 // image is the cover art of the highest-launch-score song in that genre,
 // dimmed with a dark gradient so the genre label reads clearly on top.
 
-// ---- Random Mix button ---------------------------------------------
+// ---- Most Popular in US button -------------------------------------
 //
-// Prominent CTA at the top of Explore. One tap → personalized random
-// playlist (taste-fit pool of 60, shuffled, top 30 play). The button is
-// the single highest-affordance action on the screen — when the user
-// doesn't know what they want, this is the right answer.
+// Prominent CTA at the top of Explore. One tap plays the top 30 songs
+// nationwide, ranked by the live trending score from the server (with a
+// cold-start fallback to editorial launch_score). The button is the
+// single highest-affordance action on the screen.
 
-function RandomMixButton({ onPress }: { onPress: () => void }) {
+function PopularNowButton({ onPress }: { onPress: () => void }) {
   return (
     <Pressable
       onPress={onPress}
       style={({ pressed }) => [
-        styles.randomMix,
+        styles.popularBtn,
         pressed && { opacity: 0.92, transform: [{ scale: 0.992 }] },
       ]}
-      accessibilityLabel="Play a random mix"
+      accessibilityLabel="Play the most popular songs in the US"
     >
       {/* Warm gold gradient pulled from the Boulevard brand metals. */}
       <LinearGradient
@@ -198,14 +198,14 @@ function RandomMixButton({ onPress }: { onPress: () => void }) {
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
-      <View style={styles.randomMixIcon}>
-        <ShuffleIcon size={22} color="#1a1408" />
+      <View style={styles.popularIcon}>
+        <FlameIcon size={22} color="#1a1408" />
       </View>
-      <View style={styles.randomMixBody}>
-        <Text style={styles.randomMixTitle}>Random Mix</Text>
-        <Text style={styles.randomMixSub}>30 songs tuned to your taste — instant play</Text>
+      <View style={styles.popularBody}>
+        <Text style={styles.popularTitle}>Most Popular in US</Text>
+        <Text style={styles.popularSub}>Top 30 right now. Hit play.</Text>
       </View>
-      <View style={styles.randomMixPlay}>
+      <View style={styles.popularPlay}>
         <PlayIcon size={18} color="#1a1408" />
       </View>
     </Pressable>
@@ -517,8 +517,8 @@ const styles = StyleSheet.create({
   },
 
   // Genre grid — 2-column image-backed tiles
-  // ---- Random Mix button (top of Explore) ----
-  randomMix: {
+  // ---- Most Popular in US button (top of Explore) ----
+  popularBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
@@ -535,7 +535,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
     elevation: 6,
   },
-  randomMixIcon: {
+  popularIcon: {
     width: 40,
     height: 40,
     borderRadius: 20,
@@ -543,22 +543,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  randomMixBody: {
+  popularBody: {
     flex: 1,
     minWidth: 0,
   },
-  randomMixTitle: {
+  popularTitle: {
     color: '#1a1408',
     fontSize: fonts.size.lg,
     fontWeight: fonts.weight.bold,
     letterSpacing: -0.2,
   },
-  randomMixSub: {
+  popularSub: {
     color: 'rgba(26,20,8,0.78)',
     fontSize: 12,
     marginTop: 2,
   },
-  randomMixPlay: {
+  popularPlay: {
     width: 36,
     height: 36,
     borderRadius: 18,

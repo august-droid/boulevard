@@ -161,7 +161,6 @@ function PersonalizationCard({ songsHeard, unlocked }: PersonalizationCardProps)
           <View style={styles.progressMeta}>
             <Text style={styles.progressCount}>{count} / {UNLOCK_THRESHOLD} songs analyzed</Text>
           </View>
-          <Text style={styles.persoHint}>The more you listen, the better your music gets.</Text>
         </>
       )}
     </View>
@@ -233,7 +232,7 @@ function UnlockModal({ visible, onClose }: UnlockModalProps) {
           <Text style={styles.modalTitle}>Your AI is now listening for you.</Text>
           <Text style={styles.modalBody}>
             We've analyzed your first 100 songs. Boulevard will now generate
-            new personalized music for your taste — fresh drops every day.
+            new personalized music for your taste. Fresh drops every day.
           </Text>
           <Pressable
             onPress={onClose}

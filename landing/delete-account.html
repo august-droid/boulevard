@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Delete account — Boulevard</title>
+  <title>Delete account · Boulevard</title>
   <meta name="theme-color" content="#0a0a0c" />
   <link rel="stylesheet" href="styles.css" />
   <style>
@@ -79,7 +79,7 @@
 
       <p>Boulevard takes deletion requests seriously. If you no longer want to use the Service, you can request deletion of your account and the data we hold about you at any time. There are two ways to do it.</p>
 
-      <h2>Option 1 — In-app (recommended)</h2>
+      <h2>Option 1: In-app (recommended)</h2>
       <p>If you're signed in on the Boulevard app:</p>
       <ul>
         <li>Open the <strong>Profile</strong> tab.</li>
@@ -87,7 +87,7 @@
         <li>Confirm. Your account and listening history are removed from our servers within 30 days. Most data is removed immediately; some operational logs roll out of our system within that window.</li>
       </ul>
 
-      <h2>Option 2 — Email request</h2>
+      <h2>Option 2: Email request</h2>
       <p>If you can't access the app, send a deletion request from the email address associated with your Boulevard account to:</p>
       <p><strong>august@magnamarketing.io</strong></p>
       <p>Subject line: <code>Delete account</code>. We'll process the request within 30 days and email you a confirmation when it's complete.</p>
@@ -97,7 +97,7 @@
         <input id="email" type="email" placeholder="you@example.com" />
 
         <label for="reason">Reason (optional)</label>
-        <textarea id="reason" rows="3" placeholder="Anything we should know — e.g. a problem we should fix."></textarea>
+        <textarea id="reason" rows="3" placeholder="Anything we should know (e.g. a problem we should fix)."></textarea>
 
         <a href="#" id="submit-btn" class="cta primary" style="display:inline-block;">Send deletion request</a>
       </div>
@@ -106,7 +106,7 @@
       <ul class="data-list">
         <li>Your account identifier and any linked social provider records (Apple, Google, Facebook).</li>
         <li>Your taste profile, saved songs, recents, and full listening history.</li>
-        <li>Subscription state held by Boulevard (your Google Play subscription itself is managed separately — cancel it in your Google Play account).</li>
+        <li>Subscription state held by Boulevard. Your Google Play subscription itself is managed separately; cancel it in your Google Play account.</li>
       </ul>
 
       <h2>What we may retain</h2>
@@ -139,7 +139,7 @@
 </div>
 
 <script>
-  // Inline mailto handoff — turns the form into a pre-filled email so we don't
+  // Inline mailto handoff. turns the form into a pre-filled email so we don't
   // need a backend. Netlify can serve this statically without any forms API.
   document.getElementById('submit-btn').addEventListener('click', function (e) {
     e.preventDefault();

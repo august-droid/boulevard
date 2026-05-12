@@ -81,7 +81,7 @@ export function PlayerFeedScreen() {
           url: s.audio_url,
           title: s.title,
         },
-        { dialogTitle: 'Share song', subject: `Boulevard — ${s.title}` },
+        { dialogTitle: 'Share song', subject: `Boulevard · ${s.title}` },
       );
       // Only treat as a real share when the sheet didn't bounce back as
       // dismissed — otherwise we'd reward the cancel button.
@@ -176,7 +176,7 @@ export function PlayerFeedScreen() {
       >
         <View style={styles.titleBlock}>
           <Text style={styles.title} numberOfLines={1}>
-            {song?.title ?? '—'}
+            {song?.title ?? ''}
           </Text>
           <View style={styles.brandPill}>
             <SparkleIcon size={11} color={metals.goldHi} />
