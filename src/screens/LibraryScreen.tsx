@@ -33,7 +33,7 @@ import {
 // taste profile, library), so saves and skips immediately influence what
 // shows up the next time the user lands here.
 
-const UNLOCK_THRESHOLD = 100;
+const UNLOCK_THRESHOLD = 20;
 
 export function LibraryScreen() {
   const player = usePlayer();
@@ -167,7 +167,7 @@ function PersonalizationCard({ songsHeard, unlocked }: PersonalizationCardProps)
       <Text style={styles.persoSub}>
         {unlocked
           ? 'Your AI is now learning your taste. Your playlists below adapt to every save, skip and replay.'
-          : 'Listen to 100 songs and Boulevard will start tuning your library to your taste.'}
+          : 'Listen to 20 songs and Boulevard will start tuning your library to your taste.'}
       </Text>
 
       {!unlocked && (
@@ -253,7 +253,7 @@ function UnlockModal({ visible, onClose }: UnlockModalProps) {
           <Text style={styles.modalEyebrow}>PERSONALIZATION READY</Text>
           <Text style={styles.modalTitle}>Your AI is now listening for you.</Text>
           <Text style={styles.modalBody}>
-            We've analyzed your first 100 songs. From here on, your library
+            We've analyzed your first 20 songs. From here on, your library
             adapts to every save, skip and replay. The more you listen, the
             sharper it gets.
           </Text>

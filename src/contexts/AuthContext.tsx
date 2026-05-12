@@ -53,7 +53,7 @@ export interface AuthValue {
   setDailyState: (count: number, limitHit: boolean) => void;
   markPaywallShown: () => Promise<void>;
   markSignedUp: () => Promise<void>;
-  /** Called once when the user crosses 100 songs heard. */
+  /** Called once when the user crosses the personalization unlock threshold. */
   markPersonalizationUnlocked: () => Promise<void>;
   startTrial: () => Promise<void>;
   signOut: () => Promise<void>;

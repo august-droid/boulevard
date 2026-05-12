@@ -14,6 +14,7 @@ import { loadCatalog } from '@/lib/catalog/loadCatalog';
 import { catalogHydrator } from '@/lib/catalog/catalogHydration';
 import { LibraryStore } from '@/lib/library/LibraryStore';
 import { DailyLimiter } from '@/lib/limits/DailyLimiter';
+import { scheduleDailyResetNotification, cancelDailyResetNotification } from '@/lib/limits/limitNotifications';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase, HAS_SUPABASE } from '@/lib/supabase';
 
@@ -158,6 +159,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       // a fresh 20 plays. Falls back to local-only when offline.
       const initialDaily = await limiter.reconcileWithServer();
       setDailyState(initialDaily.count, initialDaily.limitHit);
+      // If the user is back inside the app and either still has plays today
+      // or the day rolled over, cancel any pending reset notification —
+      // we don't want to ping them about plays they already know they have.
+      if (!initialDaily.limitHit) {
+        cancelDailyResetNotification().catch(() => {});
+      }
 
       audioRef.current = audio;
       preloaderRef.current = preloader;
@@ -333,6 +340,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       // Re-fires the paywall trigger effect even if dailyLimitHit was already
       // true (e.g. user dismissed it then tried to play again).
       bumpBlockedAttempts();
+      // Make sure the "your songs are back" notification is queued for 9am
+      // tomorrow. Dedupes internally, so repeated cap-hit events are safe.
+      scheduleDailyResetNotification().catch(() => {});
       return true;
     }
     return false;
@@ -348,6 +358,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       if (peek.limitHit) {
         setDailyState(peek.count, true);
         bumpBlockedAttempts();
+        scheduleDailyResetNotification().catch(() => {});
         return;
       }
     }
@@ -382,7 +393,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     AsyncStorage.setItem(LAST_SONG_KEY, song.id).catch(() => {});
     if (limiterRef.current && !isPremiumRef.current) {
       limiterRef.current.bump()
-        .then((s) => setDailyState(s.count, s.limitHit))
+        .then((s) => {
+          setDailyState(s.count, s.limitHit);
+          // The 20th play of the day just lit the cap — schedule the
+          // "back tomorrow at 9am" reminder. scheduleDailyResetNotification
+          // dedupes so this is safe even if multiple plays race.
+          if (s.limitHit) {
+            scheduleDailyResetNotification().catch(() => {});
+          }
+        })
         .catch(() => {});
     }
 

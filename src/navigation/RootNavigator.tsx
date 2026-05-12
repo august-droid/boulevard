@@ -23,10 +23,10 @@ export function RootNavigator() {
   const auth = useAuth();
   const insets = useSafeAreaInsets();
   // Default tab depends on personalization state:
-  //   • Pre-100 songs heard: Explore. The user is still teaching the
+  //   • Pre-unlock (<20 songs heard): Explore. The user is still teaching the
   //     recommender, so the discovery surface is the most useful landing.
-  //   • Post-100 songs heard: Library. Their personalized playlists are the
-  //     prize they unlocked, so we land on it directly.
+  //   • Post-unlock: Library. Their personalized playlists are the prize
+  //     they unlocked, so we land on it directly.
   // AuthProvider hydrates from AsyncStorage asynchronously, so the lazy
   // initializer will see `personalizationUnlockedAt: null` on cold start
   // even for returning unlocked users. We re-route once hydration finishes
