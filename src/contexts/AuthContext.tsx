@@ -69,17 +69,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      // 1) If a Supabase session exists, prefer it.
+      // 1) If a Supabase session exists, prefer it. Track success via a local
+      //    variable — `setUserId` is async and `userId` from the closure will
+      //    still be null on the very next line, so we can't read it to decide
+      //    whether to fall back to the anonymous id below.
+      let resolvedFromSupabase = false;
       if (HAS_SUPABASE && supabase) {
-        const { data } = await supabase.auth.getSession();
-        if (data.session?.user?.id) {
-          setUserId(data.session.user.id);
-          setIsAnonymous(false);
+        try {
+          const { data } = await supabase.auth.getSession();
+          if (data.session?.user?.id) {
+            setUserId(data.session.user.id);
+            setIsAnonymous(false);
+            resolvedFromSupabase = true;
+          }
+        } catch {
+          // Network error — fall through to the anonymous-id path so the app
+          // boots regardless of connectivity.
         }
       }
 
       // 2) Otherwise mint or load a stable local anonymous id.
-      if (!userId) {
+      if (!resolvedFromSupabase) {
         let id = await AsyncStorage.getItem(ANON_ID_KEY);
         if (!id) {
           id = String(uuid.v4());
