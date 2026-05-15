@@ -32,7 +32,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
             <Text style={styles.title}>Something went sideways</Text>
             <Text style={styles.body}>
               Boulevard hit an unexpected error and didn't render this screen.
-              Tap below to try again — your saved songs and listening history
+              Tap below to try again. Your saved songs and listening history
               are safe.
             </Text>
             <Pressable onPress={this.reset} style={styles.btn}>

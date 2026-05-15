@@ -50,15 +50,19 @@ class CatalogHydrator {
       try {
         const { data, error } = await supabase!
           .from('songs')
-          .select('*')
+          .select('*, artists!inner(is_hidden)')
           .eq('is_live', true)
           .eq('approval_status', 'approved')
           .eq('approved_by_human', true) // human-only gate, see loadCatalog
+          .eq('artists.is_hidden', false) // backend-only artist filter, see loadCatalog
           .order('created_at', { ascending: false })
           .limit(2000);
         if (error || !data) return;
 
-        const next = data as Song[];
+        const next = (data as (Song & { artists?: unknown })[]).map((row) => {
+          const { artists: _omit, ...rest } = row;
+          return rest as Song;
+        });
         const nextIds = new Set(next.map((s) => s.id));
 
         // Only notify when the set actually changed.

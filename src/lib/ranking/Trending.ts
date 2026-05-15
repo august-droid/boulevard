@@ -1,4 +1,4 @@
-import { Song, SongStats } from '@/types';
+import { Song, SongStats, TasteProfile } from '@/types';
 
 // Trending ranking for the Explore tab.
 //
@@ -131,124 +131,92 @@ export function synthesizeMetrics(song: Song, daySaltHash: number): PlayMetrics 
   };
 }
 
-// ----- Section recipes --------------------------------------------------
+// ----- Section catalog --------------------------------------------------
 //
-// Each section is a (filter + custom score-tilt) over the catalog. The same
-// rankSongs() function powers all of them so the cards stay consistent.
+// Explore is a fixed sequence of shelves. They all draw from the same
+// per-song base score, but each shelf ranks on a different axis so the page
+// never reads like several copies of the same chart:
+//
+//   New Releases          newest by created_at
+//   Trending Now          recent velocity (today vs yesterday), not raw plays
+//   New For You           personalized, and only songs not played yet
+//   Top Artists Today     artist portraits (rendered separately in Explore)
+//   Popular on Boulevard  total play count
+//   Hidden Gems           unusual tracks that still land
+//   Recently Played       the user's own listening history
+//
+// "Most Popular" and "Trending" used to share one blended score, so they
+// surfaced near-identical songs. Splitting the axes (recency vs velocity vs
+// total plays) is what makes the shelves feel genuinely distinct.
 
 export type SectionId =
+  | 'new_releases'
   | 'trending_now'
-  | 'rising_fast'
-  | 'most_replayed'
-  | 'boulevard_picks'
-  | 'new_today'
-  | 'night_drive'
-  | 'gym_heat';
+  | 'new_for_you'
+  | 'top_artists'
+  | 'popular_boulevard'
+  | 'hidden_gems'
+  | 'recently_played';
 
-interface SectionRecipe {
-  id: SectionId;
-  title: string;
-  subtitle: string;
-  // Optional filter; defaults to "all songs".
-  filter?: (s: Song) => boolean;
-  // Optional bias function — added to the base trending score.
-  bias?: (s: Song, m: PlayMetrics) => number;
-  limit: number;
+const SECTION_META: Record<SectionId, { title: string; subtitle: string; limit: number }> = {
+  new_releases:      { title: 'New Releases',         subtitle: 'Fresh on Boulevard',                   limit: 12 },
+  trending_now:      { title: 'Trending Now',         subtitle: 'Picking up speed right now',           limit: 12 },
+  new_for_you:       { title: 'New For You',          subtitle: 'Picks from songs you have not played', limit: 12 },
+  top_artists:       { title: 'Top Artists Today',    subtitle: 'Most played in the last 24 hours',     limit: 10 },
+  popular_boulevard: { title: 'Popular on Boulevard', subtitle: 'Most played of all time',              limit: 12 },
+  hidden_gems:       { title: 'Hidden Gems',          subtitle: 'Unusual tracks that still land',       limit: 12 },
+  recently_played:   { title: 'Recently Played',      subtitle: 'Pick up where you left off',           limit: 12 },
+};
+
+// ----- Play-count model -------------------------------------------------
+//
+// Every song gets a deterministic baseline play count so the catalog reads
+// as alive on day zero rather than every song showing "0 plays". Real plays
+// from song_daily_stats are layered on top, so the number genuinely grows as
+// people stream. baselinePlays is stable per song.id. Explore renders this
+// exact number on tile subtitles, so the Popular on Boulevard ranking and
+// the displayed counts always agree.
+
+const BASELINE_MIN = 20_000;
+const BASELINE_MAX = 400_000;
+
+export function baselinePlays(songId: string): number {
+  let h = 0;
+  for (let i = 0; i < songId.length; i++) {
+    h = ((h << 5) - h) + songId.charCodeAt(i);
+    h |= 0;
+  }
+  return BASELINE_MIN + (Math.abs(h) % (BASELINE_MAX - BASELINE_MIN));
 }
 
-export const SECTION_RECIPES: SectionRecipe[] = [
-  {
-    id: 'trending_now',
-    title: 'Trending Now',
-    subtitle: 'What everyone is on right now',
-    limit: 12,
-  },
-  {
-    id: 'rising_fast',
-    title: 'Rising Fast',
-    subtitle: 'Climbing harder than the rest',
-    bias: (_s, m) => {
-      // Tilt toward velocity over raw plays.
-      const prev = Math.max(1, m.plays_prev_day);
-      const v = Math.min(1, Math.max(-0.5, (m.plays_24h - prev) / prev));
-      return v * 0.6;
-    },
-    limit: 12,
-  },
-  {
-    id: 'most_replayed',
-    title: 'Most Replayed',
-    subtitle: 'Songs people can’t stop hitting again',
-    bias: (_s, m) => {
-      const rate = m.plays_24h > 0 ? m.replays / m.plays_24h : 0;
-      return rate * 0.6;
-    },
-    limit: 12,
-  },
-  {
-    id: 'boulevard_picks',
-    title: 'Boulevard Picks',
-    subtitle: 'Hand-picked for the feed',
-    // A simple curation rule: high completion + low skip.
-    bias: (_s, m) => {
-      const comp = m.plays_24h > 0 ? m.completions_70 / m.plays_24h : 0;
-      const keep = m.plays_24h > 0 ? 1 - m.skips / m.plays_24h : 0;
-      return (comp + keep) * 0.3;
-    },
-    limit: 10,
-  },
-  {
-    id: 'new_today',
-    title: 'New Today',
-    subtitle: 'Just dropped',
-    // Sort by created_at when available, falling back to score.
-    bias: (s) => {
-      if (!s.created_at) return 0;
-      const ageHours = (Date.now() - new Date(s.created_at).getTime()) / 3.6e6;
-      // Songs less than 24h old get a big bump that decays over a week.
-      if (ageHours < 24) return 0.6;
-      if (ageHours < 168) return 0.6 * (1 - (ageHours - 24) / 144);
-      return 0;
-    },
-    limit: 10,
-  },
-  {
-    id: 'night_drive',
-    title: 'Night Drive',
-    subtitle: 'For the long road home',
-    filter: (s) => s.activity_fit.includes('driving') || s.activity_fit.includes('late_night'),
-    limit: 12,
-  },
-  {
-    id: 'gym_heat',
-    title: 'Gym Heat',
-    subtitle: 'Engineered to push',
-    filter: (s) => s.activity_fit.includes('gym') || s.activity_fit.includes('aggressive'),
-    limit: 12,
-  },
-];
+/** Total plays for a song: deterministic baseline + live server plays. */
+export function displayPlays(songId: string, serverStats: Map<string, SongStats>): number {
+  return baselinePlays(songId) + (serverStats.get(songId)?.plays ?? 0);
+}
 
 // ----- Public API ------------------------------------------------------
 
 export interface RankerInput {
   catalog: Song[];
-  /**
-   * Optional real metrics keyed by song id, derived from PlayMetrics shape.
-   * Used by callers that want to override individual signals manually.
-   */
-  realMetrics?: Map<string, PlayMetrics>;
-  /**
-   * Server-rolled-up SongStats from `song_daily_stats`. When present, the
-   * `trending_score` field is used directly instead of recomputing the
-   * blend client-side — the server already did the math with the same
-   * weights, so we want to honor it.
-   */
+  /** Server-rolled SongStats from song_daily_stats, keyed by song id. */
   serverStats?: Map<string, SongStats>;
-  /** Date used for synthetic daily rotation. Defaults to today (UTC). */
+  /** Optional manual metric overrides, keyed by song id. */
+  realMetrics?: Map<string, PlayMetrics>;
+  /** Date used for the synthetic daily rotation. Defaults to today. */
   date?: Date;
+  /** Lifetime taste profile. Personalizes the New For You shelf. */
+  taste?: TasteProfile | null;
+  /** Ids of songs the user has already played. New For You excludes these. */
+  playedSongIds?: Set<string>;
+  /** The user's recently-played songs, newest first. Powers Recently Played. */
+  recentSongs?: Song[];
 }
 
-export interface ExploreSection extends Omit<SectionRecipe, 'filter' | 'bias'> {
+export interface ExploreSection {
+  id: SectionId;
+  title: string;
+  subtitle: string;
+  limit: number;
   songs: RankedSong[];
 }
 
@@ -257,21 +225,24 @@ function daySalt(date: Date): number {
   return hashString(iso);
 }
 
-export function buildExplore(input: RankerInput): ExploreSection[] {
-  const date = input.date ?? new Date();
-  const salt = daySalt(date);
+/** Deterministic 0..1 jitter per song, reseeded daily so shelves rotate. */
+function rotationJitter(songId: string, salt: number): number {
+  return (hashCombine(salt, hashString(songId)) % 1000) / 1000;
+}
+
+// Build the base ranked list: a PlayMetrics + trending score for every song.
+// Order of preference per song:
+//   1) server-rolled stats from song_daily_stats (trusted, fresh-as-cron)
+//   2) caller-supplied real metrics (manual overrides)
+//   3) synthesized priors from metadata + daily salt (offline / day-zero)
+function baseRank(input: RankerInput, salt: number): RankedSong[] {
   const real = input.realMetrics ?? new Map<string, PlayMetrics>();
   const server = input.serverStats ?? new Map<string, SongStats>();
-
-  // Pre-compute the base score for every song. Order of preference:
-  //   1) server-rolled stats from song_daily_stats (trusted, fresh-as-cron)
-  //   2) caller-supplied real metrics (manual overrides)
-  //   3) synthesized priors from metadata + daily salt (offline / day-zero)
-  const baseScored: RankedSong[] = input.catalog.map((song) => {
+  return input.catalog.map((song) => {
     const serverStat = server.get(song.id);
     if (serverStat && serverStat.plays > 0) {
-      // Convert SongStats back into the PlayMetrics shape so section biases
-      // (which still need plays_24h, replays, etc.) keep working.
+      // Convert SongStats back into the PlayMetrics shape so the velocity
+      // ranker works off a single uniform metrics object.
       const metrics: PlayMetrics = {
         plays_24h: serverStat.plays,
         replays: Math.round(serverStat.plays * serverStat.replay_rate),
@@ -289,40 +260,168 @@ export function buildExplore(input: RankerInput): ExploreSection[] {
     const score = scoreTrending(song, metrics, salt);
     return { song, score, metrics };
   });
+}
 
-  // Track used IDs across sections so we don't repeat the same song everywhere.
-  // We allow overlap but penalize it — a fresh section gets dibs.
-  const usage = new Map<string, number>();
+// Sort comparator for New Releases: newest created_at first, with editorial
+// launch_score as the tiebreak (and the fallback for songs that ship without
+// a timestamp, e.g. the bundled seed catalog).
+function newReleaseCmp(a: Song, b: Song): number {
+  const at = a.created_at ? Date.parse(a.created_at) : NaN;
+  const bt = b.created_at ? Date.parse(b.created_at) : NaN;
+  const av = Number.isNaN(at) ? -Infinity : at;
+  const bv = Number.isNaN(bt) ? -Infinity : bt;
+  if (av !== bv) return bv - av;
+  return (b.launch_score ?? 0) - (a.launch_score ?? 0);
+}
 
-  return SECTION_RECIPES.map((recipe) => {
-    const filtered = recipe.filter
-      ? baseScored.filter((r) => recipe.filter!(r.song))
-      : baseScored;
+// Velocity-first score for Trending Now. Uses the server velocity signal when
+// present, otherwise today-vs-yesterday from the synthetic metrics. This is
+// deliberately NOT raw plays, so Trending Now no longer mirrors the Popular
+// on Boulevard chart. A hook-strength nudge plus daily jitter break ties so
+// the shelf rotates.
+function velocityRank(r: RankedSong, server: Map<string, SongStats>, salt: number): number {
+  const stat = server.get(r.song.id);
+  let velocity: number;
+  if (stat && stat.plays > 0) {
+    velocity = clamp01(stat.velocity_score);
+  } else {
+    const prev = Math.max(1, r.metrics.plays_prev_day);
+    const raw = (r.metrics.plays_24h - prev) / prev;
+    velocity = clamp01(0.5 + Math.max(-1, Math.min(1, raw)) / 2);
+  }
+  const hookNudge = (r.song.hook_strength ?? 0) * 0.05;
+  return velocity + hookNudge + (rotationJitter(r.song.id, salt) - 0.5) * 0.06;
+}
 
-    const sorted = [...filtered]
-      .map((r) => {
-        const bias = recipe.bias ? recipe.bias(r.song, r.metrics) : 0;
-        const repeatPenalty = (usage.get(r.song.id) ?? 0) * 0.15;
-        return { ...r, score: r.score + bias - repeatPenalty };
-      })
-      .sort((a, b) => b.score - a.score)
-      .slice(0, recipe.limit);
+// Personalized score for New For You: lifetime microtag overlap layered on
+// catalog-wide quality priors. Cold-start users (no taste profile yet) just
+// get the quality ranking. Daily jitter keeps the shelf fresh.
+function scoreForYou(song: Song, taste: TasteProfile | null, salt: number): number {
+  let score =
+    (song.hook_strength ?? 0) * 1.5 +
+    (song.mainstream_fit ?? 0) * 0.8 +
+    (song.launch_score ?? 0) * 1.0;
 
-    for (const r of sorted) usage.set(r.song.id, (usage.get(r.song.id) ?? 0) + 1);
+  if (taste) {
+    const tags = song.microtags ?? [];
+    if (tags.length > 0 && taste.microtag_scores) {
+      let sum = 0;
+      for (const t of tags) sum += taste.microtag_scores[t] ?? 0;
+      score += Math.max(-12, Math.min(12, sum));
+    }
+    const genres = song.genres && song.genres.length > 0 ? song.genres : [song.genre];
+    const moods = song.moods && song.moods.length > 0 ? song.moods : [song.mood];
+    score += 0.5 * Math.max(0, ...genres.map((g) => taste.genre_scores[g] ?? 0));
+    score += 0.5 * Math.max(0, ...moods.map((m) => taste.mood_scores[m] ?? 0));
+  }
 
-    return {
-      id: recipe.id,
-      title: recipe.title,
-      subtitle: recipe.subtitle,
-      limit: recipe.limit,
-      songs: sorted,
-    };
-  });
+  return score + (rotationJitter(song.id, salt) - 0.5) * 0.1;
+}
+
+function section(id: SectionId, songs: RankedSong[]): ExploreSection {
+  const meta = SECTION_META[id];
+  return { id, title: meta.title, subtitle: meta.subtitle, limit: meta.limit, songs };
+}
+
+export function buildExplore(input: RankerInput): ExploreSection[] {
+  const date = input.date ?? new Date();
+  const salt = daySalt(date);
+  const server = input.serverStats ?? new Map<string, SongStats>();
+  const played = input.playedSongIds ?? new Set<string>();
+  const taste = input.taste ?? null;
+  const recentSongs = input.recentSongs ?? [];
+
+  const baseScored = baseRank(input, salt);
+  const byId = new Map(baseScored.map((r) => [r.song.id, r] as const));
+
+  // ---- Cross-section dedupe -------------------------------------------
+  // A song must not appear twice on a single Explore load. Sections claim
+  // songs in a fixed priority order; a lower-priority shelf skips anything
+  // an earlier shelf already took:
+  //   New Releases > New For You > Trending Now > Genre shelves > Popular
+  // Genre shelves render curated genre artwork rather than song tiles, so
+  // they hold their slot in the order but claim nothing here. Hidden Gems,
+  // Top Artists and Recently Played sit outside the dedupe set by design.
+  const claimed = new Set<string>();
+  const take = (ranked: RankedSong[], limit: number): RankedSong[] => {
+    const out: RankedSong[] = [];
+    for (const r of ranked) {
+      if (claimed.has(r.song.id)) continue;
+      out.push(r);
+      if (out.length >= limit) break;
+    }
+    for (const r of out) claimed.add(r.song.id);
+    return out;
+  };
+
+  // 1. New Releases — newest by created_at.
+  const newReleases = take(
+    [...baseScored].sort((a, b) => newReleaseCmp(a.song, b.song)),
+    SECTION_META.new_releases.limit,
+  );
+
+  // 2. New For You — personalized, strictly songs the user has not played.
+  const newForYou = take(
+    baseScored
+      .filter((r) => !played.has(r.song.id))
+      .map((r) => ({ r, k: scoreForYou(r.song, taste, salt) }))
+      .sort((a, b) => b.k - a.k)
+      .map((x) => x.r),
+    SECTION_META.new_for_you.limit,
+  );
+
+  // 3. Trending Now — recent velocity, not raw plays.
+  const trending = take(
+    baseScored
+      .map((r) => ({ r, k: velocityRank(r, server, salt) }))
+      .sort((a, b) => b.k - a.k)
+      .map((x) => x.r),
+    SECTION_META.trending_now.limit,
+  );
+
+  // 4. (Genre shelves render in Explore, between Trending Now and Popular.)
+
+  // 5. Popular on Boulevard — ranked by total play count.
+  const popular = take(
+    [...baseScored].sort(
+      (a, b) => displayPlays(b.song.id, server) - displayPlays(a.song.id, server),
+    ),
+    SECTION_META.popular_boulevard.limit,
+  );
+
+  // Hidden Gems — unusual tracks that still work. Outside the dedupe set, so
+  // a standout weird track can also appear on an earlier shelf.
+  const hiddenGems = [...baseScored]
+    .filter((r) => (r.song.weirdness_score ?? 0) >= 0.6)
+    .map((r) => ({ r, k: r.score + (r.song.weirdness_score ?? 0) * 0.4 }))
+    .sort((a, b) => b.k - a.k)
+    .slice(0, SECTION_META.hidden_gems.limit)
+    .map((x) => x.r);
+
+  // Recently Played — the user's own history, newest first. Not ranked and
+  // not deduped: it is literally what they listened to.
+  const recently = recentSongs
+    .slice(0, SECTION_META.recently_played.limit)
+    .map((song) => byId.get(song.id) ?? { song, score: 0, metrics: ZERO });
+
+  const sections: ExploreSection[] = [
+    section('new_releases', newReleases),
+    section('trending_now', trending),
+    section('new_for_you', newForYou),
+    section('top_artists', []),
+    section('popular_boulevard', popular),
+    section('hidden_gems', hiddenGems),
+    section('recently_played', recently),
+  ];
+
+  // Drop empty song shelves (tiny or still-loading catalog) but always keep
+  // Top Artists — it renders from a separate artist aggregation in Explore.
+  return sections.filter((s) => s.id === 'top_artists' || s.songs.length > 0);
 }
 
 // ----- Hero pick -------------------------------------------------------
 
-/** Pick a single hero song for the top of Explore — highest overall trending. */
+/** Pick a single hero song for the top of Explore — the #1 trending song. */
 export function pickHero(sections: ExploreSection[]): RankedSong | null {
   const trending = sections.find((s) => s.id === 'trending_now');
   return trending && trending.songs.length > 0 ? trending.songs[0] : null;

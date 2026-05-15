@@ -5,8 +5,12 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Notifications from 'expo-notifications';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { PlayerProvider } from '@/contexts/PlayerContext';
+import { FollowsProvider } from '@/contexts/FollowsContext';
+import { PlaylistsProvider } from '@/contexts/PlaylistsContext';
+import { CommentsProvider } from '@/contexts/CommentsContext';
 import { RootNavigator } from '@/navigation/RootNavigator';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { MoodPickerSheet } from '@/components/MoodPickerSheet';
 
 // Foreground-presentation handler — when a local notification fires while
 // the app is open, show it as a banner with sound. Without this, foreground
@@ -38,10 +42,20 @@ export default function App() {
       <SafeAreaProvider>
         <ErrorBoundary>
           <AuthProvider>
-            <PlayerProvider>
-              <StatusBar style="light" />
-              <RootNavigator />
-            </PlayerProvider>
+            <FollowsProvider>
+              <PlaylistsProvider>
+                <CommentsProvider>
+                  <PlayerProvider>
+                    <StatusBar style="light" />
+                    <RootNavigator />
+                    {/* First-launch mood greeter. Self-gates on AsyncStorage
+                        so it only ever shows once per install. Lives inside
+                        PlayerProvider so it can call playPlaylist directly. */}
+                    <MoodPickerSheet />
+                  </PlayerProvider>
+                </CommentsProvider>
+              </PlaylistsProvider>
+            </FollowsProvider>
           </AuthProvider>
         </ErrorBoundary>
       </SafeAreaProvider>

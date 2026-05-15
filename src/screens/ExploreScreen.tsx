@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -8,6 +8,8 @@ import {
   Dimensions,
   ListRenderItem,
   Platform,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -18,8 +20,10 @@ import { usePlayer } from '@/contexts/PlayerContext';
 import { buildExplore, ExploreSection, pickHero, RankedSong } from '@/lib/ranking/Trending';
 import { fetchTodayStats } from '@/lib/stats/SongStats';
 import { SongStats } from '@/types';
-import { PlayIcon, SparkleIcon, FlameIcon, TrendingIcon, ShuffleIcon } from '@/components/Icon';
+import { PlayIcon, PauseIcon, SparkleIcon, FlameIcon, TrendingIcon, ShuffleIcon } from '@/components/Icon';
 import { BrandHeader } from '@/components/BrandHeader';
+import { MoodChipsRow } from '@/components/MoodChipsRow';
+import { useAppNav } from '@/contexts/NavigationContext';
 import { Song } from '@/types';
 
 const { width } = Dimensions.get('window');
@@ -30,6 +34,25 @@ const CARD_H = 168;
 export function ExploreScreen() {
   const insets = useSafeAreaInsets();
   const player = usePlayer();
+  const { openPlayer, openArtistProfile } = useAppNav();
+  // Wrap every "start playback" tap so it immediately raises the full-
+  // screen player. Without this, Explore taps started audio silently in
+  // the background and the user had to find the mini-player to see what
+  // was playing.
+  const playSong = useCallback((s: Song) => {
+    void player.playSpecific(s);
+    openPlayer();
+  }, [player, openPlayer]);
+  const playList = useCallback((songs: Song[]) => {
+    if (songs.length === 0) return;
+    void player.playPlaylist(songs);
+    openPlayer();
+  }, [player, openPlayer]);
+
+  // Top 30 sheet visibility. Tapping the "Top 30 Global" pill opens a list
+  // of the actual 30 songs rather than auto-playing them so the user can
+  // pick from the list.
+  const [top30Open, setTop30Open] = useState(false);
 
   // Pull today's stats once when the user enters Explore. The fetcher caches
   // for 5 minutes, so tab-switching doesn't re-fire the request.
@@ -54,8 +77,8 @@ export function ExploreScreen() {
   // returning to Explore, tapping a tile) are instant from disk.
   useEffect(() => {
     const urls = new Set<string>();
-    if (hero) urls.add(hero.song.cover_url);
-    for (const s of sections) for (const r of s.songs) urls.add(r.song.cover_url);
+    if (hero) urls.add(hero.song.artist_image_url ?? hero.song.cover_url);
+    for (const s of sections) for (const r of s.songs) urls.add(r.song.artist_image_url ?? r.song.cover_url);
     if (urls.size > 0) {
       Image.prefetch(Array.from(urls), 'memory-disk').catch(() => {});
     }
@@ -110,6 +133,7 @@ export function ExploreScreen() {
   //   4. Featured #1 trending hero card
   //   5. Rising Fast / Most Replayed / … the rest of the sections
   return (
+    <>
     <FlatList
       style={styles.root}
       data={sections}
@@ -117,29 +141,49 @@ export function ExploreScreen() {
       ListHeaderComponent={
         <View style={{ paddingTop: spacing.md }}>
           <BrandHeader />
-          <PopularNowButton onPress={() => {
-            if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
-            player.playPopular();
-          }} />
-          <GenreGrid
-            catalog={player.catalog}
-            onPick={(_genre, song) => {
-              if (song) { player.playSpecific(song); return; }
-              // Genre had no direct match — fall back to overall top.
-              const fallback = [...player.catalog].sort(
-                (a, b) => (b.launch_score ?? 0) - (a.launch_score ?? 0),
-              )[0];
-              if (fallback) player.playSpecific(fallback);
+          <QuickActions
+            onSurprise={() => {
+              if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
+              const c = player.catalog;
+              if (c.length === 0) return;
+              const pick = c[Math.floor(Math.random() * c.length)];
+              if (pick) playSong(pick);
+            }}
+            onTopGlobal={() => {
+              if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
+              setTop30Open(true);
+            }}
+          />
+          <MoodChipsRow
+            onPick={(mood) => {
+              // Personalized mood pick — reads the player's own recent
+              // plays + interaction count so two users tapping the same
+              // mood get different songs based on their taste.
+              const list = player.buildMoodList(mood, 20);
+              playList(list);
             }}
           />
         </View>
       }
       renderItem={({ item }) => {
+        // Top Artists is rendered as portrait tiles rather than song tiles —
+        // it sits in the same slot Boulevard Picks used to occupy.
+        if (item.id === 'top_artists') {
+          return (
+            <TopArtistsShelf
+              title={item.title}
+              subtitle={item.subtitle}
+              catalog={player.catalog}
+              serverStats={serverStats}
+              onOpenArtist={openArtistProfile}
+            />
+          );
+        }
         const sectionView = (
           <Section
             section={item}
             serverStats={serverStats}
-            onPlay={(s) => player.playSpecific(s)}
+            onPlay={playSong}
           />
         );
         // Inject the featured hero after Trending Now per the layout spec.
@@ -150,18 +194,324 @@ export function ExploreScreen() {
               <Hero
                 ranked={hero}
                 serverStats={serverStats}
-                onPlay={() => player.playSpecific(hero.song)}
+                onPlay={() => playSong(hero.song)}
               />
             </View>
           );
         }
         return sectionView;
       }}
+      ListFooterComponent={
+        // Inline Top 30 — flat list view that lives at the BOTTOM of Explore,
+        // after Weird Tracks + New Today + the rest of the shelves. Same
+        // ranking the "Top 30 Global" pill opens, but always-visible and
+        // scannable. Tap a row to play from that position.
+        <Top30List
+          catalog={player.catalog}
+          serverStats={serverStats}
+          onPlayFrom={(songs, idx) => playList(songs.slice(idx).concat(songs.slice(0, idx)))}
+        />
+      }
       contentContainerStyle={{ paddingBottom: 160 }}
       showsVerticalScrollIndicator={false}
     />
+    <Top30Sheet
+      visible={top30Open}
+      catalog={player.catalog}
+      serverStats={serverStats}
+      onClose={() => setTop30Open(false)}
+      onPlayAll={(songs) => { setTop30Open(false); playList(songs); }}
+      onPlayFrom={(songs, idx) => {
+        setTop30Open(false);
+        playList(songs.slice(idx).concat(songs.slice(0, idx)));
+      }}
+    />
+    </>
   );
 }
+
+// ---- Inline Top 30 list (Explore footer) -----------------------------
+//
+// A flat, scannable list view of the top 30 ranked songs that lives at
+// the BOTTOM of Explore — after Weird Tracks, New Today and the other
+// shelves. Same ranking as the "Top 30 Global" modal (trending_score →
+// launch_score → stable hash) but always visible and scrollable inline.
+// Designed for quick overview: rank · cover · title · artist · plays.
+
+function Top30List({
+  catalog,
+  serverStats,
+  onPlayFrom,
+}: {
+  catalog: Song[];
+  serverStats: Map<string, SongStats>;
+  onPlayFrom: (songs: Song[], idx: number) => void;
+}) {
+  const ranked = useMemo(() => {
+    if (catalog.length === 0) return [] as Song[];
+    const hashScore = (id: string) => {
+      let h = 0;
+      for (let i = 0; i < id.length; i++) { h = ((h << 5) - h) + id.charCodeAt(i); h |= 0; }
+      return Math.abs(h) / 0x7fffffff;
+    };
+    const scored = catalog.map((song) => {
+      const s = serverStats.get(song.id);
+      const serverScore = s ? (s.trending_score * 1.0 + Math.log10(1 + s.plays) * 0.1) : 0;
+      const editorial = song.launch_score ?? 0;
+      const score = serverScore > 0 ? serverScore : editorial > 0 ? editorial : hashScore(song.id);
+      return { song, score };
+    });
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, 30).map((x) => x.song);
+  }, [catalog, serverStats]);
+
+  if (ranked.length === 0) return null;
+
+  return (
+    <View style={top30ListStyles.section}>
+      <View style={top30ListStyles.header}>
+        <Text style={top30ListStyles.title}>Top 30 Global</Text>
+        <Text style={top30ListStyles.subtitle}>Last 24h · most-streamed right now</Text>
+      </View>
+      {ranked.map((s, idx) => {
+        const stat = serverStats.get(s.id);
+        const plays = stat?.plays ?? 0;
+        return (
+          <Pressable
+            key={s.id}
+            onPress={() => onPlayFrom(ranked, idx)}
+            style={({ pressed }) => [top30ListStyles.row, pressed && { opacity: 0.7 }]}
+          >
+            <Text style={top30ListStyles.rank}>{idx + 1}</Text>
+            {s.cover_url ? (
+              <Image
+                source={{ uri: s.cover_url }}
+                style={top30ListStyles.cover}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                recyclingKey={s.id}
+              />
+            ) : (
+              <View style={[top30ListStyles.cover, { backgroundColor: colors.surface }]} />
+            )}
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={top30ListStyles.songTitle} numberOfLines={1}>{s.title}</Text>
+              <Text style={top30ListStyles.songSub} numberOfLines={1}>
+                {s.artist_name ?? s.genre}
+              </Text>
+            </View>
+            <View style={top30ListStyles.statsCol}>
+              <Text style={top30ListStyles.plays24h}>{formatPlays24h(plays)}</Text>
+              <Text style={top30ListStyles.plays24hLabel}>24h</Text>
+            </View>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/**
+ * 24h stream count formatter — compact and right-aligned in the list row.
+ * Shown for every Top 30 entry so the user can see relative momentum at
+ * a glance: "0", "127", "4.2K", "38K", "1.4M".
+ */
+function formatPlays24h(plays: number): string {
+  if (plays >= 1_000_000) return `${(plays / 1_000_000).toFixed(1)}M`;
+  if (plays >= 10_000)    return `${Math.round(plays / 1000)}K`;
+  if (plays >= 1_000)     return `${(plays / 1000).toFixed(1)}K`;
+  return `${plays}`;
+}
+
+const top30ListStyles = StyleSheet.create({
+  section: {
+    marginTop: spacing.xl,
+    paddingHorizontal: spacing.lg,
+  },
+  header: {
+    marginBottom: spacing.md,
+  },
+  title: {
+    color: colors.text,
+    fontSize: fonts.size.xl,
+    fontWeight: fonts.weight.bold,
+    letterSpacing: -0.3,
+  },
+  subtitle: {
+    color: colors.textMuted,
+    fontSize: fonts.size.sm,
+    marginTop: 2,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.divider,
+  },
+  rank: {
+    color: colors.textDim,
+    fontSize: fonts.size.sm,
+    fontWeight: fonts.weight.bold,
+    fontVariant: ['tabular-nums'],
+    width: 24,
+    textAlign: 'right',
+  },
+  cover: {
+    width: 48,
+    height: 48,
+    borderRadius: radii.sm,
+  },
+  songTitle: {
+    color: colors.text,
+    fontSize: fonts.size.md,
+    fontWeight: fonts.weight.semibold,
+  },
+  songSub: {
+    color: colors.textMuted,
+    fontSize: fonts.size.xs,
+    marginTop: 2,
+  },
+  statsCol: {
+    alignItems: 'flex-end',
+    minWidth: 48,
+  },
+  plays24h: {
+    color: colors.text,
+    fontSize: fonts.size.md,
+    fontWeight: fonts.weight.semibold,
+    fontVariant: ['tabular-nums'],
+  },
+  plays24hLabel: {
+    color: colors.textDim,
+    fontSize: 10,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginTop: 1,
+  },
+});
+
+// ---- Top 30 Global sheet ---------------------------------------------
+//
+// Bottom-sheet that opens when the user taps the "Top 30 Global" pill.
+// Shows the actual 30 ranked songs so the user can browse before playing.
+// Ranking mirrors player.playPopular: trending_score → launch_score →
+// stable hash, so the sheet shows the same chart the auto-play would have
+// produced.
+
+interface Top30SheetProps {
+  visible: boolean;
+  catalog: Song[];
+  serverStats: Map<string, SongStats>;
+  onClose: () => void;
+  onPlayAll: (songs: Song[]) => void;
+  onPlayFrom: (songs: Song[], idx: number) => void;
+}
+
+function Top30Sheet({ visible, catalog, serverStats, onClose, onPlayAll, onPlayFrom }: Top30SheetProps) {
+  const ranked = useMemo(() => {
+    if (catalog.length === 0) return [] as Song[];
+    const hashScore = (id: string) => {
+      let h = 0;
+      for (let i = 0; i < id.length; i++) { h = ((h << 5) - h) + id.charCodeAt(i); h |= 0; }
+      return Math.abs(h) / 0x7fffffff;
+    };
+    const scored = catalog.map((song) => {
+      const s = serverStats.get(song.id);
+      const serverScore = s ? (s.trending_score * 1.0 + Math.log10(1 + s.plays) * 0.1) : 0;
+      const editorial = song.launch_score ?? 0;
+      const score = serverScore > 0 ? serverScore : editorial > 0 ? editorial : hashScore(song.id);
+      return { song, score };
+    });
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, 30).map((x) => x.song);
+  }, [catalog, serverStats]);
+
+  if (!visible) return null;
+  return (
+    <Modal animationType="slide" transparent visible={visible} onRequestClose={onClose}>
+      <Pressable style={top30Styles.backdrop} onPress={onClose}>
+        <Pressable style={top30Styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <View style={top30Styles.handle} />
+          <View style={top30Styles.header}>
+            <View style={{ flex: 1 }}>
+              <Text style={top30Styles.title}>Top 30 Global</Text>
+              <Text style={top30Styles.subtitle}>{ranked.length} most-streamed right now</Text>
+            </View>
+            <Pressable
+              onPress={() => onPlayAll(ranked)}
+              disabled={ranked.length === 0}
+              style={({ pressed }) => [top30Styles.playAll, ranked.length === 0 && { opacity: 0.4 }, pressed && { opacity: 0.85 }]}
+            >
+              <PlayIcon size={16} color={colors.bg} />
+              <Text style={top30Styles.playAllText}>Play all</Text>
+            </Pressable>
+          </View>
+          <ScrollView style={{ maxHeight: 580 }} showsVerticalScrollIndicator={false}>
+            {ranked.map((s, idx) => {
+              const plays = serverStats.get(s.id)?.plays ?? 0;
+              return (
+                <Pressable
+                  key={s.id}
+                  onPress={() => onPlayFrom(ranked, idx)}
+                  style={({ pressed }) => [top30Styles.row, pressed && { opacity: 0.7 }]}
+                >
+                  <Text style={top30Styles.rank}>{idx + 1}</Text>
+                  {s.cover_url ? (
+                    <Image source={{ uri: s.cover_url }} style={top30Styles.cover} contentFit="cover" cachePolicy="memory-disk" recyclingKey={s.id} />
+                  ) : (
+                    <View style={[top30Styles.cover, { backgroundColor: colors.surface }]} />
+                  )}
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={top30Styles.songTitle} numberOfLines={1}>{s.title}</Text>
+                    <Text style={top30Styles.songSub} numberOfLines={1}>{s.artist_name ?? s.genre}</Text>
+                  </View>
+                  <View style={top30ListStyles.statsCol}>
+                    <Text style={top30ListStyles.plays24h}>{formatPlays24h(plays)}</Text>
+                    <Text style={top30ListStyles.plays24hLabel}>24h</Text>
+                  </View>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+const top30Styles = StyleSheet.create({
+  backdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: colors.bgElevated,
+    borderTopLeftRadius: radii.xl,
+    borderTopRightRadius: radii.xl,
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.xl,
+    maxHeight: '85%',
+  },
+  handle: { alignSelf: 'center', width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, marginBottom: spacing.sm },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md },
+  title: { color: colors.text, fontSize: fonts.size.xl, fontWeight: fonts.weight.bold, letterSpacing: -0.3 },
+  subtitle: { color: colors.textMuted, fontSize: fonts.size.sm, marginTop: 2 },
+  playAll: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: spacing.md, paddingVertical: 10,
+    borderRadius: radii.pill, backgroundColor: colors.text,
+  },
+  playAllText: { color: colors.bg, fontWeight: fonts.weight.bold, fontSize: fonts.size.sm },
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider,
+  },
+  rank: { color: colors.textDim, fontSize: fonts.size.sm, fontWeight: fonts.weight.bold, fontVariant: ['tabular-nums'], width: 24, textAlign: 'right' },
+  cover: { width: 48, height: 48, borderRadius: radii.sm },
+  songTitle: { color: colors.text, fontSize: fonts.size.md, fontWeight: fonts.weight.semibold },
+  songSub: { color: colors.textMuted, fontSize: fonts.size.xs, marginTop: 2 },
+});
 
 // ---- Genre tiles -----------------------------------------------------
 //
@@ -180,6 +530,69 @@ export function ExploreScreen() {
 // nationwide, ranked by the live trending score from the server (with a
 // cold-start fallback to editorial launch_score). The button is the
 // single highest-affordance action on the screen.
+
+// ---- Quick actions (Surprise Me + Top 30 Global) ----------------------
+//
+// Two side-by-side primary actions at the very top of Explore. Lets the
+// user dive into something instantly without scanning genres first.
+
+function QuickActions({ onSurprise, onTopGlobal }: { onSurprise: () => void; onTopGlobal: () => void }) {
+  return (
+    <View style={styles.quickRow}>
+      <Pressable onPress={onSurprise} style={({ pressed }) => [styles.quickBtn, styles.quickSurprise, pressed && styles.quickPressed]} accessibilityLabel="Play a surprise song">
+        <View style={styles.quickIconCircle}><ShuffleIcon size={20} color="#1a1408" /></View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.quickTitle}>Surprise me</Text>
+          <Text style={styles.quickSub}>Random pick.</Text>
+        </View>
+      </Pressable>
+      <Pressable onPress={onTopGlobal} style={({ pressed }) => [styles.quickBtn, styles.quickGlobal, pressed && styles.quickPressed]} accessibilityLabel="Play the top 30 global">
+        <View style={styles.quickIconCircle}><TrendingIcon size={20} color="#1a1408" /></View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.quickTitle}>Top 30 Global</Text>
+          <Text style={styles.quickSub}>Most streamed.</Text>
+        </View>
+      </Pressable>
+    </View>
+  );
+}
+
+// ---- Horizontal scrolling genre chips ---------------------------------
+//
+// Derived from the catalog itself — every unique `genre` becomes a chip.
+// Sorted by song count so the most-populated genre leads. Tap = play that
+// genre's full playlist sorted by launch_score. No mapping layer, so the
+// chip label and the actual played songs always match.
+
+function GenreChipsRow({ catalog, onPick }: { catalog: Song[]; onPick: (label: string) => void }) {
+  const chips = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const s of catalog) {
+      const g = (s.genre ?? '').trim();
+      if (!g) continue;
+      counts.set(g, (counts.get(g) ?? 0) + 1);
+    }
+    return [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([label, count]) => ({ label, count }));
+  }, [catalog]);
+
+  if (chips.length === 0) return null;
+
+  return (
+    <FlatList
+      data={chips}
+      keyExtractor={(c) => c.label}
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={styles.chipsRow}
+      renderItem={({ item }) => (
+        <Pressable onPress={() => onPick(item.label)} style={({ pressed }) => [styles.chip, pressed && { opacity: 0.85 }]}>
+          <Text style={styles.chipLabel}>{item.label}</Text>
+          <Text style={styles.chipCount}>{item.count}</Text>
+        </Pressable>
+      )}
+    />
+  );
+}
 
 function PopularNowButton({ onPress }: { onPress: () => void }) {
   return (
@@ -325,11 +738,14 @@ interface HeroProps {
 
 function Hero({ ranked, serverStats, onPlay }: HeroProps) {
   const { song } = ranked;
+  const player = usePlayer();
   const plays = displayPlays(song.id, serverStats);
+  const isCurrent = player.current?.id === song.id;
+  const isPlaying = isCurrent && player.isPlaying;
   return (
     <Pressable onPress={onPlay} style={styles.hero}>
       <Image
-        source={{ uri: song.cover_url }}
+        source={{ uri: song.artist_image_url ?? song.cover_url }}
         style={styles.heroImage}
         contentFit="cover"
         cachePolicy="memory-disk"
@@ -357,9 +773,13 @@ function Hero({ ranked, serverStats, onPlay }: HeroProps) {
         <Text style={styles.heroMeta} numberOfLines={1}>
           {song.mood} · {song.genre} · {formatPlays(plays)} plays
         </Text>
-        <View style={styles.heroCta}>
-          <PlayIcon size={16} color={colors.bg} />
-          <Text style={styles.heroCtaText}>Play</Text>
+        <View style={[styles.heroCta, isCurrent && styles.heroCtaActive]}>
+          {isPlaying
+            ? <PauseIcon size={16} color={colors.bg} />
+            : <PlayIcon size={16} color={colors.bg} />}
+          <Text style={styles.heroCtaText}>
+            {isCurrent ? (isPlaying ? 'Playing' : 'Paused') : 'Play'}
+          </Text>
         </View>
       </View>
     </Pressable>
@@ -385,8 +805,7 @@ function Section({ section, serverStats, onPlay }: SectionProps) {
     />
   );
   const icon = section.id === 'trending_now' ? <TrendingIcon size={14} color={colors.text} /> :
-                section.id === 'rising_fast' ? <FlameIcon size={14} color={colors.text} /> :
-                section.id === 'boulevard_picks' ? <SparkleIcon size={14} color={colors.text} /> : null;
+                section.id === 'hidden_gems' ? <FlameIcon size={14} color={colors.text} /> : null;
 
   return (
     <View style={styles.section}>
@@ -413,6 +832,115 @@ function Section({ section, serverStats, onPlay }: SectionProps) {
   );
 }
 
+// ---- Top Artists shelf -----------------------------------------------
+//
+// Replaces the old Boulevard Picks shelf. Renders the catalog's most-played
+// artists in the last 24 hours as portrait tiles. Tapping an artist plays
+// their highest-scoring song.
+//
+// Data source: today's `song_daily_stats.plays` aggregated by `artist_id`.
+// When stats are empty (cold day, no traffic), falls back to launch_score
+// so the shelf is never blank.
+
+interface TopArtistsShelfProps {
+  title: string;
+  subtitle: string;
+  catalog: Song[];
+  serverStats: Map<string, SongStats>;
+  onOpenArtist: (artistId: string) => void;
+}
+
+interface ArtistAggregate {
+  artistId: string;
+  artistName: string;
+  artistImageUrl: string | null;
+  totalPlays: number;
+  topSong: Song;
+}
+
+function TopArtistsShelf({ title, subtitle, catalog, serverStats, onOpenArtist }: TopArtistsShelfProps) {
+  const artists = useMemo<ArtistAggregate[]>(() => {
+    const byArtist = new Map<string, ArtistAggregate>();
+    for (const song of catalog) {
+      if (!song.artist_id || !song.artist_name) continue;
+      // Use the SAME play count the song tiles show app-wide (deterministic
+      // baseline + live server plays). Always a whole number, and an
+      // artist's total now reads consistently with their own songs.
+      const plays = displayPlays(song.id, serverStats);
+
+      const existing = byArtist.get(song.artist_id);
+      if (!existing) {
+        byArtist.set(song.artist_id, {
+          artistId: song.artist_id,
+          artistName: song.artist_name,
+          artistImageUrl: song.artist_image_url ?? null,
+          totalPlays: plays,
+          topSong: song,
+        });
+      } else {
+        existing.totalPlays += plays;
+        // Keep the artist's most-played song as the representative one.
+        if (plays > displayPlays(existing.topSong.id, serverStats)) existing.topSong = song;
+      }
+    }
+    return [...byArtist.values()]
+      .sort((a, b) => b.totalPlays - a.totalPlays)
+      .slice(0, 10);
+  }, [catalog, serverStats]);
+
+  if (artists.length === 0) return null;
+
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionTitleRow}>
+          <SparkleIcon size={14} color={colors.text} />
+          <Text style={styles.sectionTitle}>{title}</Text>
+        </View>
+        <Text style={styles.sectionSubtitle}>{subtitle}</Text>
+      </View>
+      <FlatList
+        data={artists}
+        keyExtractor={(a) => a.artistId}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.row}
+        ItemSeparatorComponent={() => <View style={{ width: spacing.md }} />}
+        directionalLockEnabled
+        nestedScrollEnabled
+        renderItem={({ item, index }) => (
+          <Pressable
+            onPress={() => {
+              if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
+              onOpenArtist(item.artistId);
+            }}
+            style={({ pressed }) => [styles.artistTile, pressed && { opacity: 0.85 }]}
+          >
+            {item.artistImageUrl ? (
+              <Image
+                source={{ uri: item.artistImageUrl }}
+                style={styles.artistAvatar}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                recyclingKey={item.artistId}
+              />
+            ) : (
+              <View style={[styles.artistAvatar, { backgroundColor: colors.surface }]} />
+            )}
+            <View style={styles.artistRank}>
+              <Text style={styles.artistRankText}>{index + 1}</Text>
+            </View>
+            <Text style={styles.artistName} numberOfLines={1}>{item.artistName}</Text>
+            <Text style={styles.artistPlays}>
+              {formatPlays(item.totalPlays)} plays
+            </Text>
+          </Pressable>
+        )}
+      />
+    </View>
+  );
+}
+
 // ---- Tile ------------------------------------------------------------
 
 interface TileProps {
@@ -425,16 +953,19 @@ interface TileProps {
 
 function Tile({ ranked, rank, sectionId, serverStats, onPress }: TileProps) {
   const { song } = ranked;
+  const player = usePlayer();
   // Single, consistent subtitle across every section: total plays. The
   // count grows as the server-side daily stats refresh (every ~5 min).
   const plays = displayPlays(song.id, serverStats);
   const subtitle = `${formatPlays(plays)} plays`;
+  const isCurrent = player.current?.id === song.id;
+  const isPlaying = isCurrent && player.isPlaying;
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, pressed && { opacity: 0.85 }]}>
       <View style={styles.tileImageWrap}>
         <Image
-          source={{ uri: song.cover_url }}
+          source={{ uri: song.artist_image_url ?? song.cover_url }}
           style={styles.tileImage}
           contentFit="cover"
           cachePolicy="memory-disk"
@@ -453,17 +984,19 @@ function Tile({ ranked, rank, sectionId, serverStats, onPress }: TileProps) {
           style={styles.tileGlass}
           pointerEvents="none"
         />
-        {(sectionId === 'trending_now' || sectionId === 'rising_fast') && rank <= 3 && (
+        {sectionId === 'trending_now' && rank <= 3 && (
           <View style={styles.rankBadge}>
             <Text style={styles.rankText}>{rank}</Text>
           </View>
         )}
-        <View style={styles.tilePlayBubble}>
-          <PlayIcon size={14} color={colors.bg} />
+        <View style={[styles.tilePlayBubble, isCurrent && styles.tilePlayBubbleActive]}>
+          {isPlaying
+            ? <PauseIcon size={14} color={colors.bg} />
+            : <PlayIcon size={14} color={colors.bg} />}
         </View>
       </View>
-      <Text style={styles.tileTitle} numberOfLines={1}>{song.title}</Text>
-      <Text style={styles.tileSubtitle} numberOfLines={1}>{subtitle}</Text>
+      <Text style={[styles.tileTitle, isCurrent && { color: metals.goldHi }]} numberOfLines={1}>{song.title}</Text>
+      <Text style={styles.tileSubtitle} numberOfLines={1}>{isCurrent ? (isPlaying ? 'Playing now' : 'Paused') : subtitle}</Text>
     </Pressable>
   );
 }
@@ -473,7 +1006,8 @@ function Tile({ ranked, rank, sectionId, serverStats, onPress }: TileProps) {
 function formatPlays(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
+  // Always a whole number — never leak a raw float into the UI.
+  return String(Math.round(n));
 }
 
 // Deterministic per-song baseline play count, so the catalog has variety the
@@ -487,8 +1021,8 @@ function baselinePlays(songId: string): number {
     h = ((h << 5) - h) + songId.charCodeAt(i);
     h |= 0;
   }
-  const MIN = 23;
-  const MAX = 340_000;
+  const MIN = 20_000;
+  const MAX = 400_000;
   return MIN + (Math.abs(h) % (MAX - MIN));
 }
 
@@ -516,7 +1050,60 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
   },
 
-  // Genre grid — 2-column image-backed tiles
+  // ---- Quick actions row (Surprise Me + Top 30 Global) ----
+  quickRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+  },
+  quickBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingVertical: 14,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.lg,
+    overflow: 'hidden',
+  },
+  quickSurprise: { backgroundColor: '#e0c898' },
+  quickGlobal: { backgroundColor: '#c5b489' },
+  quickPressed: { opacity: 0.92, transform: [{ scale: 0.99 }] },
+  quickIconCircle: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(26,20,8,0.18)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  quickTitle: {
+    color: '#1a1408',
+    fontSize: fonts.size.md,
+    fontWeight: fonts.weight.bold,
+    letterSpacing: -0.2,
+  },
+  quickSub: { color: 'rgba(26,20,8,0.72)', fontSize: 11, marginTop: 1 },
+
+  // ---- Horizontal genre chips ----
+  chipsRow: {
+    paddingHorizontal: spacing.lg,
+    gap: spacing.sm,
+    paddingBottom: spacing.md,
+  },
+  chip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    backgroundColor: '#16181d',
+    borderWidth: 1,
+    borderColor: '#262932',
+    borderRadius: 99,
+  },
+  chipLabel: { color: colors.text, fontSize: 13, fontWeight: '600' },
+  chipCount: { color: colors.textMuted, fontSize: 11 },
+
+  // Genre grid — 2-column image-backed tiles (legacy, retained for fallback)
   // ---- Most Popular in US button (top of Explore) ----
   popularBtn: {
     flexDirection: 'row',
@@ -683,6 +1270,9 @@ const styles = StyleSheet.create({
     borderRadius: radii.pill,
     backgroundColor: colors.text,
   },
+  heroCtaActive: {
+    backgroundColor: metals.goldHi,
+  },
   heroCtaText: {
     color: colors.bg,
     fontWeight: fonts.weight.bold,
@@ -706,6 +1296,48 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
   },
   row: { paddingHorizontal: spacing.lg },
+
+  // Top Artists tile — circular portrait + name + plays.
+  artistTile: { width: CARD_W, alignItems: 'center' },
+  artistAvatar: {
+    width: CARD_W,
+    height: CARD_W,
+    borderRadius: CARD_W / 2,
+    backgroundColor: colors.surface,
+  },
+  artistRank: {
+    position: 'absolute',
+    top: 8,
+    left: 8,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: 'rgba(10,10,12,0.78)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  artistRankText: {
+    color: colors.text,
+    fontSize: 13,
+    fontWeight: fonts.weight.bold,
+    fontVariant: ['tabular-nums'],
+  },
+  artistName: {
+    color: colors.text,
+    fontSize: fonts.size.md,
+    fontWeight: fonts.weight.bold,
+    letterSpacing: -0.1,
+    marginTop: spacing.sm,
+    textAlign: 'center',
+  },
+  artistPlays: {
+    color: colors.textMuted,
+    fontSize: fonts.size.xs,
+    marginTop: 2,
+    textAlign: 'center',
+  },
 
   // Tile
   tile: { width: CARD_W },
@@ -744,6 +1376,13 @@ const styles = StyleSheet.create({
     backgroundColor: colors.text,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  tilePlayBubbleActive: {
+    backgroundColor: metals.goldHi,
+    shadowColor: metals.goldHi,
+    shadowOpacity: 0.6,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
   },
   rankBadge: {
     position: 'absolute',

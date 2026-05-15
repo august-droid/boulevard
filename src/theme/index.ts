@@ -24,7 +24,7 @@ export const colors = {
   brand: '#8a7bff',
   brandDim: 'rgba(138,123,255,0.18)',
 
-  like: '#ff5a7a',
+  like: '#ff2d55',
   success: '#4ade80',
   danger: '#ef4444',
 

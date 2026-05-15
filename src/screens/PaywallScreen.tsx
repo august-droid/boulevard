@@ -22,6 +22,7 @@ import {
   ArrowRightIcon,
 } from '@/components/Icon';
 import { useAuth } from '@/contexts/AuthContext';
+import { FREE_COMPLETED_LIMIT } from '@/lib/limits/CompletionLimiter';
 import {
   HAS_BILLING,
   getOffering,
@@ -33,6 +34,13 @@ import {
 interface Props {
   visible: boolean;
   onClose: () => void;
+  /**
+   * Optional handler to open the SignupSheet from the paywall's "have an
+   * account?" link. Lets users who hit the 10-listen cap before signing
+   * up reach the auth surface without dead-ending. The host (RootNavigator
+   * or ProfileScreen) provides this; absent → link is hidden.
+   */
+  onOpenSignIn?: () => void;
 }
 
 const FEATURES = [
@@ -62,7 +70,7 @@ const PLAN_DETAILS: Record<Plan, { price: string; cadence: string; afterTrial: s
   monthly: { price: '$9.99',  cadence: '/month', afterTrial: '$9.99/month after trial' },
 };
 
-export function PaywallScreen({ visible, onClose }: Props) {
+export function PaywallScreen({ visible, onClose, onOpenSignIn }: Props) {
   const insets = useSafeAreaInsets();
   const auth = useAuth();
   // Yearly is selected by default — it's the better deal and the better LTV.
@@ -160,14 +168,14 @@ export function PaywallScreen({ visible, onClose }: Props) {
         {/* Header */}
         <View style={styles.header}>
           <SparkleIcon size={22} color={GOLD.textHi} />
-          <Text style={styles.eyebrow}>YOU'VE REACHED</Text>
+          <Text style={styles.eyebrow}>YOU'VE LISTENED TO</Text>
           <View style={styles.headlineRow}>
-            <Text style={styles.headlineNumber}>20 </Text>
+            <Text style={styles.headlineNumber}>{FREE_COMPLETED_LIMIT} </Text>
             <Text style={styles.headlineMain}>songs</Text>
           </View>
-          <Text style={styles.headlineItalic}>today</Text>
+          <Text style={styles.headlineItalic}>completed</Text>
           <Text style={styles.subhead}>
-            Come back tomorrow for{'\n'}10 more songs on us.
+            Go Premium to keep listening{'\n'}with no limits.
           </Text>
         </View>
 
@@ -267,6 +275,20 @@ export function PaywallScreen({ visible, onClose }: Props) {
             <Text style={styles.linkText}>Maybe later</Text>
           </Pressable>
         </View>
+
+        {/* Sign-in escape hatch. Anonymous users who dismissed the
+            SignupSheet at 5 completions otherwise have no way to log
+            into an existing account from this surface. Only shown
+            while the user is still anonymous; once signed up the
+            line is hidden. */}
+        {onOpenSignIn && auth.isAnonymous && (
+          <View style={styles.signInRow}>
+            <Text style={styles.signInPrompt}>Already have an account?</Text>
+            <Pressable hitSlop={12} onPress={onOpenSignIn} style={styles.linkBtn}>
+              <Text style={styles.signInLink}>Sign in</Text>
+            </Pressable>
+          </View>
+        )}
       </View>
     </Modal>
   );
@@ -525,5 +547,22 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.xs,
     textAlign: 'center',
     marginTop: 8,
+  },
+  signInRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: spacing.xs,
+  },
+  signInPrompt: {
+    color: colors.textMuted,
+    fontSize: fonts.size.sm,
+  },
+  signInLink: {
+    color: colors.text,
+    fontSize: fonts.size.sm,
+    fontWeight: fonts.weight.semibold,
+    textDecorationLine: 'underline',
   },
 });

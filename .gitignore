@@ -27,3 +27,6 @@ play-service-account.json
 # Claude Code internal state.
 .claude/
 
+
+# Local Netlify folder
+.netlify

@@ -13,7 +13,7 @@ import { supabase, HAS_SUPABASE } from '@/lib/supabase';
 const COUNT_KEY = 'boulevard.daily_listens.count';
 const DAY_KEY = 'boulevard.daily_listens.day';
 
-export const FREE_DAILY_LIMIT = 20;
+export const FREE_DAILY_LIMIT = 30;
 
 function todayKey(date = new Date()): string {
   // YYYY-MM-DD in local time.

@@ -7,14 +7,15 @@ import { Preloader } from '@/lib/audio/Preloader';
 import { QueueManager } from '@/lib/queue/QueueManager';
 import { rankCandidates } from '@/lib/recommendation/RecommendationEngine';
 import { fetchTodayStats } from '@/lib/stats/SongStats';
-import { applySignal, emptyProfile, signalsFromPlayback } from '@/lib/taste/TasteProfile';
+import { applySessionSignal, applySignal, emptyProfile, emptySession, signalsFromPlayback } from '@/lib/taste/TasteProfile';
+import type { SessionProfile } from '@/types';
 import { EventTracker } from '@/lib/events/EventTracker';
 import { SEED_SONGS } from '@/lib/seed/songs';
 import { loadCatalog } from '@/lib/catalog/loadCatalog';
 import { catalogHydrator } from '@/lib/catalog/catalogHydration';
+import { buildMoodPlaylist, Mood } from '@/lib/mood/MoodPlaylist';
 import { LibraryStore } from '@/lib/library/LibraryStore';
-import { DailyLimiter } from '@/lib/limits/DailyLimiter';
-import { scheduleDailyResetNotification, cancelDailyResetNotification } from '@/lib/limits/limitNotifications';
+import { CompletionLimiter, COMPLETION_THRESHOLD } from '@/lib/limits/CompletionLimiter';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase, HAS_SUPABASE } from '@/lib/supabase';
 
@@ -29,6 +30,9 @@ interface PlayerState {
   duration: number; // ms
   vibe: Activity | null;
   saved: boolean;
+  /** TikTok-style heart — distinct from `saved`. Persisted to user_song_likes
+   *  and feeds a strong positive signal into TasteProfile + SessionProfile. */
+  liked: boolean;
   catalog: Song[];
   taste: TasteProfile | null;
   library: LibraryStore | null;
@@ -52,6 +56,13 @@ interface PlayerActions {
   previous: () => Promise<void>;
   replay: () => Promise<void>;
   save: () => Promise<void>;
+  /** Toggle the like state on the current song. Persists to
+   *  user_song_likes + fires a 'like'/'unlike' signal into the taste profile. */
+  like: () => Promise<void>;
+  /** Read the current short-window session profile. Imperative — consumers
+   *  call this on render (which fires when taste changes). Returns a live
+   *  reference; do not mutate. */
+  getSession: () => SessionProfile;
   /** Track a successful native share and apply the +5 share signal. */
   recordShare: () => Promise<void>;
   /** Seek to an absolute position within the current song (in ms). */
@@ -69,6 +80,14 @@ interface PlayerActions {
    * effectively instant. Fire and forget; safe to call repeatedly.
    */
   warmSongs: (songs: Song[]) => void;
+  /**
+   * Build a personalized playlist for a mood. Reads the player's own
+   * recently-played list + interaction count (snapshot at call time)
+   * and hands them to the mood ranker so two users tapping the same
+   * mood get different songs. Returns the full ordered list — caller
+   * decides whether to `playPlaylist` immediately or stash it.
+   */
+  buildMoodList: (mood: Mood, limit?: number) => Song[];
 }
 
 type PlayerValue = PlayerState & PlayerActions;
@@ -85,7 +104,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const {
     userId, isPremium, songsHeard,
     bumpEngagement, bumpSongsHeard, bumpSkipCount,
-    setDailyState, bumpBlockedAttempts,
+    setCompletionState, bumpBlockedAttempts,
   } = auth;
 
   // Long-lived singletons. Created lazily; do not recreate on rerender.
@@ -94,7 +113,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const queueRef = useRef<QueueManager | null>(null);
   const trackerRef = useRef<EventTracker | null>(null);
   const libraryRef = useRef<LibraryStore | null>(null);
-  const limiterRef = useRef<DailyLimiter | null>(null);
+  const limiterRef = useRef<CompletionLimiter | null>(null);
   const isPremiumRef = useRef(false);
   useEffect(() => { isPremiumRef.current = isPremium; }, [isPremium]);
 
@@ -103,9 +122,29 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const interactionCountRef = useRef(0);
   useEffect(() => { interactionCountRef.current = songsHeard; }, [songsHeard]);
   const statsRef = useRef<Map<string, SongStats>>(new Map());
+  // Short-window "right now" profile. In-memory only, never persisted —
+  // a cold start naturally clears it, and the 30-min idle reset prevents
+  // yesterday's mood from biasing today's queue.
+  const sessionRef = useRef<SessionProfile>(emptySession());
+  // Liked song ids — loaded from user_song_likes on init, kept in sync by
+  // like(). Used to compute `liked` whenever the current song changes.
+  const likedIdsRef = useRef<Set<string>>(new Set());
 
   // Per-song timing.
+  //
+  // songStartedAtRef tracks WALL-CLOCK time the song started. It is still
+  // used by taste signals (where "user spent N seconds" is a reasonable
+  // proxy for "interest") but no longer used for the free-tier cap.
+  //
+  // The free-tier cap uses ACTUAL audio playback progress (last position
+  // reported by onTick / duration). Without this distinction, a paused
+  // song accrues wall-clock seconds, so leaving the app paused for five
+  // minutes would falsely register every short tap as a full listen.
   const songStartedAtRef = useRef<number>(0);
+  // True once the current song has crossed the 90% playback threshold and
+  // had its completion registered. Reset to false on every new song so
+  // the next track is eligible to count again.
+  const currentCompletedRef = useRef(false);
 
   // Recent songs window for the recommender (penalize repetition).
   const recentIdsRef = useRef<string[]>([]);
@@ -118,6 +157,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     duration: 0,
     vibe: null,
     saved: false,
+    liked: false,
     catalog: SEED_SONGS,
     taste: null,
     library: null,
@@ -154,17 +194,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       const library = new LibraryStore(userId);
       await library.hydrate();
 
-      const limiter = new DailyLimiter(userId);
-      // Reconcile with Supabase up-front so a wiped AsyncStorage doesn't grant
-      // a fresh 20 plays. Falls back to local-only when offline.
-      const initialDaily = await limiter.reconcileWithServer();
-      setDailyState(initialDaily.count, initialDaily.limitHit);
-      // If the user is back inside the app and either still has plays today
-      // or the day rolled over, cancel any pending reset notification —
-      // we don't want to ping them about plays they already know they have.
-      if (!initialDaily.limitHit) {
-        cancelDailyResetNotification().catch(() => {});
-      }
+      const limiter = new CompletionLimiter(userId);
+      // Reconcile with Supabase up-front so a wiped AsyncStorage cannot
+      // regrant a fresh ten free listens. Falls back to local-only when
+      // offline.
+      const initialCompletion = await limiter.reconcileWithServer();
+      setCompletionState(initialCompletion.count, initialCompletion.limitHit);
 
       audioRef.current = audio;
       preloaderRef.current = preloader;
@@ -178,6 +213,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
       // Subscribe to playback ticks/end exactly once. The Sound under
       // AudioPlayer is replaced on each song, but our listener set persists.
+      //
+      // The tick handler also registers free-tier completion the moment
+      // audio progress crosses 90%. This is more robust than waiting for
+      // the natural end-of-song event: if the user listens to 95% then
+      // force-quits, audio.onEnd may never fire, but the >=90% threshold
+      // already triggered here and the completion is persisted.
       const offTick = audio.onTick((p: PlaybackTickPayload) => {
         setState((s) => ({
           ...s,
@@ -185,6 +226,22 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           duration: p.durationMillis || s.duration,
           isPlaying: p.isPlaying,
         }));
+        if (
+          !currentCompletedRef.current &&
+          limiterRef.current &&
+          !isPremiumRef.current &&
+          p.durationMillis > 0 &&
+          p.positionMillis / p.durationMillis >= COMPLETION_THRESHOLD
+        ) {
+          const cur = stateRef.current.current;
+          if (cur) {
+            currentCompletedRef.current = true;
+            limiterRef.current
+              .registerCompletion(cur.id)
+              .then((res) => setCompletionState(res.count, res.limitHit))
+              .catch(() => {});
+          }
+        }
       });
       const offEnd = audio.onEnd(() => {
         // Auto-advance when a song finishes naturally.
@@ -211,9 +268,29 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
             .select('*')
             .eq('user_id', userId)
             .maybeSingle();
-          if (data) taste = data as TasteProfile;
+          if (data) {
+            taste = data as TasteProfile;
+            // Back-compat: profiles created before the microtag upgrade lack
+            // this field. Initialize to {} so the ranker treats them as
+            // "no microtag preference learned yet" rather than crashing.
+            if (!taste.microtag_scores) taste.microtag_scores = {};
+          }
         } catch {
           // ignore
+        }
+      }
+
+      // Hydrate the user's like-set in one round-trip so the heart shows
+      // the correct fill state the first time they tap into any song.
+      if (HAS_SUPABASE && supabase) {
+        try {
+          const { data: likes } = await supabase
+            .from('user_song_likes')
+            .select('song_id')
+            .eq('user_id', userId);
+          likedIdsRef.current = new Set((likes ?? []).map((r) => (r as { song_id: string }).song_id));
+        } catch {
+          // best-effort — if it fails, hearts start empty and like() will re-sync
         }
       }
 
@@ -228,6 +305,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       // When shuffle is on, we bypass ranking entirely and serve a random
       // sample so the next song is unpredictable.
       const producer = async (avoidIds: string[], count: number) => {
+        let picks: Song[];
         if (isShufflingRef.current) {
           const avoid = new Set(avoidIds);
           const pool = stateRef.current.catalog.filter((s) => !avoid.has(s.id));
@@ -237,20 +315,40 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
             const j = i + Math.floor(Math.random() * (pool.length - i));
             [pool[i], pool[j]] = [pool[j], pool[i]];
           }
-          return pool.slice(0, count);
+          picks = pool.slice(0, count);
+        } else {
+          // rankCandidates owns its own quality fallback when the main path
+          // returns empty — we trust whatever it hands back.
+          picks = rankCandidates(
+            catalog,
+            {
+              taste: stateRef.current.taste ?? taste,
+              session: sessionRef.current,
+              vibe: vibeRef.current,
+              recentSongIds: recentIdsRef.current,
+              interactionCount: interactionCountRef.current,
+              stats: statsRef.current,
+            },
+            avoidIds,
+            count,
+          );
         }
-        return rankCandidates(
-          catalog,
-          {
-            taste: stateRef.current.taste ?? taste,
-            vibe: vibeRef.current,
-            recentSongIds: recentIdsRef.current,
-            interactionCount: interactionCountRef.current,
-            stats: statsRef.current,
-          },
-          avoidIds,
-          count,
-        );
+
+        // Log a song_impressed event for each newly served song. This is the
+        // "served, may or may not play" signal that drives stage transitions
+        // (impressions != plays). EventTracker batches these so we don't
+        // flood the network during refills.
+        if (userId) {
+          for (const s of picks) {
+            trackerRef.current?.track({
+              user_id: userId,
+              song_id: s.id,
+              event_type: 'song_impressed',
+              vibe_context: vibeRef.current,
+            });
+          }
+        }
+        return picks;
       };
 
       const queue = new QueueManager(producer, preloader);
@@ -261,8 +359,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       // Spotify-style cold start: stage the last song the user heard so it
       // shows on the Home / mini player surface, but DO NOT auto-play.
       // The user taps play themselves when they're ready.
+      //
+      // Skip suppressed songs — staging one would put a known-bad track in
+      // front of the user's face on every cold start until they manually
+      // skipped. Producer falls through to its quality fallback instead.
       const lastId = await AsyncStorage.getItem(LAST_SONG_KEY);
-      const lastSong = lastId ? catalog.find((s) => s.id === lastId) ?? null : null;
+      const lastCandidate = lastId ? catalog.find((s) => s.id === lastId) ?? null : null;
+      const lastSong = lastCandidate && lastCandidate.distribution_stage !== 'suppressed'
+        ? lastCandidate
+        : null;
 
       // Seed the queue with the last song at position 0 (or let the producer
       // pick one if no history). Refill preloads positions 1..5 so the next
@@ -281,6 +386,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         position: 0,
         isPlaying: false,
         saved: first ? library.isSaved(first.id) : false,
+        liked: first ? likedIdsRef.current.has(first.id) : false,
       }));
 
       if (first && preloaderRef.current) {
@@ -330,35 +436,32 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
 
   // ---- Playback ----
 
-  // Shared daily-limit gate. Returns `true` when blocked. Callers should
-  // bail without disrupting the currently-playing song.
+  // Shared completion-cap gate. Returns `true` when blocked. Callers
+  // should bail without disrupting the currently-playing song so the user
+  // is never yanked out of a track mid-listen.
   const checkDailyLimit = useCallback(async (): Promise<boolean> => {
     if (!limiterRef.current || isPremiumRef.current) return false;
-    const peek = await limiterRef.current.read();
+    const peek = limiterRef.current.read();
     if (peek.limitHit) {
-      setDailyState(peek.count, true);
-      // Re-fires the paywall trigger effect even if dailyLimitHit was already
-      // true (e.g. user dismissed it then tried to play again).
+      setCompletionState(peek.count, true);
+      // Re-fires the paywall trigger effect even if completedLimitHit was
+      // already true (e.g. user dismissed it then tried to play again).
       bumpBlockedAttempts();
-      // Make sure the "your songs are back" notification is queued for 9am
-      // tomorrow. Dedupes internally, so repeated cap-hit events are safe.
-      scheduleDailyResetNotification().catch(() => {});
       return true;
     }
     return false;
-  }, [setDailyState, bumpBlockedAttempts]);
+  }, [setCompletionState, bumpBlockedAttempts]);
 
   const playInternal = useCallback(async (song: Song) => {
     if (!audioRef.current || !preloaderRef.current || !userId) return;
 
-    // Daily cap PEEK — has to run before we promise the user anything visual.
-    // Cheap (single AsyncStorage read).
+    // Completion cap PEEK — has to run before we promise the user anything
+    // visual. Sync read against the in-memory set, no I/O.
     if (limiterRef.current && !isPremiumRef.current) {
-      const peek = await limiterRef.current.read();
+      const peek = limiterRef.current.read();
       if (peek.limitHit) {
-        setDailyState(peek.count, true);
+        setCompletionState(peek.count, true);
         bumpBlockedAttempts();
-        scheduleDailyResetNotification().catch(() => {});
         return;
       }
     }
@@ -373,6 +476,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     // the song has "switched" before the user can even notice.
     // ============================================================
     songStartedAtRef.current = Date.now();
+    // New song = new completion-eligibility. The onTick handler will set
+    // this back to true the first time audio progress crosses 90%.
+    currentCompletedRef.current = false;
     recentIdsRef.current = [
       song.id,
       ...recentIdsRef.current.filter((id) => id !== song.id),
@@ -385,25 +491,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       duration: song.duration_seconds * 1000,
       isPlaying: true,
       saved: libraryRef.current?.isSaved(song.id) ?? false,
+      liked: likedIdsRef.current.has(song.id),
     }));
 
     // Side-effects that don't need to block the user's first frame —
     // fire-and-forget so they run in parallel with the audio load.
     libraryRef.current?.addRecent(song).catch(() => {});
     AsyncStorage.setItem(LAST_SONG_KEY, song.id).catch(() => {});
-    if (limiterRef.current && !isPremiumRef.current) {
-      limiterRef.current.bump()
-        .then((s) => {
-          setDailyState(s.count, s.limitHit);
-          // The 20th play of the day just lit the cap — schedule the
-          // "back tomorrow at 9am" reminder. scheduleDailyResetNotification
-          // dedupes so this is safe even if multiple plays race.
-          if (s.limitHit) {
-            scheduleDailyResetNotification().catch(() => {});
-          }
-        })
-        .catch(() => {});
-    }
 
     // ============================================================
     // Load + play. Preloaded path is ~10-50 ms; cold path is ~500-1500 ms
@@ -420,15 +514,18 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     });
 
     void bumpSongsHeard();
-  }, [userId, bumpSongsHeard, setDailyState, bumpBlockedAttempts]);
+  }, [userId, bumpSongsHeard, setCompletionState, bumpBlockedAttempts]);
 
   useEffect(() => { playInternalRef.current = playInternal; }, [playInternal]);
 
   const recordEndOfSong = useCallback((skipped: boolean) => {
     const cur = stateRef.current.current;
     if (!cur || !userId) return;
-    const listenSec = (Date.now() - songStartedAtRef.current) / 1000;
     const durationSec = cur.duration_seconds;
+    // Audio-position-based listen seconds. Survives pause + resume
+    // correctly; never overestimates the way wall-clock did.
+    const positionMs = stateRef.current.position;
+    const listenSec = positionMs > 0 ? positionMs / 1000 : 0;
     const completion = durationSec > 0 ? Math.min(1, listenSec / durationSec) : 0;
 
     if (skipped) {
@@ -452,12 +549,37 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       });
     }
 
+    // Free-tier accounting: a play counts toward the cap ONLY if it
+    // reached >=90% of actual audio playback. Skips before 90% do not
+    // count. The onTick handler usually fires first (the moment audio
+    // progress crosses 90%), but we register here too as a safety net
+    // for cases where the song ended faster than the next tick could
+    // fire. Limiter dedupes by song id so the double-call is a no-op.
+    // Premium users are exempt.
+    if (
+      !currentCompletedRef.current &&
+      limiterRef.current &&
+      !isPremiumRef.current &&
+      completion >= COMPLETION_THRESHOLD
+    ) {
+      currentCompletedRef.current = true;
+      limiterRef.current
+        .registerCompletion(cur.id)
+        .then((s) => setCompletionState(s.count, s.limitHit))
+        .catch(() => {});
+    }
+
     const signals = signalsFromPlayback({
       listenSeconds: listenSec,
       durationSeconds: durationSec,
       skipped,
     });
     if (signals.length > 0) {
+      // Mirror every playback signal into the session profile so the ranker
+      // can pick up "right now" mood within 3–5 plays.
+      for (const sig of signals) {
+        sessionRef.current = applySessionSignal(sessionRef.current, cur, sig);
+      }
       setState((s) => {
         if (!s.taste) return s;
         let next = s.taste;
@@ -466,7 +588,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         return { ...s, taste: next };
       });
     }
-  }, [userId]);
+  }, [userId, setCompletionState]);
 
   const handleAdvance = useCallback(async (skipped: boolean) => {
     if (!queueRef.current) return;
@@ -513,6 +635,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       event_type: 'replayed',
       vibe_context: stateRef.current.vibe ?? null,
     });
+    sessionRef.current = applySessionSignal(sessionRef.current, cur, { kind: 'replay' });
     setState((s) => s.taste ? { ...s, taste: applySignal(s.taste, cur, { kind: 'replay' }) } : s);
   }, [userId]);
 
@@ -530,11 +653,16 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       setState((s) => ({ ...s, position: 0 }));
       return;
     }
-    // recentIds[0] is the current song; [1] is the one before it.
-    const prevId = recentIdsRef.current[1];
-    const prevSong = prevId
-      ? stateRef.current.catalog.find((s) => s.id === prevId)
-      : null;
+    // recentIds[0] is the current song. Walk backwards until we find one
+    // still in the catalog — songs that were deleted (e.g. the legacy seed
+    // purge) can sit stale in the recents list, which would otherwise make
+    // the prev button silently no-op.
+    let prevSong: Song | null = null;
+    for (let i = 1; i < recentIdsRef.current.length; i++) {
+      const candId = recentIdsRef.current[i];
+      const cand = stateRef.current.catalog.find((s) => s.id === candId);
+      if (cand) { prevSong = cand; break; }
+    }
     if (!prevSong) {
       // No history — degrade to a simple replay.
       await audioRef.current?.seekTo(0);
@@ -587,6 +715,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       event_type: 'shared',
       vibe_context: stateRef.current.vibe ?? null,
     });
+    sessionRef.current = applySessionSignal(sessionRef.current, cur, { kind: 'share' });
     setState((s) => s.taste ? { ...s, taste: applySignal(s.taste, cur, { kind: 'share' }) } : s);
     await bumpEngagement();
   }, [userId, bumpEngagement]);
@@ -603,7 +732,48 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       event_type: next ? 'saved' : 'unsaved',
       vibe_context: stateRef.current.vibe ?? null,
     });
+    sessionRef.current = applySessionSignal(sessionRef.current, cur, { kind: next ? 'save' : 'unsave' });
     setState((s) => s.taste ? { ...s, taste: applySignal(s.taste, cur, { kind: next ? 'save' : 'unsave' }) } : s);
+    if (next) await bumpEngagement();
+  }, [userId, bumpEngagement]);
+
+  // Toggle the heart on the current song. Mirrors save() but writes to
+  // user_song_likes and uses the 'like'/'unlike' signal kind (weight 2.5).
+  // Optimistic: the heart flips before the DB round-trip lands.
+  const like = useCallback(async () => {
+    const cur = stateRef.current.current;
+    if (!cur || !userId) return;
+    const wasLiked = likedIdsRef.current.has(cur.id);
+    const next = !wasLiked;
+    // Optimistic flip.
+    if (next) likedIdsRef.current.add(cur.id);
+    else likedIdsRef.current.delete(cur.id);
+    setState((s) => ({ ...s, liked: next }));
+
+    // Signal first — taste should react even if the DB write later fails.
+    sessionRef.current = applySessionSignal(sessionRef.current, cur, { kind: next ? 'like' : 'unlike' });
+    setState((s) => s.taste ? { ...s, taste: applySignal(s.taste, cur, { kind: next ? 'like' : 'unlike' }) } : s);
+
+    if (HAS_SUPABASE && supabase) {
+      try {
+        if (next) {
+          await supabase.from('user_song_likes').upsert(
+            { user_id: userId, song_id: cur.id },
+            { onConflict: 'user_id,song_id' },
+          );
+        } else {
+          await supabase.from('user_song_likes').delete()
+            .eq('user_id', userId).eq('song_id', cur.id);
+        }
+      } catch {
+        // Optimistic on failure — TikTok-style. Visibly rolling back the
+        // heart on every failed network round-trip feels like a glitch,
+        // and the most common failure mode (anon-auth-off, no JWT) is
+        // structural rather than transient. The taste signal already
+        // applied in-session; persistence rebuilds from the DB next
+        // cold start so the state self-heals.
+      }
+    }
     if (next) await bumpEngagement();
   }, [userId, bumpEngagement]);
 
@@ -728,6 +898,21 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     }
   }, [userId]);
 
+  const getSession = useCallback((): SessionProfile => sessionRef.current, []);
+
+  // Snapshot-style mood builder. Reads recentIds + interactionCount at
+  // call time so freshness rules and user-stage weights use the very
+  // latest signals (refs, not state — no re-render needed).
+  const buildMoodList = useCallback((mood: Mood, limit = 20): Song[] => {
+    return buildMoodPlaylist(mood, {
+      catalog: stateRef.current.catalog,
+      taste: stateRef.current.taste,
+      recentSongIds: recentIdsRef.current,
+      interactionCount: interactionCountRef.current,
+      limit,
+    });
+  }, []);
+
   const value = useMemo<PlayerValue>(() => ({
     ...state,
     togglePlay,
@@ -736,6 +921,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     toggleShuffle,
     replay,
     save,
+    like,
     recordShare,
     seek,
     setVibe,
@@ -743,9 +929,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     playPlaylist,
     playPopular,
     warmSongs,
+    getSession,
+    buildMoodList,
   }), [
-    state, togglePlay, skip, previous, toggleShuffle, replay, save, recordShare,
-    seek, setVibe, playSpecific, playPlaylist, playPopular, warmSongs,
+    state, togglePlay, skip, previous, toggleShuffle, replay, save, like, recordShare,
+    seek, setVibe, playSpecific, playPlaylist, playPopular, warmSongs, getSession, buildMoodList,
   ]);
 
   return <PlayerCtx.Provider value={value}>{children}</PlayerCtx.Provider>;

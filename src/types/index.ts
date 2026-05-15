@@ -1,5 +1,25 @@
 // Domain types for Boulevard.
 
+/** Artist as a first-class entity. The catalog stores artist_id /
+ *  artist_name / artist_image_url denormalized on every Song; we derive a
+ *  full Artist record by aggregating the catalog client-side. */
+export interface Artist {
+  id: string;
+  name: string;
+  image_url: string | null;
+  /** One-line bio. Falls back to a stock string when the catalog has nothing. */
+  one_liner: string;
+  /** Most-frequent genre across this artist's songs. */
+  primary_genre: string | null;
+  /** Total catalog songs for this artist. */
+  song_count: number;
+  /** Sum of plays across this artist's songs (server stats + baseline). */
+  total_plays: number;
+  /** Followers — populated from supabase when available, null otherwise. */
+  follower_count: number | null;
+}
+
+
 export type VocalType = 'instrumental' | 'male' | 'female' | 'mixed';
 
 export type Activity =
@@ -57,11 +77,40 @@ export interface Song {
   quality_score?: number;
   /** 0..1 — penalty applied by the recommender. Higher = suppressed more. */
   suppression_score?: number;
+  /** 0..1 — how unusual the production/vocal/mood is. >=0.6 = weird-that-works. */
+  weirdness_score?: number | null;
+  /** AI artist who "performs" the song — frozen vocal style + branding. */
+  artist_id?: string | null;
+  artist_name?: string | null;
+  artist_image_url?: string | null;
+  /** Plain-text lyrics returned by the generator. No per-line timestamps yet —
+   *  LyricsSheet pseudo-syncs via linear interpolation across duration_seconds.
+   *  Null/undefined → sheet shows a "lyrics not available" fallback. */
+  lyrics?: string | null;
   /** Where the song came from. */
   source?: SongSource;
   /** Only `live` songs are served to clients. */
   status?: SongStatus;
   created_at?: string;
+
+  // ---- Analyzer-produced fields (SongAnalyzer) ----
+  /** 10–30 physical/specific tags: production, vocal, groove, instrument, context. Primary recommendation signal. */
+  microtags?: string[];
+  primary_listener_contexts?: string[];
+  skip_risks?: string[];
+  /** 0..1 — how immediately replayable the hook is. */
+  hook_strength?: number;
+  /** 0..1 — broad-appeal vs niche/experimental. */
+  mainstream_fit?: number;
+  /** 0..1 — distinct/memorable identity. (v2 — produced by SongAnalyzer, distinct from weirdness_score.) */
+  uniqueness_score_v2?: number;
+
+  // ---- Staged distribution (set by compute_promotion_scores rollup) ----
+  distribution_stage?: 'new_test' | 'rising' | 'trending' | 'suppressed';
+  impression_count?: number;
+  promotion_score?: number;
+  suppression_reason?: string | null;
+  last_distribution_at?: string | null;
 }
 
 // ============================================================
@@ -105,6 +154,7 @@ export interface SongQueueItem {
 }
 
 export type EventType =
+  | 'song_impressed'    // queued for the user (served, may or may not play)
   | 'song_started'
   | 'song_completed'
   | 'song_skipped'
@@ -139,7 +189,44 @@ export interface TasteProfile {
   vocal_preferences: Record<VocalType, number>;
   activity_scores: Record<string, number>;
   similarity_cluster_scores: Record<string, number>;
+  /** Lifetime preference over song microtags. Primary recommendation signal. */
+  microtag_scores: Record<string, number>;
   updated_at?: string;
+}
+
+/**
+ * Short-window "what the user is into RIGHT NOW" profile. Lives in memory
+ * only, never persisted. Decays every signal (factor 0.92) and resets after
+ * 30 min of inactivity. The ranker uses this as a multiplicative tilt on
+ * top of lifetime taste — strong session signals dominate without
+ * permanently rewriting the long-term profile.
+ */
+export interface SessionProfile {
+  microtag_scores: Record<string, number>;
+  last_interaction_at: number;  // epoch ms
+}
+
+export interface UserProfile {
+  user_id: string;
+  username: string | null;
+  display_name: string | null;
+  avatar_seed: string;
+  created_at?: string;
+}
+
+export interface SongComment {
+  id: string;
+  song_id: string;
+  user_id: string;
+  parent_id: string | null;
+  body: string;
+  timestamp_seconds: number | null;
+  like_count: number;
+  reply_count: number;
+  created_at: string;
+  // Joined client-side
+  author?: UserProfile;
+  liked_by_me?: boolean;
 }
 
 export type LibraryType = 'saved' | 'recent';

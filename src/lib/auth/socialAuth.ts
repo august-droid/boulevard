@@ -5,14 +5,19 @@ import { supabase, HAS_SUPABASE } from '@/lib/supabase';
 // Social auth via Supabase OAuth + an in-app web browser.
 //
 // Each provider opens Supabase's OAuth URL in a SFAuthenticationSession
-// (iOS) / Chrome Custom Tab (Android) bound to our app's deep-link scheme.
+// (iOS) or Chrome Custom Tab (Android) bound to our app's deep-link scheme.
 // On success Supabase redirects back to `boulevard://auth/callback`, the
 // browser dismisses, and Supabase auto-installs the session.
+//
+// When the current session is anonymous we call linkIdentity instead of
+// signInWithOAuth. linkIdentity attaches the social identity to the same
+// auth.uid the user already has, so likes, saves, taste, playlists, push
+// tokens, and the RevenueCat customer all stay attached after the upgrade.
 //
 // If Supabase isn't configured we resolve with `demo: true` so the caller
 // can fall back to local "markSignedUp" — the UI flow still completes.
 
-export type Provider = 'apple' | 'google' | 'facebook';
+export type Provider = 'apple' | 'google' | 'facebook' | 'tiktok';
 
 export interface SocialAuthResult {
   ok: boolean;
@@ -36,12 +41,23 @@ export async function signInWithProvider(provider: Provider): Promise<SocialAuth
   }
 
   try {
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider,
-      options: { redirectTo, skipBrowserRedirect: true },
-    });
+    // Is the user currently anonymous? If so, link the provider to the
+    // existing uid instead of replacing the session.
+    const { data: sessionData } = await supabase.auth.getSession();
+    const isAnon = sessionData.session?.user?.is_anonymous === true;
+
+    const { data, error } = isAnon
+      ? await supabase.auth.linkIdentity({
+          provider: provider as any,
+          options: { redirectTo, skipBrowserRedirect: true },
+        })
+      : await supabase.auth.signInWithOAuth({
+          provider: provider as any,
+          options: { redirectTo, skipBrowserRedirect: true },
+        });
+
     if (error || !data?.url) {
-      return { ok: false, demo: false, error: error?.message ?? 'No OAuth URL returned' };
+      return { ok: false, demo: false, error: friendlyOAuthError(error?.message, provider) };
     }
 
     const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo, {
@@ -52,11 +68,12 @@ export async function signInWithProvider(provider: Provider): Promise<SocialAuth
       return { ok: false, demo: false, cancelled: true };
     }
     if (result.type !== 'success') {
-      return { ok: false, demo: false, error: `auth flow ${result.type}` };
+      return { ok: false, demo: false, error: `Sign-in did not complete. Please try again.` };
     }
 
-    // Supabase v2 picks up the tokens from the redirect URL automatically when
-    // we hand them to setSession; the URL fragment is in result.url.
+    // Supabase v2 picks up the tokens from the redirect URL automatically
+    // when we hand them to setSession; the URL fragment is in result.url.
+    // linkIdentity uses the same redirect shape, so the same parser works.
     const url = result.url;
     const fragment = url.split('#')[1] ?? '';
     const params = new URLSearchParams(fragment);
@@ -64,11 +81,29 @@ export async function signInWithProvider(provider: Provider): Promise<SocialAuth
     const refresh_token = params.get('refresh_token');
     if (access_token && refresh_token) {
       const { error: setErr } = await supabase.auth.setSession({ access_token, refresh_token });
-      if (setErr) return { ok: false, demo: false, error: setErr.message };
+      if (setErr) return { ok: false, demo: false, error: friendlyOAuthError(setErr.message, provider) };
     }
 
     return { ok: true, demo: false };
   } catch (e) {
-    return { ok: false, demo: false, error: (e as Error).message };
+    return { ok: false, demo: false, error: friendlyOAuthError((e as Error).message, provider) };
   }
+}
+
+function friendlyOAuthError(raw: string | undefined, provider: Provider): string {
+  const s = (raw || '').toLowerCase();
+  if (s.includes('provider is not enabled')) {
+    return `${labelFor(provider)} sign-in is not available right now.`;
+  }
+  if (s.includes('identity is already linked')) {
+    return 'That account is already linked to another user.';
+  }
+  if (s.includes('network')) {
+    return 'Network error. Check your connection and try again.';
+  }
+  return raw && raw.length < 140 ? raw : `Could not sign in with ${labelFor(provider)}. Please try again.`;
+}
+
+function labelFor(p: Provider): string {
+  return p === 'tiktok' ? 'TikTok' : p.charAt(0).toUpperCase() + p.slice(1);
 }

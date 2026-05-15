@@ -39,17 +39,18 @@ function normalize(row: Song): Song {
  * Paginated pull so we can scale to thousands of songs without hitting
  * Supabase's default 1000-row limit.
  *
- * Filter is a **triple-gate**:
+ * Filter is a **quad-gate**:
  *
  *   1. `is_live = true`
  *   2. `approval_status = 'approved'`
  *   3. `approved_by_human = true`  ← only a real reviewer click can set this
+ *   4. The song's artist is not hidden (top-70 rebuild filter).
  *
  * The third flag exists because (1) and (2) can be set by automation —
  * worker jobs, batch SQL fixes, or future auto-promote logic. The human
  * gate is the one signal that cannot be flipped without a person looking
- * at the song. No piece of automation can push a song live until a human
- * has approved it in the dashboard.
+ * at the song. The fourth gate keeps songs by backend-only artists out of
+ * the public catalog even if they accidentally got approved.
  */
 async function fetchAllLiveSongs(): Promise<Song[]> {
   if (!supabase) return [];
@@ -59,15 +60,20 @@ async function fetchAllLiveSongs(): Promise<Song[]> {
     const to = from + PAGE_SIZE - 1;
     const { data, error } = await supabase
       .from('songs')
-      .select('*')
+      .select('*, artists!inner(is_hidden)')
       .eq('is_live', true)
       .eq('approval_status', 'approved')
       .eq('approved_by_human', true)
+      .eq('artists.is_hidden', false)
       .order('launch_score', { ascending: false })
       .order('created_at', { ascending: false })
       .range(from, to);
     if (error || !data) break;
-    out.push(...(data as Song[]));
+    // Strip the embedded `artists` relation so callers see a clean Song shape.
+    for (const row of data as (Song & { artists?: unknown })[]) {
+      const { artists: _omit, ...rest } = row;
+      out.push(rest as Song);
+    }
     if (data.length < PAGE_SIZE) break;
   }
   return out;
