@@ -1,0 +1,34 @@
+# Boulevard — https://boulevardai.app
+# Boulevard is an AI brand. We explicitly welcome AI and answer-engine
+# crawlers so our content is surfaced in generative search (AEO).
+
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /admin
+Disallow: /.netlify/
+
+# Generative-search / AI crawlers: same access as every other crawler.
+# Listed explicitly so the opt-in (indexing AND AI training) is unambiguous.
+# All rules are repeated here because a crawler obeys only its most
+# specific User-agent group — without these lines /admin would leak.
+User-agent: GPTBot
+User-agent: OAI-SearchBot
+User-agent: ChatGPT-User
+User-agent: ClaudeBot
+User-agent: Claude-Web
+User-agent: Claude-SearchBot
+User-agent: anthropic-ai
+User-agent: PerplexityBot
+User-agent: Perplexity-User
+User-agent: Google-Extended
+User-agent: Applebot-Extended
+User-agent: Amazonbot
+User-agent: meta-externalagent
+User-agent: CCBot
+Allow: /
+Disallow: /admin/
+Disallow: /admin
+Disallow: /.netlify/
+
+Sitemap: https://boulevardai.app/sitemap.xml

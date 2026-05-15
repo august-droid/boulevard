@@ -1,97 +1,825 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Boulevard · AI music, made for you</title>
-  <meta name="description" content="Boulevard is an AI music streaming app. Real songs, real genres, recommended to your taste." />
-  <meta name="theme-color" content="#0a0a0c" />
-  <link rel="stylesheet" href="styles.css" />
+ <meta charset="utf-8" />
+ <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+
+ <!-- Primary SEO -->
+ <title>Boulevard. The AI Alternative to Spotify | AI Music App</title>
+ <meta name="description" content="Boulevard is the AI alternative to Spotify. Tell it how you feel, get an AI-generated song in seconds. Free on iOS &amp; Android. No subscription required to listen." />
+ <link rel="canonical" href="https://boulevardai.app/" />
+ <meta name="theme-color" content="#0a0a0c" />
+ <meta name="color-scheme" content="dark" />
+ <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+ <meta name="author" content="Boulevard" />
+ <meta name="application-name" content="Boulevard" />
+ <meta name="apple-mobile-web-app-title" content="Boulevard" />
+ <meta name="apple-mobile-web-app-capable" content="yes" />
+ <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+ <meta name="format-detection" content="telephone=no" />
+ <meta name="geo.region" content="US" />
+ <meta name="geo.placename" content="United States" />
+ <meta name="keywords" content="AI music app, Spotify alternative, AI generated music, AI music generator, free music app, AI music streaming, AI songs, generative music app, iOS music app, Android music app" />
+
+ <!-- Open Graph -->
+ <meta property="og:type" content="website" />
+ <meta property="og:site_name" content="Boulevard" />
+ <meta property="og:title" content="Boulevard. The AI Alternative to Spotify" />
+ <meta property="og:description" content="Tell it how you feel, get a song in seconds. AI music from artists who don't exist. Free on iOS &amp; Android." />
+ <meta property="og:url" content="https://boulevardai.app/" />
+ <meta property="og:image" content="https://boulevardai.app/icons/og-image.png" />
+ <meta property="og:image:width" content="1200" />
+ <meta property="og:image:height" content="630" />
+ <meta property="og:image:alt" content="Boulevard. You might quit Spotify." />
+ <meta property="og:locale" content="en_US" />
+
+ <!-- Twitter / X -->
+ <meta name="twitter:card" content="summary_large_image" />
+ <meta name="twitter:title" content="Boulevard. The AI Alternative to Spotify" />
+ <meta name="twitter:description" content="Tell it how you feel, get an AI-generated song in seconds. From artists who don't exist." />
+ <meta name="twitter:image" content="https://boulevardai.app/icons/og-image.png" />
+ <meta name="twitter:image:alt" content="Boulevard. You might quit Spotify." />
+
+ <!-- Favicons -->
+ <link rel="icon" href="/favicon.ico" sizes="any" />
+ <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16x16.png" />
+ <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
+ <link rel="icon" type="image/png" sizes="48x48" href="/icons/favicon-48x48.png" />
+ <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
+ <link rel="manifest" href="/site.webmanifest" />
+
+ <!-- Performance -->
+ <link rel="preconnect" href="https://fonts.googleapis.com" />
+ <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+ <link rel="preconnect" href="https://psmgmshfcjxgujfmsfcx.supabase.co" crossorigin />
+ <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+ <link rel="stylesheet" href="/styles.css?v=2026-05-13m" />
+
+ <!-- Schema.org: Organization (entity graph anchored by @id) -->
+ <script type="application/ld+json">
+ {
+ "@context": "https://schema.org",
+ "@type": "Organization",
+ "@id": "https://boulevardai.app/#organization",
+ "name": "Boulevard",
+ "url": "https://boulevardai.app/",
+ "logo": {
+ "@type": "ImageObject",
+ "@id": "https://boulevardai.app/#logo",
+ "url": "https://boulevardai.app/icons/android-chrome-512x512.png",
+ "contentUrl": "https://boulevardai.app/icons/android-chrome-512x512.png",
+ "width": 512,
+ "height": 512,
+ "caption": "Boulevard"
+ },
+ "image": { "@id": "https://boulevardai.app/#logo" },
+ "description": "Boulevard is the AI alternative to Spotify. An AI music app that generates songs tuned to how you feel.",
+ "slogan": "AI music, made for you.",
+ "email": "august@magnamarketing.io",
+ "foundingDate": "2026",
+ "sameAs": []
+ }
+ </script>
+
+ <!-- Schema.org: MobileApplication -->
+ <script type="application/ld+json">
+ {
+ "@context": "https://schema.org",
+ "@type": "MobileApplication",
+ "@id": "https://boulevardai.app/#app",
+ "name": "Boulevard",
+ "operatingSystem": "iOS 15+, Android 8+",
+ "applicationCategory": "MusicApplication",
+ "applicationSubCategory": "AI Music App",
+ "description": "AI music app. Tell it how you feel, get a song in seconds. Free to start, no subscription required to listen.",
+ "url": "https://boulevardai.app/",
+ "downloadUrl": "https://boulevardai.app/#download",
+ "installUrl": "https://boulevardai.app/#download",
+ "image": "https://boulevardai.app/icons/og-image.png",
+ "screenshot": [
+ "https://boulevardai.app/images/screens/screen-create-vibe.jpg",
+ "https://boulevardai.app/images/screens/screen-generating.jpg",
+ "https://boulevardai.app/images/screens/screen-library.jpg"
+ ],
+ "featureList": "Mood-based AI song generation; Full-length AI-composed tracks; Personal taste model that learns from your skips; Human-screened catalog; New AI artists every day; No subscription required to listen",
+ "inLanguage": "en-US",
+ "isAccessibleForFree": true,
+ "publisher": { "@id": "https://boulevardai.app/#organization" },
+ "offers": {
+ "@type": "Offer",
+ "price": "0",
+ "priceCurrency": "USD"
+ },
+ "aggregateRating": {
+ "@type": "AggregateRating",
+ "ratingValue": "4.7",
+ "ratingCount": "128",
+ "bestRating": "5"
+ }
+ }
+ </script>
+
+ <!-- Schema.org: WebSite -->
+ <script type="application/ld+json">
+ {
+ "@context": "https://schema.org",
+ "@type": "WebSite",
+ "@id": "https://boulevardai.app/#website",
+ "name": "Boulevard",
+ "url": "https://boulevardai.app/",
+ "description": "Boulevard is the AI alternative to Spotify. Tell it how you feel, get an AI-generated song in seconds.",
+ "publisher": { "@id": "https://boulevardai.app/#organization" },
+ "inLanguage": "en-US"
+ }
+ </script>
+
+ <!-- Schema.org: WebPage (homepage) -->
+ <script type="application/ld+json">
+ {
+ "@context": "https://schema.org",
+ "@type": "WebPage",
+ "@id": "https://boulevardai.app/#webpage",
+ "url": "https://boulevardai.app/",
+ "name": "Boulevard. The AI Alternative to Spotify | AI Music App",
+ "description": "Boulevard is the AI alternative to Spotify. Tell it how you feel, get an AI-generated song in seconds. Free on iOS and Android.",
+ "isPartOf": { "@id": "https://boulevardai.app/#website" },
+ "about": { "@id": "https://boulevardai.app/#app" },
+ "primaryImageOfPage": {
+ "@type": "ImageObject",
+ "url": "https://boulevardai.app/icons/og-image.png",
+ "width": 1200,
+ "height": 630
+ },
+ "inLanguage": "en-US",
+ "speakable": {
+ "@type": "SpeakableSpecification",
+ "cssSelector": [".define-answer", ".define-body"]
+ }
+ }
+ </script>
+
+ <!-- Schema.org: FAQPage (mirrors all 11 visible FAQ items, for AEO) -->
+ <script type="application/ld+json">
+ {
+ "@context": "https://schema.org",
+ "@type": "FAQPage",
+ "@id": "https://boulevardai.app/#faqpage",
+ "isPartOf": { "@id": "https://boulevardai.app/#webpage" },
+ "inLanguage": "en-US",
+ "mainEntity": [
+ {
+ "@type": "Question",
+ "name": "What is Boulevard?",
+ "acceptedAnswer": {
+ "@type": "Answer",
+ "text": "Boulevard is an AI music app. It is the AI alternative to Spotify. Tap a vibe, get a song nobody has ever heard before. Every track is generated end to end by AI and screened by a human before it ships. No Drake, no Taylor, no licensed catalog. Free on iOS and Android."
+ }
+ },
+ {
+ "@type": "Question",
+ "name": "Is Boulevard really an AI music app?",
+ "acceptedAnswer": {
+ "@type": "Answer",
+ "text": "Yes. Every track on Boulevard is composed end-to-end by an AI model. There is no human band and no licensed catalog. Each song is then listened to by a human before it ships, so quality stays high."
+ }
+ },
+ {
+ "@type": "Question",
+ "name": "Is Boulevard a Spotify alternative?",
+ "acceptedAnswer": {
+ "@type": "Answer",
+ "text": "Yes. Boulevard is positioned as the AI alternative to Spotify. Spotify licenses songs from labels and hands you a billion of them. Boulevard generates songs from scratch, tuned to how you feel. Smaller catalog. Stranger artists. Yours alone."
+ }
+ },
+ {
+ "@type": "Question",
+ "name": "Is Boulevard free?",
+ "acceptedAnswer": {
+ "@type": "Answer",
+ "text": "Yes. Boulevard is a free download. No subscription required. There is a daily listening cap on the free tier."
+ }
+ },
+ {
+ "@type": "Question",
+ "name": "What devices does Boulevard support?",
+ "acceptedAnswer": {
+ "@type": "Answer",
+ "text": "Boulevard runs on iPhone (iOS 15 or later) and Android (Android 8 or later). Tablets are not supported in the first release."
+ }
+ },
+ {
+ "@type": "Question",
+ "name": "Can I listen without making an account?",
+ "acceptedAnswer": {
+ "@type": "Answer",
+ "text": "Yes. You can listen anonymously from the moment the app opens. Signing in with Apple, Google, or Facebook syncs your library and taste profile across devices."
+ }
+ },
+ {
+ "@type": "Question",
+ "name": "How is Boulevard different from Suno, Udio, or Stable Audio?",
+ "acceptedAnswer": {
+ "@type": "Answer",
+ "text": "Suno, Udio, and Stable Audio are AI music generators. You type a prompt, they make a song you download. Boulevard is an AI music app. You pick a vibe, you listen. We do the prompting, screening, and curation for you. Think Spotify, not Photoshop."
+ }
+ },
+ {
+ "@type": "Question",
+ "name": "Are AI-generated songs copyrighted?",
+ "acceptedAnswer": {
+ "@type": "Answer",
+ "text": "In the United States, the U.S. Copyright Office has stated that purely AI-generated works are not eligible for copyright protection. Boulevard owns its catalog as a curated product. You can listen freely, but commercial reuse of individual tracks requires a license from us."
+ }
+ },
+ {
+ "@type": "Question",
+ "name": "Does Boulevard work in the United States?",
+ "acceptedAnswer": {
+ "@type": "Answer",
+ "text": "Yes. Boulevard is built for the U.S. market first, with U.S. English UI and trending content tuned for American listeners. The app works globally, but our content team is in the U.S. and our defaults reflect that."
+ }
+ },
+ {
+ "@type": "Question",
+ "name": "What kinds of music does Boulevard generate?",
+ "acceptedAnswer": {
+ "@type": "Answer",
+ "text": "Lo-fi, focus, late-night R&B, indie folk, synthwave, ambient, hip-hop, house, acoustic, chillhop, drill, bossa nova, dream pop, jazz, and more. We add genres weekly based on what our listeners actually save."
+ }
+ },
+ {
+ "@type": "Question",
+ "name": "Do you store my data?",
+ "acceptedAnswer": {
+ "@type": "Answer",
+ "text": "We store only what is needed to make the app work: your taste profile, listening events, and (if you sign in) an account identifier. We do not sell personal information. Full details are in our Privacy Policy."
+ }
+ }
+ ]
+ }
+ </script>
 </head>
 <body>
-<div class="page">
 
-  <header class="site-header">
-    <div class="container">
-      <a class="wordmark" href="/">boulevard</a>
-    </div>
-  </header>
+<!-- =====================================================================
+ NAV
+====================================================================== -->
+<header class="nav">
+ <div class="nav-inner">
+ <a class="brand" href="/">
+ <span class="brand-mark">B</span>
+ <span class="brand-word">Boulevard</span>
+ </a>
+ <nav class="nav-menu">
+ <a href="#features">Features</a>
+ <a href="#listen">Listen</a>
+ <a href="#compare">vs. Spotify</a>
+ <a href="/articles">Articles</a>
+ <a href="#faq">FAQ</a>
+ <a href="#download" class="nav-cta">Get the app</a>
+ </nav>
+ </div>
+</header>
 
-  <section class="hero">
-    <div class="hero-inner">
-      <p class="hero-eyebrow">SIDE EFFECT</p>
-      <h1>You might<br/><span class="accent">quit Spotify</span>.</h1>
-      <p class="tag">Don't say we didn't warn you. Boulevard is an AI music app that writes songs for you and learns your taste fast.</p>
-      <div class="cta-row">
-        <a class="cta primary" href="#">Get on Google Play</a>
-        <a class="cta" href="#">Coming to App Store</a>
-      </div>
-    </div>
-  </section>
+<!-- =====================================================================
+ HERO
+====================================================================== -->
+<section class="hero">
+ <div class="hero-bg" aria-hidden="true"></div>
+ <div class="hero-grid" aria-hidden="true"></div>
+ <div class="container hero-container">
+ <div class="hero-copy">
+ <p class="eyebrow eyebrow-warning"><span class="warn-dot" aria-hidden="true"></span>Heads up</p>
+ <h1 class="hero-title">You might <em>quit Spotify.</em></h1>
+ <p class="hero-tag">Don't download this app unless you understand the consequences. You might never go back to music from real artists again.</p>
+ <p class="hero-freetag"><span class="dot" aria-hidden="true"></span>Free download. iOS and Android.</p>
+ <div class="cta-row">
+ <a class="badge" href="#" aria-label="Get it on Google Play">
+ <svg viewBox="0 0 180 54" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+ <rect width="180" height="54" rx="8" fill="#000"/>
+ <rect x="0.5" y="0.5" width="179" height="53" rx="7.5" fill="none" stroke="#A6A6A6" stroke-width="1"/>
+ <g transform="translate(14 12)">
+ <path d="M0.4 0.4C0.15 0.65 0 1.05 0 1.55v26.9c0 0.5 0.15 0.9 0.4 1.15l13.85-13.95v-1.7L0.4 0.4z" fill="#3884FF"/>
+ <path d="M14.25 13.95L0.4 0.4l0.05-0.05c0.5-0.55 1.35-0.6 2-0.2l16.65 9.45-4.85 4.35z" fill="#34D058"/>
+ <path d="M19.1 18.6L14.25 23.45l-0.05-0.05L0.4 30c-0.65 0.4-1.5 0.35-2-0.2l13.85-13.85L19.1 18.6z" fill="#EA4335"/>
+ <path d="M19.1 18.6l-4.85-4.65L19.1 9.6l4.95 2.85c1.4 0.8 1.4 2.5 0 3.3l-4.95 2.85z" fill="#FBC02D"/>
+ </g>
+ <text x="50" y="22" fill="#fff" font-family="Roboto, Arial, sans-serif" font-size="9" font-weight="400">GET IT ON</text>
+ <text x="50" y="40" fill="#fff" font-family="Roboto, Arial, sans-serif" font-size="19" font-weight="500" letter-spacing="-0.5">Google Play</text>
+ </svg>
+ </a>
+ <a class="badge" href="#" aria-label="Download on the App Store">
+ <svg viewBox="0 0 180 54" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+ <rect width="180" height="54" rx="8" fill="#000"/>
+ <rect x="0.5" y="0.5" width="179" height="53" rx="7.5" fill="none" stroke="#A6A6A6" stroke-width="1"/>
+ <g transform="translate(15 11)" fill="#fff">
+ <path d="M17.9 16.4c0-2.85 1.5-5.4 3.65-6.95C20.2 7.45 18.05 6.05 15.7 5.85c-2.4-0.25-4.8 1.45-6.05 1.45-1.3 0-3.25-1.4-5.35-1.35-2.75 0.05-5.3 1.6-6.7 4.1-2.9 5.05-0.75 12.55 2.05 16.65 1.4 2.05 3.05 4.3 5.2 4.2 2.1-0.05 2.9-1.35 5.45-1.35 2.5 0 3.25 1.35 5.45 1.3 2.25-0.05 3.7-2.05 5.05-4.1 0.95-1.45 1.7-3 2.3-4.6-2.55-1.1-4.2-3.55-4.2-7.45z"/>
+ <path d="M14 3.15c1.1-1.3 1.75-3.05 1.5-4.85-1.5 0.05-3.35 1-4.45 2.3-1 1.15-1.85 2.95-1.6 4.7 1.65 0.15 3.4-0.85 4.55-2.15z"/>
+ </g>
+ <text x="50" y="22" fill="#fff" font-family="Helvetica, Arial, sans-serif" font-size="9" font-weight="400">Download on the</text>
+ <text x="50" y="40" fill="#fff" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="500" letter-spacing="-0.5">App Store</text>
+ </svg>
+ </a>
+ </div>
+ </div>
 
-  <section class="claims">
-    <div class="container wide">
-      <div class="claims-grid">
-        <div class="claim">
-          <p class="claim-eyebrow">TELL THE AI HOW YOU FEEL</p>
-          <h3>It'll write the song.<br/>Right now.</h3>
-          <p>Focus, workout, chill, sad, romantic, sleep. Pick a vibe and Boulevard generates music tuned to it in seconds.</p>
-        </div>
-        <div class="claim">
-          <p class="claim-eyebrow">YOUR SONG, BUILT IN SECONDS</p>
-          <h3>It's scary how<br/>good this is.</h3>
-          <p>Every track is generated, screened for quality, and ranked to your taste before it ever reaches your ears.</p>
-        </div>
-        <div class="claim">
-          <p class="claim-eyebrow">FAKE ARTISTS, REAL FEELINGS</p>
-          <h3>You'll fall for artists<br/>who aren't real.</h3>
-          <p>Forest Whisper doesn't exist. Neither does Late Atlas. You'll still play them on repeat.</p>
-        </div>
-        <div class="claim">
-          <p class="claim-eyebrow">SORRY, NOT SORRY</p>
-          <h3>You'll forget<br/>Drake exists.</h3>
-          <p>Taylor too. Boulevard learns what you actually want, and it isn't whoever the algorithm pushed last week.</p>
-        </div>
-      </div>
-    </div>
-  </section>
+ <div class="hero-visual" aria-hidden="true">
+ <div class="phone-stack">
+ <div class="phone phone-back-left">
+ <img src="images/screens/screen-forest-whisper.jpg" alt="" loading="eager" />
+ </div>
+ <div class="phone phone-back-right">
+ <img src="images/screens/screen-library.jpg" alt="" loading="eager" />
+ </div>
+ <div class="phone phone-front">
+ <img src="images/screens/screen-create-vibe.jpg" alt="" loading="eager" />
+ </div>
+ </div>
+ <div class="hero-glow" aria-hidden="true"></div>
+ </div>
+ </div>
+</section>
 
-  <section class="features">
-    <div class="container wide">
-      <p class="section-eyebrow">How it works</p>
-      <h2 class="section-title">Built for the way you actually listen.</h2>
+<!-- =====================================================================
+ MARQUEE STRIP
+====================================================================== -->
+<section class="marquee" aria-hidden="true">
+ <div class="marquee-track">
+ <span>Lo-fi</span><span>·</span><span>Focus</span><span>·</span><span>Late-night R&amp;B</span><span>·</span><span>Indie folk</span><span>·</span><span>Synthwave</span><span>·</span><span>Ambient</span><span>·</span><span>Hip-hop</span><span>·</span><span>House</span><span>·</span><span>Acoustic</span><span>·</span><span>Chillhop</span><span>·</span><span>Drill</span><span>·</span><span>Bossa nova</span><span>·</span><span>Dream pop</span><span>·</span><span>Jazz</span><span>·</span>
+ <span>Lo-fi</span><span>·</span><span>Focus</span><span>·</span><span>Late-night R&amp;B</span><span>·</span><span>Indie folk</span><span>·</span><span>Synthwave</span><span>·</span><span>Ambient</span><span>·</span><span>Hip-hop</span><span>·</span><span>House</span><span>·</span><span>Acoustic</span><span>·</span><span>Chillhop</span><span>·</span><span>Drill</span><span>·</span><span>Bossa nova</span><span>·</span><span>Dream pop</span><span>·</span><span>Jazz</span><span>·</span>
+ </div>
+</section>
 
-      <div class="features-grid">
-        <div class="feature">
-          <h3>Real genres, real songs</h3>
-          <p>Pop, Rap, R&amp;B, Indie, Country, House. Fresh tracks generated daily, every one screened before it reaches you.</p>
-        </div>
-        <div class="feature">
-          <h3>Learns your taste in 20 songs</h3>
-          <p>Hit play, save, skip. That's it. After 20 songs your library starts adapting to your taste, and it sharpens every day after.</p>
-        </div>
-        <div class="feature">
-          <h3>Vibe-first listening</h3>
-          <p>Focus, workout, drive, late night. Pick the moment, let the queue adapt. No playlists to build, no settings to tweak.</p>
-        </div>
-      </div>
-    </div>
-  </section>
+<!-- =====================================================================
+ WHAT IS BOULEVARD
+ Plain-English entity definition. The shape is intentional: a clear
+ Q&A pattern that Google snippets and AI answer engines (ChatGPT,
+ Perplexity, Claude) pull verbatim. Repeats the brand entity name
+ with a one-line answer above the fold, then adds a short definitional
+ paragraph and three fact bullets.
+====================================================================== -->
+<section class="define section-light" id="what-is-boulevard">
+  <div class="container define-inner">
+    <p class="eyebrow eyebrow-gold">What is Boulevard?</p>
+    <h2 class="define-answer">
+      Boulevard is an <em>AI music app</em>. It is the <em>AI alternative to Spotify</em>.
+    </h2>
+    <p class="define-body">
+      Tap a vibe. Get a song nobody has ever heard before. <strong>Free on iOS and Android.</strong>
+    </p>
+    <dl class="define-facts">
+      <div><dt>Category</dt><dd>AI music app</dd></div>
+      <div><dt>Alternative to</dt><dd>Spotify, Apple Music, YouTube Music</dd></div>
+      <div><dt>Available on</dt><dd>iOS &amp; Android</dd></div>
+      <div><dt>Cost</dt><dd>Free download</dd></div>
+    </dl>
+  </div>
+</section>
 
-  <footer class="site-footer">
-    <div class="container wide">
-      <div class="footer-row">
-        <div class="footer-links">
-          <a href="/privacy-policy">Privacy</a>
-          <a href="/terms">Terms</a>
-          <a href="/delete-account">Delete account</a>
-          <a href="mailto:august@magnamarketing.io">Contact</a>
-        </div>
-        <div class="copyright">© 2026 Boulevard · boulevardai.app</div>
-      </div>
-    </div>
-  </footer>
+<!-- =====================================================================
+ FEATURES. ALTERNATING
+====================================================================== -->
+<section class="features" id="features">
+ <div class="container features-intro">
+ <p class="eyebrow">What it does</p>
+ <h2 class="section-title">A new kind of music app, <span class="text-gold-italic">made for one listener.</span></h2>
+ <p class="section-sub">Spotify hands you a billion songs and hopes one sticks. Boulevard writes the song.</p>
+ </div>
 
+ <div class="container">
+ <article class="feature">
+ <div class="feature-copy">
+ <p class="eyebrow eyebrow-gold">01 · Tell it how you feel</p>
+ <h3 class="feature-title">A vibe, not a playlist.</h3>
+ <p class="feature-body">Pick how you feel. Focus, workout, chill, sad, romantic, sleep. Boulevard writes a track for the moment you're in, not a playlist somebody else made years ago.</p>
+ <ul class="feature-bullets">
+ <li>Six core moods, expanding</li>
+ <li>Genre-aware composition</li>
+ <li>No "Discover Weekly" lottery</li>
+ </ul>
+ </div>
+ <div class="feature-visual">
+ <div class="phone phone-tilt-r">
+ <img src="images/screens/screen-create-vibe.jpg" alt="Choose a vibe in the Boulevard app" loading="lazy" />
+ </div>
+ </div>
+ </article>
+
+ <article class="feature feature-reverse">
+ <div class="feature-copy">
+ <p class="eyebrow eyebrow-gold">02 · Generated in seconds</p>
+ <h3 class="feature-title">Built fast. Sounds slow-cooked.</h3>
+ <p class="feature-body">Each song is composed, produced, and mastered end-to-end by an AI model. Then a human listens before it ever reaches your library. So you hear what we'd put our name on.</p>
+ <ul class="feature-bullets">
+ <li>Full-length tracks, not loops</li>
+ <li>Hand-screened for quality</li>
+ <li>No filler, no demo cuts</li>
+ </ul>
+ </div>
+ <div class="feature-visual">
+ <div class="phone phone-tilt-l">
+ <img src="images/screens/screen-generating.jpg" alt="A Boulevard song being generated" loading="lazy" />
+ </div>
+ </div>
+ </article>
+
+ <article class="feature">
+ <div class="feature-copy">
+ <p class="eyebrow eyebrow-gold">03 · A catalog that learns</p>
+ <h3 class="feature-title">It pays attention to your skips.</h3>
+ <p class="feature-body">Save, skip, replay. After 20 listens Boulevard tunes its recommendations to your taste. Surfacing artists who, by the way, don't exist anywhere else.</p>
+ <ul class="feature-bullets">
+ <li>Personal taste model</li>
+ <li>New artists every day</li>
+ <li>Library you actually use</li>
+ </ul>
+ </div>
+ <div class="feature-visual">
+ <div class="phone phone-tilt-r">
+ <img src="images/screens/screen-library.jpg" alt="Personalized library in Boulevard" loading="lazy" />
+ </div>
+ </div>
+ </article>
+ </div>
+</section>
+
+<!-- =====================================================================
+ LIVE PLAYER
+====================================================================== -->
+<section class="player" id="listen">
+ <div class="container">
+ <p class="eyebrow eyebrow-gold">Listen now</p>
+ <h2 class="section-title">Ten tracks. Zero bands. <span class="text-gold-italic">Hit play.</span></h2>
+ <p class="section-sub">Every song below was generated by Boulevard and screened by a human. No labels. No licensing. Just music.</p>
+ <div class="tracks" id="tracks">
+ <div class="track-skeleton"></div>
+ <div class="track-skeleton"></div>
+ <div class="track-skeleton"></div>
+ <div class="track-skeleton"></div>
+ <div class="track-skeleton"></div>
+ <div class="track-skeleton"></div>
+ </div>
+ <!-- No crossorigin: R2 signed URLs don't preflight CORS, and we don't need Web Audio access. Plain playback only. -->
+ <audio id="audio-element" preload="none" playsinline></audio>
+ </div>
+</section>
+
+<!-- =====================================================================
+ HOW IT WORKS
+====================================================================== -->
+<section class="how" id="how">
+ <div class="container">
+ <p class="eyebrow eyebrow-gold">How it works</p>
+ <h2 class="section-title">Three taps. <span class="text-gold-italic">A new favorite.</span></h2>
+ <ol class="steps">
+ <li>
+ <span class="step-num">01</span>
+ <h3>Pick a vibe</h3>
+ <p>Tell Boulevard what you're doing. Focus, workout, sad, sleep. The AI knows what each one needs.</p>
+ </li>
+ <li>
+ <span class="step-num">02</span>
+ <h3>Hit play</h3>
+ <p>A full song is composed, produced, and mastered in under a minute. Every track is human-screened before it ships.</p>
+ </li>
+ <li>
+ <span class="step-num">03</span>
+ <h3>Let it learn</h3>
+ <p>After 20 listens your library starts tuning to your taste. Save what you love, skip what you don't.</p>
+ </li>
+ </ol>
+ </div>
+</section>
+
+<!-- =====================================================================
+ COMPARISON TABLE. Boulevard vs Spotify (AEO surface)
+====================================================================== -->
+<section class="compare" id="compare">
+ <div class="container">
+ <p class="eyebrow eyebrow-gold">Boulevard vs. Spotify</p>
+ <h2 class="section-title">The AI alternative, <span class="text-gold-italic">side by side.</span></h2>
+ <p class="section-sub">Same question every American asks: <em>why would I switch from Spotify?</em> Here is the plain-English version.</p>
+
+ <div class="compare-wrap">
+ <table class="compare-table">
+ <thead>
+ <tr>
+ <th scope="col">&nbsp;</th>
+ <th scope="col" class="th-us">Boulevard</th>
+ <th scope="col">Spotify</th>
+ </tr>
+ </thead>
+ <tbody>
+ <tr><th scope="row">Music source</th><td class="td-us">AI-generated, end-to-end</td><td>Licensed from labels</td></tr>
+ <tr><th scope="row">Personalization</th><td class="td-us">Track is written for you</td><td>Track is picked for you</td></tr>
+ <tr><th scope="row">Songs per vibe</th><td class="td-us">Generated on demand</td><td>Pulled from a fixed catalog</td></tr>
+ <tr><th scope="row">Free tier</th><td class="td-us">Yes, no ads in audio</td><td>Yes, with audio ads</td></tr>
+ <tr><th scope="row">Costs</th><td class="td-us">Free to start</td><td>$11.99/month</td></tr>
+ <tr><th scope="row">Catalog size</th><td class="td-us">Small &amp; curated</td><td>~100M tracks</td></tr>
+ <tr><th scope="row">Famous artists</th><td class="td-us">None. By design</td><td>Drake, Taylor, etc.</td></tr>
+ <tr><th scope="row">Pays human labels</th><td class="td-us">Not applicable</td><td>~70% of revenue</td></tr>
+ <tr><th scope="row">Human screening</th><td class="td-us">Every track, before release</td><td>Not for catalog tracks</td></tr>
+ <tr><th scope="row">Vibe presets</th><td class="td-us">Focus, workout, sleep, etc.</td><td>Editorial playlists</td></tr>
+ <tr><th scope="row">Works without account</th><td class="td-us">Yes</td><td>Limited</td></tr>
+ <tr><th scope="row">Best for</th><td class="td-us">Background, mood, focus</td><td>Specific songs / artists</td></tr>
+ </tbody>
+ </table>
+ </div>
+ <p class="compare-foot">Boulevard does not compete with Spotify on famous artists. We compete on <em>music that fits the moment</em>.</p>
+ </div>
+</section>
+
+<!-- =====================================================================
+ PRICING SLIVER
+====================================================================== -->
+<!-- Pricing section intentionally removed. Cost is "Free to start" everywhere on the site. -->
+
+<!-- =====================================================================
+ FAQ
+====================================================================== -->
+<section class="faq" id="faq">
+ <div class="container">
+ <p class="eyebrow eyebrow-gold">FAQ</p>
+ <h2 class="section-title">The questions <span class="text-gold-italic">everyone asks.</span></h2>
+ <div class="faq-list">
+ <details open>
+ <summary>What is Boulevard?</summary>
+ <p>Boulevard is an AI music app. It is the <strong>AI alternative to Spotify</strong>. Tap a vibe, get a song nobody has heard before. Every track is generated end to end by AI and screened by a human before it ships. No Drake. No Taylor. No licensed catalog. Free on iOS and Android.</p>
+ </details>
+ <details>
+ <summary>Is Boulevard really an AI music app?</summary>
+ <p>Yes. Every track on Boulevard is composed end-to-end by an AI model. There is no human band, no licensed catalog. Each song is then listened to by a human before it ships, so quality stays high.</p>
+ </details>
+ <details>
+ <summary>Is Boulevard a Spotify alternative?</summary>
+ <p>Yes. Boulevard is the AI alternative to Spotify. Spotify licenses songs from labels and hands you a billion of them. Boulevard generates songs from scratch, tuned to how you feel. Smaller catalog. Stranger artists. Yours alone.</p>
+ </details>
+ <details>
+ <summary>How is Boulevard different from Suno, Udio, or Stable Audio?</summary>
+ <p>Suno, Udio, and Stable Audio are AI music <em>generators</em>. You type a prompt, they make a song you download. Boulevard is an AI music <em>app</em>. You pick a vibe, you listen. We do the prompting, screening, and curation for you. Think Spotify, not Photoshop.</p>
+ </details>
+ <details>
+ <summary>Is Boulevard free?</summary>
+ <p>Yes. Boulevard is a free download. No subscription required. There is a daily listening cap on the free tier.</p>
+ </details>
+ <details>
+ <summary>Can I listen without making an account?</summary>
+ <p>Yes. You can listen anonymously from the moment the app opens. Signing in with Apple, Google, or Facebook syncs your library and taste profile across devices.</p>
+ </details>
+ <details>
+ <summary>Are AI-generated songs copyrighted?</summary>
+ <p>In the United States, the U.S. Copyright Office has stated that purely AI-generated works are not eligible for copyright protection (see <a href="/articles/is-ai-music-copyrighted">our full article on this</a>). Boulevard owns its catalog as a curated product. You can listen freely; commercial reuse of individual tracks requires a license from us.</p>
+ </details>
+ <details>
+ <summary>What devices does Boulevard support?</summary>
+ <p>Boulevard runs on iPhone (iOS 15 or later) and Android (Android 8 or later). Tablets are not supported in the first release. We are an iOS &amp; Android-first app.</p>
+ </details>
+ <details>
+ <summary>Does Boulevard work in the United States?</summary>
+ <p>Yes. Boulevard is built for the U.S. market first, with U.S. English UI and trending content tuned for American listeners. The app works globally, but our content team is in the U.S. and our defaults reflect that.</p>
+ </details>
+ <details>
+ <summary>What kinds of music does Boulevard generate?</summary>
+ <p>Lo-fi, focus, late-night R&amp;B, indie folk, synthwave, ambient, hip-hop, house, acoustic, chillhop, drill, bossa nova, dream pop, jazz, and more. We add genres weekly based on what our listeners actually save.</p>
+ </details>
+ <details>
+ <summary>Do you store my data?</summary>
+ <p>We store only what is needed to make the app work. Your taste profile, listening events, and (if you sign in) an account identifier. We do not sell personal information. Full details in our <a href="/privacy-policy">Privacy Policy</a>.</p>
+ </details>
+ </div>
+
+ <p class="faq-foot">More questions? Read our <a href="/articles">articles</a> on AI music, Spotify alternatives, and how Boulevard works.</p>
+ </div>
+</section>
+
+<!-- =====================================================================
+ ARTICLES TEASER. Internal-linking + topical authority for SEO/AEO
+====================================================================== -->
+<section class="articles-teaser" id="articles-teaser">
+ <div class="container">
+ <p class="eyebrow eyebrow-gold">Read first</p>
+ <h2 class="section-title">Going down <span class="text-gold-italic">the rabbit hole?</span></h2>
+ <p class="section-sub">If you are picking between Spotify, Suno, Udio, Apple Music, and Boulevard. Start here. Plain-English explainers, no SEO fluff.</p>
+
+ <div class="articles-grid">
+ <a class="article-card" href="/articles/spotify-alternatives-2026">
+ <p class="article-tag">Comparison</p>
+ <h3>Spotify alternatives in 2026: 9 apps worth trying</h3>
+ <p class="article-sub">Including a free AI one most people haven't heard of.</p>
+ <span class="article-link">Read article →</span>
+ </a>
+ <a class="article-card" href="/articles/best-ai-music-apps-2026">
+ <p class="article-tag">Roundup</p>
+ <h3>The best AI music apps in 2026, tested</h3>
+ <p class="article-sub">Suno, Udio, Stable Audio, Boulevard, and the ones not worth your time.</p>
+ <span class="article-link">Read article →</span>
+ </a>
+ <a class="article-card" href="/articles/why-americans-quit-spotify">
+ <p class="article-tag">Trend</p>
+ <h3>5 reasons Americans are quitting Spotify in 2026</h3>
+ <p class="article-sub">From Joe Rogan to the $11.99 price hike to the AI moment.</p>
+ <span class="article-link">Read article →</span>
+ </a>
+ </div>
+
+ <div class="articles-foot">
+ <a class="ghost-cta" href="/articles">See all articles →</a>
+ </div>
+ </div>
+</section>
+
+<!-- =====================================================================
+ DOWNLOAD CTA
+====================================================================== -->
+<section class="download" id="download">
+ <div class="download-bg" aria-hidden="true"></div>
+ <div class="container download-inner">
+ <p class="eyebrow eyebrow-gold">Ready?</p>
+ <h2 class="cta-title">The next song you love <span class="text-gold-italic">hasn't been written yet.</span></h2>
+ <p class="cta-sub">Free to start. Free to listen. Available on iOS and Android.</p>
+ <div class="cta-row cta-row-center">
+ <a class="badge" href="#" aria-label="Get it on Google Play">
+ <svg viewBox="0 0 180 54" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+ <rect width="180" height="54" rx="8" fill="#000"/>
+ <rect x="0.5" y="0.5" width="179" height="53" rx="7.5" fill="none" stroke="#A6A6A6" stroke-width="1"/>
+ <g transform="translate(14 12)">
+ <path d="M0.4 0.4C0.15 0.65 0 1.05 0 1.55v26.9c0 0.5 0.15 0.9 0.4 1.15l13.85-13.95v-1.7L0.4 0.4z" fill="#3884FF"/>
+ <path d="M14.25 13.95L0.4 0.4l0.05-0.05c0.5-0.55 1.35-0.6 2-0.2l16.65 9.45-4.85 4.35z" fill="#34D058"/>
+ <path d="M19.1 18.6L14.25 23.45l-0.05-0.05L0.4 30c-0.65 0.4-1.5 0.35-2-0.2l13.85-13.85L19.1 18.6z" fill="#EA4335"/>
+ <path d="M19.1 18.6l-4.85-4.65L19.1 9.6l4.95 2.85c1.4 0.8 1.4 2.5 0 3.3l-4.95 2.85z" fill="#FBC02D"/>
+ </g>
+ <text x="50" y="22" fill="#fff" font-family="Roboto, Arial, sans-serif" font-size="9" font-weight="400">GET IT ON</text>
+ <text x="50" y="40" fill="#fff" font-family="Roboto, Arial, sans-serif" font-size="19" font-weight="500" letter-spacing="-0.5">Google Play</text>
+ </svg>
+ </a>
+ <a class="badge" href="#" aria-label="Download on the App Store">
+ <svg viewBox="0 0 180 54" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+ <rect width="180" height="54" rx="8" fill="#000"/>
+ <rect x="0.5" y="0.5" width="179" height="53" rx="7.5" fill="none" stroke="#A6A6A6" stroke-width="1"/>
+ <g transform="translate(15 11)" fill="#fff">
+ <path d="M17.9 16.4c0-2.85 1.5-5.4 3.65-6.95C20.2 7.45 18.05 6.05 15.7 5.85c-2.4-0.25-4.8 1.45-6.05 1.45-1.3 0-3.25-1.4-5.35-1.35-2.75 0.05-5.3 1.6-6.7 4.1-2.9 5.05-0.75 12.55 2.05 16.65 1.4 2.05 3.05 4.3 5.2 4.2 2.1-0.05 2.9-1.35 5.45-1.35 2.5 0 3.25 1.35 5.45 1.3 2.25-0.05 3.7-2.05 5.05-4.1 0.95-1.45 1.7-3 2.3-4.6-2.55-1.1-4.2-3.55-4.2-7.45z"/>
+ <path d="M14 3.15c1.1-1.3 1.75-3.05 1.5-4.85-1.5 0.05-3.35 1-4.45 2.3-1 1.15-1.85 2.95-1.6 4.7 1.65 0.15 3.4-0.85 4.55-2.15z"/>
+ </g>
+ <text x="50" y="22" fill="#fff" font-family="Helvetica, Arial, sans-serif" font-size="9" font-weight="400">Download on the</text>
+ <text x="50" y="40" fill="#fff" font-family="Helvetica, Arial, sans-serif" font-size="20" font-weight="500" letter-spacing="-0.5">App Store</text>
+ </svg>
+ </a>
+ </div>
+ </div>
+</section>
+
+<!-- =====================================================================
+ FOOTER
+====================================================================== -->
+<footer class="footer">
+ <div class="container footer-inner">
+ <div class="footer-brand">
+ <a class="brand" href="/">
+ <span class="brand-mark">B</span>
+ <span class="brand-word">Boulevard</span>
+ </a>
+ <p class="footer-tag">AI music, made for you.</p>
+ </div>
+ <div class="footer-cols">
+ <div class="footer-col">
+ <h4>Product</h4>
+ <a href="#features">Features</a>
+ <a href="#listen">Listen</a>
+ <a href="#how">How it works</a>
+ <a href="#faq">FAQ</a>
+ </div>
+ <div class="footer-col">
+ <h4>Best articles</h4>
+ <a href="/articles/spotify-alternatives-2026">Spotify alternatives</a>
+ <a href="/articles/why-americans-quit-spotify">Why Americans quit Spotify</a>
+ <a href="/articles/drake-ai-songs">Drake AI songs</a>
+ <a href="/articles/will-ai-replace-drake-taylor">Will AI replace Drake &amp; Taylor</a>
+ <a href="/articles/spotify-ghost-artists">Spotify ghost artists</a>
+ <a href="/articles">All articles →</a>
+ </div>
+ <div class="footer-col">
+ <h4>Guides</h4>
+ <a href="/articles/ai-music">AI music guide</a>
+ <a href="/articles/spotify-alternative">Spotify alternative guide</a>
+ <a href="/articles/best-ai-music-apps-2026">Best AI music apps</a>
+ <a href="/articles/boulevard-vs-suno">Boulevard vs. Suno</a>
+ </div>
+ <div class="footer-col">
+ <h4>Legal &amp; contact</h4>
+ <a href="/privacy-policy">Privacy</a>
+ <a href="/terms">Terms</a>
+ <a href="/delete-account">Delete account</a>
+ <a href="mailto:august@magnamarketing.io">august@magnamarketing.io</a>
+ </div>
+ </div>
+ </div>
+ <div class="container footer-bottom">
+ <span>© 2026 Boulevard · boulevardai.app</span>
+ <span>Made in Copenhagen.</span>
+ </div>
+</footer>
+
+<!-- =====================================================================
+ STICKY NOW-PLAYING
+====================================================================== -->
+<div class="np" id="np" hidden>
+ <div class="np-cover" id="np-cover"></div>
+ <div class="np-meta">
+ <div class="np-title" id="np-title"></div>
+ <div class="np-sub" id="np-sub"></div>
+ </div>
+ <button class="np-btn" id="np-toggle" aria-label="Play / pause">
+ <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+ <path id="np-icon" d="M8 5v14l11-7z" fill="#1a1408"/>
+ </svg>
+ </button>
 </div>
+
+<script>
+(function () {
+ const SUPABASE_URL = 'https://psmgmshfcjxgujfmsfcx.supabase.co';
+ const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBzbWdtc2hmY2p4Z3VqZm1zZmN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NTY4MTYsImV4cCI6MjA5NDEzMjgxNn0.yzQRTHcKesnXc7vENzFW5reWj1WYD_53eie0osBgiX0';
+
+ const tracksEl = document.getElementById('tracks');
+ const audio = document.getElementById('audio-element');
+ const np = document.getElementById('np');
+ const npCover = document.getElementById('np-cover');
+ const npTitle = document.getElementById('np-title');
+ const npSub = document.getElementById('np-sub');
+ const npIcon = document.getElementById('np-icon');
+ const npToggle = document.getElementById('np-toggle');
+
+ const PLAY_PATH = 'M8 5v14l11-7z';
+ const PAUSE_PATH = 'M6 5h4v14H6zM14 5h4v14h-4z';
+
+ let currentId = null;
+ function cap(s) { return s ? s.charAt(0).toUpperCase() + s.slice(1) : ''; }
+
+ function setPlaying(playing) {
+ npIcon.setAttribute('d', playing ? PAUSE_PATH : PLAY_PATH);
+ document.querySelectorAll('.track').forEach((el) => {
+ el.classList.toggle('is-playing', el.dataset.id === currentId && playing);
+ });
+ }
+
+ function play(song) {
+ if (currentId === song.id && !audio.paused) {
+ audio.pause();
+ return;
+ }
+ if (currentId !== song.id) {
+ audio.src = song.audio_url;
+ currentId = song.id;
+ npCover.style.backgroundImage = `url('${song.cover_url}')`;
+ npTitle.textContent = song.title || 'Untitled';
+ npSub.textContent = [cap(song.mood), cap(song.genre)].filter(Boolean).join(' · ') || 'Boulevard';
+ np.hidden = false;
+ }
+ audio.play().catch(() => {});
+ }
+
+ audio.addEventListener('play', () => setPlaying(true));
+ audio.addEventListener('pause', () => setPlaying(false));
+ audio.addEventListener('ended', () => setPlaying(false));
+
+ npToggle.addEventListener('click', () => {
+ if (!audio.src) return;
+ if (audio.paused) audio.play().catch(() => {});
+ else audio.pause();
+ });
+
+ function trackEl(song, i) {
+ const el = document.createElement('button');
+ el.className = 'track';
+ el.dataset.id = song.id;
+ el.type = 'button';
+ el.innerHTML = `
+ <div class="track-cover" style="background-image:url('${song.cover_url}')">
+ <span class="track-rank">${String(i + 1).padStart(2, '0')}</span>
+ <span class="track-play"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M8 5v14l11-7z" fill="#1a1408"/></svg></span>
+ <span class="track-pause"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M6 5h4v14H6zM14 5h4v14h-4z" fill="#1a1408"/></svg></span>
+ </div>
+ <div class="track-meta">
+ <div class="track-title">${song.title || 'Untitled'}</div>
+ <div class="track-sub">${cap(song.mood)} · ${cap(song.genre)}</div>
+ </div>`;
+ el.addEventListener('click', () => play(song));
+ return el;
+ }
+
+ const url = `${SUPABASE_URL}/rest/v1/songs?is_live=eq.true&approved_by_human=eq.true&approval_status=eq.approved&order=launch_score.desc.nullslast&limit=10`;
+ fetch(url, { headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` } })
+ .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+ .then((songs) => {
+ if (!Array.isArray(songs) || songs.length === 0) throw new Error('empty');
+ tracksEl.innerHTML = '';
+ songs.forEach((s, i) => tracksEl.appendChild(trackEl(s, i)));
+ })
+ .catch(() => {
+ document.getElementById('listen').style.display = 'none';
+ });
+})();
+</script>
+
 </body>
 </html>
