@@ -1,0 +1,811 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Boulevard Admin. Music Factory Review</title>
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="theme-color" content="#0a0a0c" />
+<link rel="icon" href="/favicon.ico" sizes="any" />
+<link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+ :root {
+ --bg:#0a0a0c; --fg:#ffffff; --muted:rgba(255,255,255,0.66);
+ --card:#15151a; --card-2:#1c1c22;
+ --border:rgba(255,255,255,0.08); --border-strong:rgba(255,255,255,0.16);
+ --gold:#c8ae7a; --gold-hi:#e3cb98; --gold-deep:#a48a5c;
+ --accent:#c8ae7a; --good:#10b981; --bad:#ef4444; --warn:#f59e0b;
+ }
+ * { box-sizing:border-box; }
+ body { margin:0; font:14px/1.5 "Inter", -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif; background:var(--bg); color:var(--fg); -webkit-font-smoothing:antialiased; }
+ header { padding:16px 24px; border-bottom:1px solid var(--border); display:flex; gap:16px; align-items:center; flex-wrap:wrap; background:rgba(10,10,12,0.72); backdrop-filter:saturate(160%) blur(20px); position:sticky; top:0; z-index:50; }
+ header .brand-mark { width:34px; height:34px; background:url('/icons/logo-transparent-128.png') center / contain no-repeat; display:inline-block; flex-shrink:0; text-indent:-9999em; overflow:hidden; filter:drop-shadow(0 4px 14px rgba(200,174,122,0.18)); }
+ header h1 { font-family:"Fraunces", serif; font-size:18px; margin:0; font-weight:500; letter-spacing:-0.3px; }
+ header h1 small { font-size:10.5px; color:var(--gold); letter-spacing:2.4px; text-transform:uppercase; font-family:"Inter", sans-serif; margin-left:10px; font-weight:600; }
+ header .stats { color:var(--muted); font-size:13px; }
+ header .who { color:var(--muted); font-size:12px; margin-right:6px; }
+ .controls { display:flex; gap:8px; flex-wrap:wrap; padding:14px 24px; border-bottom:1px solid var(--border); align-items:center; background:#0d0d10; }
+ .controls input, .controls select { background:var(--card); border:1px solid var(--border); color:var(--fg); padding:8px 12px; border-radius:8px; font:inherit; transition:border-color .15s; }
+ .controls input:focus, .controls select:focus { outline:none; border-color:var(--gold); }
+ .controls button { background:linear-gradient(180deg,var(--gold-hi),var(--gold)); border:none; color:#1a1408; padding:8px 14px; border-radius:8px; font-weight:600; cursor:pointer; font:inherit; box-shadow:0 4px 14px rgba(200,174,122,0.22); transition:transform .15s, filter .15s; }
+ .controls button:hover { transform:translateY(-1px); filter:brightness(1.06); }
+ .controls button.secondary { background:var(--card-2); color:var(--fg); border:1px solid var(--border-strong); box-shadow:none; }
+ .controls button.secondary:hover { border-color:var(--gold); color:var(--gold-hi); }
+ main { padding:18px 24px 80px; display:grid; grid-template-columns:repeat(auto-fill,minmax(380px,1fr)); gap:16px; }
+ .card { background:linear-gradient(180deg, var(--card) 0%, #11111600 100%); border:1px solid var(--border); border-radius:14px; padding:16px; display:flex; flex-direction:column; gap:10px; transition:opacity .2s, transform .2s, border-color .15s, box-shadow .15s; }
+ .card.focus { border-color:var(--gold); box-shadow:0 0 0 1px var(--gold), 0 16px 36px rgba(0,0,0,0.4); }
+ .card.leaving { opacity:0; transform:scale(.96); pointer-events:none; }
+ .card .head { display:flex; gap:12px; align-items:flex-start; }
+ .card .cover { width:64px; height:64px; border-radius:10px; background:var(--card-2) center/cover no-repeat; flex:none; border:1px solid var(--border); }
+ .card .head .title { flex:1; min-width:0; }
+ .card h3 { margin:0; font-family:"Fraunces", serif; font-size:16px; font-weight:500; letter-spacing:-0.2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+ .card .meta { color:var(--muted); font-size:12px; margin-top:2px; }
+ .card audio { width:100%; margin-top:6px; height:42px; filter:invert(0.85) hue-rotate(180deg); }
+ .card .row { display:flex; gap:6px; flex-wrap:wrap; }
+ .pill { font-size:10.5px; padding:3px 9px; border-radius:99px; background:rgba(255,255,255,0.06); color:var(--muted); letter-spacing:0.3px; font-weight:500; }
+ /* Distribution-stage badges. Color encodes lifecycle, not severity. */
+ .stage { font-size:10.5px; padding:3px 10px; border-radius:99px; font-weight:600; letter-spacing:0.4px; text-transform:uppercase; }
+ .stage-new_test { background:rgba(255,255,255,0.08); color:#cfd2d8; }
+ .stage-rising { background:rgba(200,174,122,0.18); color:#e3c896; border:1px solid rgba(200,174,122,0.35); }
+ .stage-trending { background:rgba(74,222,128,0.16); color:#9beba8; border:1px solid rgba(74,222,128,0.30); }
+ .stage-suppressed { background:rgba(239,68,68,0.14); color:#f99; border:1px solid rgba(239,68,68,0.28); }
+ .microtag-row { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; }
+ .microtag { font-size:10px; padding:2px 7px; border-radius:99px; background:rgba(138,123,255,0.10); color:#bdb5ff; font-family:"SF Mono","Menlo",monospace; letter-spacing:0.2px; }
+ .dist-row { display:flex; gap:14px; flex-wrap:wrap; font-size:11px; color:var(--muted); margin-top:2px; }
+ .dist-row b { color:#fff; font-weight:600; font-variant-numeric:tabular-nums; }
+ .skip-risk { color:#f99; }
+ /* Pre-listen reminder so reviewers don't approve a wallart/voice mismatch. */
+ .vocal-banner { font-size:12px; padding:8px 10px; border-radius:8px; background:rgba(255,255,255,0.04); border:1px solid rgba(200,174,122,0.30); color:#cfd2d8; margin:6px 0; }
+ .vocal-banner b { color:#e3c896; text-transform:capitalize; }
+ .vocal-banner-sub { color:rgba(255,255,255,0.45); font-size:11px; margin-left:6px; }
+ /* Pre-decided lyric intent — shows what Boulevard asked Sunor to write. */
+ .intent-banner { font-size:12px; padding:8px 10px; border-radius:8px; background:rgba(138,123,255,0.06); border:1px solid rgba(138,123,255,0.28); color:#cfd2d8; margin:6px 0; line-height:1.45; }
+ .intent-banner b { color:#bdb5ff; }
+ .intent-banner .intent-row { display:flex; gap:8px; flex-wrap:wrap; }
+ .intent-banner .intent-tag { font-size:10px; padding:1px 6px; border-radius:99px; background:rgba(138,123,255,0.16); color:#bdb5ff; font-family:"SF Mono","Menlo",monospace; }
+ .intent-banner.mismatch { background:rgba(239,68,68,0.10); border-color:rgba(239,68,68,0.45); }
+ .intent-banner.mismatch b { color:#f99; }
+ .intent-banner.mismatch .intent-tag { background:rgba(239,68,68,0.18); color:#f99; }
+ .mismatch-badge { display:inline-block; font-size:10px; padding:2px 7px; border-radius:99px; background:rgba(239,68,68,0.18); color:#f99; border:1px solid rgba(239,68,68,0.40); margin-left:6px; font-family:"SF Mono","Menlo",monospace; }
+ .override-badge { display:inline-block; font-size:10px; padding:2px 7px; border-radius:99px; background:rgba(74,222,128,0.16); color:#9beba8; border:1px solid rgba(74,222,128,0.35); margin-left:6px; font-family:"SF Mono","Menlo",monospace; }
+ /* Auto-detected review-flag chips on the intent banner. */
+ .flag-chips { display:flex; flex-wrap:wrap; gap:6px; margin-top:6px; }
+ .flag-chip { display:inline-block; font-size:10px; padding:2px 8px; border-radius:99px; background:rgba(239,68,68,0.14); color:#f9a8a8; border:1px solid rgba(239,68,68,0.30); font-family:"SF Mono","Menlo",monospace; letter-spacing:0.2px; }
+ .flag-chorus_forced { background:rgba(216,190,138,0.14); color:#e3c896; border-color:rgba(216,190,138,0.30); }
+ .flag-lyrics_generic { background:rgba(138,123,255,0.12); color:#bdb5ff; border-color:rgba(138,123,255,0.30); }
+ /* Title override row — reviewer can approve a song and rename it. */
+ .retitle-row { display:flex; gap:6px; margin-top:8px; }
+ .retitle-input { flex:1; padding:6px 10px; border-radius:8px; background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.10); color:#fff; font:inherit; font-size:13px; }
+ .retitle-input:focus { outline:none; border-color:rgba(216,190,138,0.45); }
+ .btn-retitle { padding:6px 12px; border-radius:8px; border:1px solid rgba(216,190,138,0.40); background:rgba(216,190,138,0.10); color:#e3c896; cursor:pointer; font:inherit; font-size:12px; font-weight:600; }
+ .btn-retitle:hover { background:rgba(216,190,138,0.18); }
+ /* Rollup pill — green when fresh, red when stale (no cron run in 2h). */
+ .rollup-pill { font-size:11px; padding:3px 9px; border-radius:99px; background:rgba(74,222,128,0.12); color:#9beba8; border:1px solid rgba(74,222,128,0.30); margin-left:12px; font-variant-numeric:tabular-nums; }
+ .rollup-pill.rollup-stale { background:rgba(239,68,68,0.16); color:#f99; border-color:rgba(239,68,68,0.40); }
+ .actions { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+ .actions button { flex:1; padding:8px 0; border-radius:8px; border:none; font-weight:600; cursor:pointer; font:inherit; transition:filter .15s, transform .12s; }
+ .actions button:hover { filter:brightness(1.08); }
+ .actions button:active { transform:scale(0.985); }
+ .btn-approve { background:linear-gradient(180deg, #14d895, var(--good)); color:#001b10; }
+ .btn-reject { background:linear-gradient(180deg, #f47171, var(--bad)); color:#fff; }
+ .btn-regen { background:linear-gradient(180deg, #ffba4a, var(--warn)); color:#211003; }
+ .rate { display:flex; gap:3px; }
+ .rate button { width:26px; height:26px; padding:0; border:1px solid var(--border); background:var(--card); color:var(--fg); border-radius:6px; cursor:pointer; font-size:11px; font-weight:600; transition:all .12s; }
+ .rate button:hover { border-color:var(--gold); }
+ .rate button.on { background:linear-gradient(180deg, var(--gold-hi), var(--gold)); color:#1a1408; border-color:var(--gold); }
+ .reasons { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; }
+ .reasons .label { font-size:11px; color:var(--muted); width:100%; margin-bottom:4px; letter-spacing:1.6px; text-transform:uppercase; }
+ .reasons button { font-size:11px; padding:4px 10px; border:1px solid var(--border); background:rgba(0,0,0,0.25); color:var(--muted); border-radius:99px; cursor:pointer; transition:all .12s; }
+ .reasons button:hover { border-color:var(--border-strong); }
+ .reasons button.on { background:rgba(239,68,68,0.15); color:#fca5a5; border-color:var(--bad); }
+ .lyrics { max-height:90px; overflow:auto; font-size:12px; color:var(--muted); background:rgba(0,0,0,0.25); padding:10px 12px; border-radius:8px; white-space:pre-wrap; border:1px solid var(--border); line-height:1.45; }
+ .empty { padding:60px; text-align:center; color:var(--muted); font-family:"Fraunces", serif; font-size:18px; font-style:italic; }
+ /* Sign-in card */
+ #auth { padding:32px; max-width:440px; margin:80px auto; background:var(--card); border:1px solid var(--border); border-radius:16px; box-shadow:0 30px 60px rgba(0,0,0,0.4); }
+ #auth h2 { font-family:"Fraunces", serif; font-weight:500; margin:0 0 6px; font-size:24px; letter-spacing:-0.6px; }
+ #auth .sub { color:var(--muted); font-size:13px; margin:0 0 22px; line-height:1.55; }
+ #auth label { display:block; font-size:11px; color:var(--muted); letter-spacing:1.6px; text-transform:uppercase; margin:14px 0 6px; font-weight:600; }
+ #auth input { width:100%; background:#0d0d10; border:1px solid var(--border-strong); color:var(--fg); padding:11px 14px; border-radius:10px; font:inherit; transition:border-color .15s; }
+ #auth input:focus { outline:none; border-color:var(--gold); }
+ #auth .primary { width:100%; margin-top:18px; background:linear-gradient(180deg,var(--gold-hi),var(--gold)); border:none; color:#1a1408; padding:12px 18px; border-radius:10px; font-weight:600; cursor:pointer; font:inherit; box-shadow:0 6px 18px rgba(200,174,122,0.22); transition:transform .15s, filter .15s; }
+ #auth .primary:hover { transform:translateY(-1px); filter:brightness(1.06); }
+ #auth .primary:disabled { opacity:0.5; cursor:wait; transform:none; }
+ #auth .google { width:100%; margin-top:10px; background:#fff; border:none; color:#1a1408; padding:12px 18px; border-radius:10px; font-weight:600; cursor:pointer; font:inherit; display:flex; align-items:center; justify-content:center; gap:10px; transition:filter .15s; }
+ #auth .google:hover { filter:brightness(0.97); }
+ #auth .google svg { width:18px; height:18px; }
+ #auth .divider { display:flex; align-items:center; gap:12px; margin:22px 0 14px; color:rgba(255,255,255,0.35); font-size:11px; letter-spacing:2px; text-transform:uppercase; }
+ #auth .divider::before, #auth .divider::after { content:""; flex:1; height:1px; background:var(--border); }
+ #auth .row-2 { display:flex; gap:10px; align-items:center; margin-top:14px; font-size:13px; color:var(--muted); }
+ #auth .row-2 a { color:var(--gold); text-decoration:none; cursor:pointer; }
+ #auth .row-2 a:hover { text-decoration:underline; }
+ #auth .error { margin-top:14px; padding:10px 12px; border-radius:8px; background:rgba(239,68,68,0.10); border:1px solid rgba(239,68,68,0.35); color:#fca5a5; font-size:13px; line-height:1.5; }
+ #auth .ok { margin-top:14px; padding:10px 12px; border-radius:8px; background:rgba(16,185,129,0.10); border:1px solid rgba(16,185,129,0.35); color:#86efac; font-size:13px; line-height:1.5; }
+ /* Team modal */
+ .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; z-index:100; padding:24px; }
+ .modal { background:var(--card); border:1px solid var(--border-strong); border-radius:16px; width:100%; max-width:560px; box-shadow:0 30px 60px rgba(0,0,0,0.5); max-height:90vh; display:flex; flex-direction:column; }
+ .modal .head { padding:18px 22px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; }
+ .modal .head h2 { margin:0; font-family:"Fraunces", serif; font-weight:500; font-size:20px; letter-spacing:-0.3px; }
+ .modal .head .close { margin-left:auto; background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:22px; padding:4px 10px; line-height:1; border-radius:8px; }
+ .modal .head .close:hover { color:var(--fg); background:var(--card-2); }
+ .modal .body { padding:18px 22px; overflow:auto; }
+ .invite-row { display:flex; gap:8px; margin-bottom:18px; }
+ .invite-row input { flex:1; background:#0d0d10; border:1px solid var(--border-strong); color:var(--fg); padding:10px 14px; border-radius:10px; font:inherit; }
+ .invite-row input:focus { outline:none; border-color:var(--gold); }
+ .invite-row button { background:linear-gradient(180deg,var(--gold-hi),var(--gold)); border:none; color:#1a1408; padding:10px 18px; border-radius:10px; font-weight:600; cursor:pointer; font:inherit; box-shadow:0 4px 14px rgba(200,174,122,0.22); }
+ .invite-row button:disabled { opacity:0.5; cursor:wait; }
+ .team-list { display:flex; flex-direction:column; gap:8px; }
+ .team-row { display:flex; align-items:center; gap:12px; padding:10px 12px; border:1px solid var(--border); border-radius:10px; background:rgba(255,255,255,0.02); }
+ .team-row .avatar { width:32px; height:32px; border-radius:50%; background:linear-gradient(135deg, var(--gold-deep), var(--gold-hi)); display:flex; align-items:center; justify-content:center; font-weight:700; color:#1a1408; font-size:13px; flex:none; }
+ .team-row .info { flex:1; min-width:0; }
+ .team-row .info .email { font-size:14px; font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+ .team-row .info .meta { font-size:11px; color:var(--muted); margin-top:2px; }
+ .team-row .status { font-size:10.5px; padding:3px 9px; border-radius:99px; font-weight:600; letter-spacing:0.4px; text-transform:uppercase; }
+ .status-active { background:rgba(74,222,128,0.16); color:#9beba8; border:1px solid rgba(74,222,128,0.30); }
+ .status-pending { background:rgba(245,158,11,0.16); color:#fcd34d; border:1px solid rgba(245,158,11,0.30); }
+ .team-row .remove { background:transparent; border:1px solid var(--border-strong); color:var(--muted); padding:6px 10px; border-radius:8px; cursor:pointer; font:inherit; font-size:12px; transition:all .15s; }
+ .team-row .remove:hover { border-color:var(--bad); color:#fca5a5; }
+ .team-row .you { font-size:10.5px; color:var(--gold); padding:3px 9px; border-radius:99px; border:1px solid rgba(200,174,122,0.30); background:rgba(200,174,122,0.10); font-weight:600; letter-spacing:0.4px; text-transform:uppercase; }
+ #team-msg { margin-top:14px; padding:10px 12px; border-radius:8px; font-size:13px; line-height:1.5; }
+ #team-msg.ok { background:rgba(16,185,129,0.10); border:1px solid rgba(16,185,129,0.35); color:#86efac; }
+ #team-msg.err { background:rgba(239,68,68,0.10); border:1px solid rgba(239,68,68,0.35); color:#fca5a5; }
+ .toast { position:fixed; bottom:18px; right:18px; background:var(--card); border:1px solid var(--border-strong); padding:11px 16px; border-radius:10px; box-shadow:0 14px 32px rgba(0,0,0,0.5); animation:toast-in .2s ease-out; z-index:200; }
+ @keyframes toast-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+ .progress { padding:12px 24px 16px; border-bottom:1px solid var(--border); background:#0d0d10; }
+ .progress .row { display:flex; align-items:center; gap:12px; margin-bottom:8px; }
+ .progress .label { font-size:13px; font-weight:600; }
+ .progress .stats { font-size:12px; color:var(--muted); }
+ .progress .bar { height:8px; background:rgba(255,255,255,0.06); border-radius:99px; overflow:hidden; border:1px solid var(--border); }
+ .progress .fill { height:100%; background:linear-gradient(90deg, var(--gold-hi), var(--gold)); transition:width .3s; }
+ .keyhint { font-size:11.5px; color:var(--muted); padding:8px 24px 4px; }
+ .keyhint kbd { background:var(--card); padding:2px 7px; border-radius:5px; border:1px solid var(--border); font-family:ui-monospace, Menlo, monospace; color:var(--fg); font-size:10.5px; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.4';
+
+const $ = (q,r=document)=>r.querySelector(q);
+const $$ = (q,r=document)=>[...r.querySelectorAll(q)];
+
+let supabase = null;        // Supabase JS client, created after fetching config
+let session = null;         // current auth session (with access_token)
+let me = null;              // { user, admin } from /api/admin/me
+
+// ---------------------------------------------------------------------------
+// Bootstrap: fetch the Supabase URL + anon key from the function, then init.
+// Falls back to a useful error screen if the env vars aren't configured.
+// ---------------------------------------------------------------------------
+async function bootstrap() {
+  try {
+    const r = await fetch('/api/admin/config');
+    if (!r.ok) throw new Error(await r.text());
+    const cfg = await r.json();
+    supabase = createClient(cfg.supabase_url, cfg.supabase_anon_key, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+    });
+  } catch (e) {
+    $('#app').innerHTML = `
+      <div id="auth">
+        <h2>Admin unavailable</h2>
+        <p class="sub">Supabase auth config failed to load. Make sure <code style="color:var(--gold)">SUPABASE_ANON_KEY</code> is set in Netlify env vars.</p>
+        <div class="error">${escapeHtml(e.message)}</div>
+      </div>`;
+    return;
+  }
+  // OAuth redirects come back with #access_token=… in the URL. Let Supabase
+  // pull it out, then move on.
+  const { data: { session: s } } = await supabase.auth.getSession();
+  session = s;
+  supabase.auth.onAuthStateChange((_evt, s2) => {
+    session = s2;
+    if (!s2) { me = null; renderAuth(); }
+  });
+  await route();
+}
+
+async function route() {
+  if (!session) return renderAuth();
+  // Hit /api/admin/me to confirm the signed-in user is in the allowlist.
+  try {
+    me = await api('/api/admin/me');
+  } catch (e) {
+    me = null;
+    if (e.status === 401) return renderNotAuthorized(e);
+    return renderAuth(e.message);
+  }
+  await renderDashboard();
+}
+
+// ---------------------------------------------------------------------------
+// Auth APIs — fetch wrapper that pins the current access_token automatically.
+// ---------------------------------------------------------------------------
+async function api(path, opts = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(opts.headers || {}),
+  };
+  if (session?.access_token) headers['Authorization'] = 'Bearer ' + session.access_token;
+  const r = await fetch(path, { ...opts, headers });
+  if (!r.ok) {
+    const txt = await r.text();
+    const err = new Error(txt || r.statusText);
+    err.status = r.status;
+    throw err;
+  }
+  const ct = r.headers.get('content-type') || '';
+  return ct.includes('application/json') ? r.json() : r.text();
+}
+
+function toast(msg) {
+  const el = document.createElement('div'); el.className = 'toast'; el.textContent = msg;
+  document.body.appendChild(el); setTimeout(() => el.remove(), 2400);
+}
+
+// ---------------------------------------------------------------------------
+// Sign-in screen — email/password + Google. No shared token.
+// ---------------------------------------------------------------------------
+function renderAuth(prefillError) {
+  $('#app').innerHTML = `
+    <div id="auth">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px">
+        <span style="width:40px; height:40px; background:url('/icons/logo-transparent-128.png') center / contain no-repeat; display:inline-block; flex-shrink:0; filter:drop-shadow(0 4px 14px rgba(200,174,122,0.18));"></span>
+        <span style="font-family:Fraunces,serif; font-size:18px; font-weight:600; letter-spacing:-0.3px">Boulevard</span>
+        <span style="font-size:10.5px; color:var(--gold); letter-spacing:2.4px; text-transform:uppercase; font-weight:600; margin-left:auto">Admin</span>
+      </div>
+      <h2>Sign in</h2>
+      <p class="sub">Access is limited to invited team members. Need an invite? Ask an existing admin to add you from the Team panel.</p>
+
+      <button class="google" id="btn-google" type="button">
+        <svg viewBox="0 0 18 18" aria-hidden="true"><path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z" fill="#4285F4"/><path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/><path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/><path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/></svg>
+        Continue with Google
+      </button>
+
+      <div class="divider">or</div>
+
+      <label for="email">Email</label>
+      <input id="email" type="email" placeholder="you@example.com" autocomplete="email" />
+      <label for="password">Password</label>
+      <input id="password" type="password" placeholder="••••••••" autocomplete="current-password" />
+      <button class="primary" id="btn-signin" type="button">Sign in</button>
+
+      <div class="row-2">
+        <span>Need to reset your password?</span>
+        <a id="btn-reset">Send reset link</a>
+      </div>
+
+      <div id="auth-msg"></div>
+    </div>`;
+
+  if (prefillError) showAuthMsg(prefillError, 'error');
+
+  $('#btn-google').onclick = async () => {
+    setAuthMsg('');
+    try {
+      const redirectTo = `${window.location.origin}/admin/`;
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo },
+      });
+      if (error) throw error;
+    } catch (e) {
+      showAuthMsg(e.message || 'Google sign-in failed', 'error');
+    }
+  };
+
+  $('#btn-signin').onclick = async () => {
+    const email = $('#email').value.trim();
+    const password = $('#password').value;
+    if (!email || !password) { showAuthMsg('Email and password required', 'error'); return; }
+    const btn = $('#btn-signin'); btn.disabled = true; btn.textContent = 'Signing in…';
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      session = data.session;
+      await route();
+    } catch (e) {
+      showAuthMsg(e.message || 'Sign-in failed', 'error');
+    } finally {
+      btn.disabled = false; btn.textContent = 'Sign in';
+    }
+  };
+
+  $('#btn-reset').onclick = async () => {
+    const email = $('#email').value.trim();
+    if (!email) { showAuthMsg('Enter your email above first', 'error'); return; }
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/admin/`,
+      });
+      if (error) throw error;
+      showAuthMsg('Reset link sent. Check your email.', 'ok');
+    } catch (e) {
+      showAuthMsg(e.message || 'Could not send reset link', 'error');
+    }
+  };
+
+  // Enter submits.
+  ['email','password'].forEach(id => {
+    $('#'+id).addEventListener('keyup', e => { if (e.key === 'Enter') $('#btn-signin').click(); });
+  });
+
+  setTimeout(() => $('#email').focus(), 50);
+}
+function showAuthMsg(msg, kind) {
+  const el = $('#auth-msg'); if (!el) return;
+  el.className = kind === 'ok' ? 'ok' : 'error';
+  el.textContent = msg;
+}
+function setAuthMsg(s) { const el = $('#auth-msg'); if (el) el.textContent = s; }
+
+// Distinct screen for "signed in, not allowlisted" — easier to recover from
+// than just bouncing back to the login form with a confusing error.
+function renderNotAuthorized(err) {
+  const email = session?.user?.email || '(unknown)';
+  $('#app').innerHTML = `
+    <div id="auth">
+      <h2>Not an admin yet</h2>
+      <p class="sub">You're signed in as <b style="color:var(--fg)">${escapeHtml(email)}</b>, but this email isn't on the Boulevard admin team. Ask an existing admin to invite you, then sign in again.</p>
+      <button class="primary" id="btn-signout">Sign out</button>
+    </div>`;
+  $('#btn-signout').onclick = async () => {
+    await supabase.auth.signOut();
+    session = null; renderAuth();
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard — review queue + team panel. Keeps the existing keyboard flow.
+// ---------------------------------------------------------------------------
+async function renderDashboard() {
+  const email = me?.user?.email || '';
+  $('#app').innerHTML = `
+    <header>
+      <span class="brand-mark">B</span>
+      <h1>Music Factory <small>Review</small></h1>
+      <span id="stats" class="stats">loading stats…</span>
+      <span id="rollup" class="rollup-pill">…</span>
+      <div style="flex:1"></div>
+      <span class="who">${escapeHtml(email)}</span>
+      <button class="secondary" id="team">Team</button>
+      <button class="secondary" id="logout">Sign out</button>
+    </header>
+    <div class="controls">
+      <input id="search" placeholder="search title…" />
+      <select id="genre">
+        <option value="">all genres</option>
+      </select>
+      <select id="status">
+        <option value="pending">pending review</option>
+        <option value="approved">approved</option>
+        <option value="rejected">rejected</option>
+        <option value="regenerate">regenerate</option>
+        <option value="all">all</option>
+      </select>
+      <select id="minRating">
+        <option value="0">any rating</option>
+        <option value="5">≥ 5</option>
+        <option value="7">≥ 7</option>
+        <option value="9">≥ 9</option>
+      </select>
+      <button id="refresh">Refresh</button>
+    </div>
+    <div class="progress">
+      <div class="row">
+        <span class="label">Daily approval goal</span>
+        <span class="stats" id="progress-stats">loading…</span>
+      </div>
+      <div class="bar"><div class="fill" id="progress-fill" style="width:0%"></div></div>
+    </div>
+    <div class="keyhint"><kbd>A</kbd> approve · <kbd>R</kbd> reject · <kbd>G</kbd> regen · <kbd>Space</kbd> play/pause · <kbd>J</kbd>/<kbd>K</kbd> next/prev · <kbd>1</kbd>–<kbd>9</kbd>/<kbd>0</kbd> rate</div>
+    <main id="grid"><div class="empty">loading…</div></main>`;
+
+  $('#logout').onclick = async () => {
+    await supabase.auth.signOut();
+    session = null; me = null; renderAuth();
+  };
+  $('#team').onclick = openTeamModal;
+  $('#refresh').onclick = loadGrid;
+  ['search','genre','status','minRating'].forEach(id => $('#'+id).addEventListener('change', loadGrid));
+  $('#search').addEventListener('keyup', e => { if (e.key === 'Enter') loadGrid(); });
+
+  await Promise.all([loadStats(), loadGenres(), loadGrid(), loadProgress()]);
+  if (!window.__boulevardProgressInterval) {
+    window.__boulevardProgressInterval = setInterval(loadProgress, 30000);
+  }
+}
+
+async function loadProgress() {
+  try {
+    const t = await api('/api/today-stats');
+    const pct = Math.min(100, Math.round((t.approved_today / t.target) * 100));
+    $('#progress-fill').style.width = pct + '%';
+    $('#progress-stats').textContent = `${t.approved_today}/${t.target} approved today · ${t.rejected_today} rejected · ${t.regen_today} regen · ${t.pending_total} awaiting review`;
+  } catch (e) { const el = $('#progress-stats'); if (el) el.textContent = 'progress unavailable'; }
+}
+
+async function loadStats() {
+  try {
+    const { rows, stages, last_rollup_at } = await api('/api/queue-stats');
+    const total = rows.reduce((a,r)=>a+Number(r.count||0),0);
+    const fmt = rows.map(r => `${r.status}:${r.count}`).join(' · ');
+    const stageFmt = stages ? ` · stages: new:${stages.new_test||0} rising:${stages.rising||0} trending:${stages.trending||0} suppressed:${stages.suppressed||0}` : '';
+    $('#stats').textContent = `Queue (${total}): ${fmt}${stageFmt}`;
+    const pill = $('#rollup');
+    if (pill) {
+      if (last_rollup_at) {
+        const ageMs = Date.now() - new Date(last_rollup_at).getTime();
+        const ageMin = Math.round(ageMs / 60000);
+        const stale = ageMs > 2 * 60 * 60 * 1000;
+        pill.textContent = `Last rollup: ${ageMin}m ago${stale ? ' ⚠ STALE' : ''}`;
+        pill.className = 'rollup-pill' + (stale ? ' rollup-stale' : '');
+        pill.title = new Date(last_rollup_at).toLocaleString();
+      } else {
+        pill.textContent = 'Last rollup: never ⚠';
+        pill.className = 'rollup-pill rollup-stale';
+      }
+    }
+  } catch (e) { const el = $('#stats'); if (el) el.textContent = 'stats unavailable'; }
+}
+
+async function loadGenres() {
+  try {
+    const { rows } = await api('/api/archetypes');
+    const genres = [...new Set(rows.map(r=>r.genre).filter(Boolean))].sort();
+    const sel = $('#genre');
+    for (const g of genres) {
+      const o = document.createElement('option'); o.value = g; o.textContent = g; sel.appendChild(o);
+    }
+  } catch {}
+}
+
+async function loadGrid() {
+  const params = new URLSearchParams({
+    search: $('#search').value,
+    genre: $('#genre').value,
+    status: $('#status').value,
+    minRating: $('#minRating').value,
+    limit: '60',
+  });
+  $('#grid').innerHTML = '<div class="empty">loading…</div>';
+  try {
+    const { rows } = await api('/api/review?' + params.toString());
+    if (!rows.length) { $('#grid').innerHTML = '<div class="empty">no songs match.</div>'; return; }
+    $('#grid').innerHTML = '';
+    for (const r of rows) $('#grid').appendChild(card(r));
+    const first = $('.card', $('#grid')); if (first) focusCard(first);
+  } catch (e) {
+    $('#grid').innerHTML = `<div class="empty">error: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function fmtDur(s){ if(!s) return '?:??'; const n=Math.round(Number(s)); const m=Math.floor(n/60); const r=String(n%60).padStart(2,'0'); return `${m}:${r}`; }
+const REJECT_REASON_OPTS = [
+ ['vocal_ai','vocal sounds AI'],
+ ['generic','generic'],
+ ['weak_hook','weak hook'],
+ ['off_genre','off-genre'],
+ ['bad_mix','bad mix'],
+ ['wrong_gender_style','wrong vocal style'],
+ ['vocal_gender_mismatch','vocal gender mismatch'],
+ ['hook_title_mismatch','hook/title mismatch'],
+ ['hook_missing','hook missing'],
+ ['title_mismatch','title mismatch'],
+ ['chorus_forced','chorus feels forced'],
+ ['title_random_sounding','title looks random'],
+ ['lyrics_generic','lyrics too generic'],
+ ['boring','boring'],
+ ['low_quality','low quality'],
+ ['too_repetitive','too repetitive'],
+ ['other','other'],
+];
+const FLAG_LABELS = {
+ hook_missing:'hook missing',
+ title_mismatch:'title mismatch',
+ chorus_forced:'chorus feels forced',
+ lyrics_generic:'lyrics too generic',
+ title_random_sounding:'title looks random',
+};
+function card(r) {
+  const el = document.createElement('div'); el.className='card'; el.tabIndex = -1; el.dataset.songId = r.id;
+  const rating = r.rating ?? 0;
+  const cover = r.cover_url ? `style="background-image:url('${escapeHtml(r.cover_url)}')"` : '';
+  const stage = r.distribution_stage || 'new_test';
+  const stageBadge = `<span class="stage stage-${stage}" title="${r.suppression_reason ? 'Suppressed: ' + escapeHtml(r.suppression_reason) : 'Stage: ' + stage}">${stage}</span>`;
+  const microtags = Array.isArray(r.microtags) ? r.microtags : [];
+  const microtagStrip = microtags.length
+    ? `<div class="microtag-row">${microtags.slice(0, 18).map(t => `<span class="microtag">${escapeHtml(t)}</span>`).join('')}${microtags.length > 18 ? `<span class="microtag">+${microtags.length - 18}</span>` : ''}</div>`
+    : '';
+  const contexts = Array.isArray(r.primary_listener_contexts) ? r.primary_listener_contexts : [];
+  const risks = Array.isArray(r.skip_risks) ? r.skip_risks : [];
+  const distRow = `<div class="dist-row">
+    <span>listeners <b>${r.lifetime_unique_listeners ?? 0}</b></span>
+    <span>impressions <b>${r.impression_count ?? 0}</b></span>
+    <span>promo <b>${Number(r.promotion_score ?? 0).toFixed(3)}</b></span>
+    <span>hook <b>${Number(r.hook_strength ?? 0).toFixed(2)}</b></span>
+    <span>main <b>${Number(r.mainstream_fit ?? 0).toFixed(2)}</b></span>
+    <span>unique <b>${Number(r.uniqueness_score_v2 ?? 0).toFixed(2)}</b></span>
+    ${contexts.length ? `<span>ctx <b>${escapeHtml(contexts.join(', '))}</b></span>` : ''}
+    ${risks.length ? `<span class="skip-risk">risks <b>${escapeHtml(risks.join(', '))}</b></span>` : ''}
+  </div>`;
+
+  const hasIntent = !!(r.intended_title || r.intended_hook_phrase || r.song_concept);
+  const flags = Array.isArray(r.review_flags) ? r.review_flags : [];
+  const mismatch = !!r.needs_review_hook_mismatch ||
+    flags.includes('hook_missing') || flags.includes('title_mismatch') ||
+    (r.intended_title && r.title && r.intended_title.toLowerCase() !== r.title.toLowerCase());
+  const intentBanner = hasIntent ? `
+    <div class="intent-banner${mismatch ? ' mismatch' : ''}">
+      <div class="intent-row">
+        <span class="intent-tag">intent</span>
+        ${r.intended_title ? `<span>title <b>${escapeHtml(r.intended_title)}</b>${mismatch && r.title !== r.intended_title ? ` → got <b>${escapeHtml(r.title)}</b>` : ''}</span>` : ''}
+        ${r.intended_hook_phrase ? `<span>hook <b>"${escapeHtml(r.intended_hook_phrase)}"</b></span>` : ''}
+        ${typeof r.chorus_repeat_count === 'number' ? `<span>repeats <b>${r.chorus_repeat_count}×</b></span>` : ''}
+        ${r.emotional_core ? `<span>core <b>${escapeHtml(r.emotional_core)}</b></span>` : ''}
+      </div>
+      ${r.song_concept ? `<div style="margin-top:4px;color:rgba(255,255,255,0.55);font-size:11px;">${escapeHtml(r.song_concept)}</div>` : ''}
+      ${flags.length ? `<div class="flag-chips">${flags.map(f => `<span class="flag-chip flag-${escapeHtml(f)}">${escapeHtml(FLAG_LABELS[f] || f)}</span>`).join('')}</div>` : ''}
+    </div>` : '';
+  const mismatchBadge = mismatch ? `<span class="mismatch-badge">hook miss</span>` : '';
+  const overrideBadge = r.human_title_override ? `<span class="override-badge">renamed</span>` : '';
+  el.innerHTML = `
+    <div class="head">
+      <div class="cover" ${cover}></div>
+      <div class="title">
+        <h3 title="${escapeHtml(r.title)}">${escapeHtml(r.title)}${mismatchBadge}${overrideBadge}</h3>
+        <div class="meta">${escapeHtml(r.genre)} · ${escapeHtml(r.mood||'')} · ${r.bpm||'?'} BPM · ${fmtDur(r.duration_seconds)}</div>
+      </div>
+      ${stageBadge}
+    </div>
+    <div class="row">
+      ${pill(r.vocal_type)} ${pill(r.approval_status)} ${pill('rpl '+(Number(r.replayability_score||0).toFixed(2)))} ${pill('en '+(Number(r.energy_score||0).toFixed(2)))}
+    </div>
+    ${distRow}
+    ${microtagStrip}
+    ${intentBanner}
+    <div class="vocal-banner">
+      Expected vocal: <b>${escapeHtml(r.voice_gender || r.vocal_type || 'unknown')}</b>
+      <span class="vocal-banner-sub">→ if the audio doesn't match, reject with "vocal gender mismatch"</span>
+    </div>
+    ${r.audio_url ? `<audio controls preload="metadata" src="${r.audio_url}"></audio>` : '<div class="meta">no audio yet</div>'}
+    ${r.lyrics ? `<div class="lyrics">${escapeHtml(r.lyrics).slice(0,500)}${r.lyrics.length>500?'…':''}</div>` : ''}
+    <div class="rate" data-id="${r.id}">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button data-n="${n}" class="${n===rating?'on':''}">${n}</button>`).join('')}</div>
+    <div class="reasons">
+      <span class="label">if rejecting, tag why (feeds prompt regen):</span>
+      ${REJECT_REASON_OPTS.map(([id,label])=>`<button data-reason="${id}">${label}</button>`).join('')}
+    </div>
+    <div class="retitle-row">
+      <input class="retitle-input" placeholder="rename title (optional)" maxlength="80" value="${r.human_title_override ? escapeHtml(r.human_title_override) : ''}">
+      <button class="btn-retitle" data-act="retitle">Save title</button>
+    </div>
+    <div class="actions">
+      <button class="btn-approve" data-act="approve">Approve</button>
+      <button class="btn-reject" data-act="reject">Reject</button>
+      <button class="btn-regen" data-act="regenerate">Regenerate</button>
+    </div>`;
+  el.addEventListener('click', async (ev) => {
+    focusCard(el);
+    const btn = ev.target.closest('button');
+    if (!btn) return;
+    if (btn.dataset.act === 'retitle') {
+      const input = el.querySelector('.retitle-input');
+      const value = input ? input.value.trim() : '';
+      if (!value) { toast('enter a title first'); return; }
+      doRetitle(el, r, value);
+      return;
+    }
+    if (btn.dataset.act) doAction(el, r, btn.dataset.act);
+    else if (btn.dataset.n) doRate(el, r, Number(btn.dataset.n));
+    else if (btn.dataset.reason) { btn.classList.toggle('on'); ev.stopPropagation(); }
+  });
+  return el;
+}
+function getReasons(el){ return $$('.reasons button.on', el).map(b => b.dataset.reason); }
+async function doAction(el, r, act) {
+  try {
+    const payload = act === 'approve' ? { rating: getRating(el) }
+      : act === 'reject' ? { reasons: getReasons(el) }
+      : {};
+    await api(`/api/songs/${r.id}/${act}`, { method: 'POST', body: JSON.stringify(payload) });
+    toast(`${act}d: ${r.title}`);
+    el.classList.add('leaving');
+    setTimeout(() => {
+      const next = el.nextElementSibling || el.previousElementSibling;
+      el.remove();
+      if (next && next.classList.contains('card')) focusCard(next);
+      const remaining = $$('.card', $('#grid')).length;
+      if (remaining === 0) $('#grid').innerHTML = '<div class="empty">queue cleared. waiting for new songs…</div>';
+      loadStats();
+    }, 200);
+  } catch (e) { toast('error: ' + e.message); }
+}
+async function doRate(el, r, n) {
+  try {
+    await api(`/api/songs/${r.id}/rate`, { method: 'POST', body: JSON.stringify({ rating: n }) });
+    $$('button', el.querySelector('.rate')).forEach(b => b.classList.toggle('on', Number(b.dataset.n) === n));
+  } catch (e) { toast('rate failed: ' + e.message); }
+}
+async function doRetitle(el, r, newTitle) {
+  try {
+    await api(`/api/songs/${r.id}/retitle`, { method: 'POST', body: JSON.stringify({ title: newTitle }) });
+    r.title = newTitle;
+    r.human_title_override = newTitle;
+    const h3 = el.querySelector('.title h3');
+    if (h3) h3.textContent = newTitle;
+    toast('renamed: ' + newTitle);
+  } catch (e) { toast('rename failed: ' + e.message); }
+}
+function focusCard(el) {
+  $$('.card', $('#grid')).forEach(c => c.classList.remove('focus'));
+  el.classList.add('focus');
+  el.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+}
+function focusedCard(){ return $('.card.focus', $('#grid')) || $('.card', $('#grid')); }
+function moveFocus(dir) {
+  const cards = $$('.card', $('#grid')); if (!cards.length) return;
+  const cur = focusedCard(); const i = Math.max(0, cards.indexOf(cur));
+  const next = cards[(i + dir + cards.length) % cards.length];
+  focusCard(next);
+}
+function handleKey(e) {
+  if (e.target.matches('input,textarea,select')) return;
+  if ($('.modal-backdrop')) return; // don't hijack keys when modal is open
+  const el = focusedCard(); if (!el) return;
+  const songId = el.dataset.songId;
+  const r = { id: songId, title: el.querySelector('h3')?.textContent || songId };
+  const k = e.key.toLowerCase();
+  if (k === 'a') { doAction(el, r, 'approve'); e.preventDefault(); }
+  else if (k === 'r') { doAction(el, r, 'reject'); e.preventDefault(); }
+  else if (k === 'g') { doAction(el, r, 'regenerate'); e.preventDefault(); }
+  else if (k === 'j') { moveFocus(1); e.preventDefault(); }
+  else if (k === 'k') { moveFocus(-1); e.preventDefault(); }
+  else if (e.key === ' ') {
+    const a = el.querySelector('audio'); if (!a) return;
+    if (a.paused) a.play(); else a.pause();
+    e.preventDefault();
+  }
+  else if (/^[0-9]$/.test(e.key)) {
+    const n = e.key === '0' ? 10 : Number(e.key);
+    doRate(el, r, n);
+    e.preventDefault();
+  }
+}
+function getRating(el){ const on = el.querySelector('.rate button.on'); return on ? Number(on.dataset.n) : null; }
+function pill(t){ return `<span class="pill">${escapeHtml(String(t||''))}</span>`; }
+function escapeHtml(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+// ---------------------------------------------------------------------------
+// Team modal — invite/list/remove. Driven by /api/admin/team.
+// ---------------------------------------------------------------------------
+function openTeamModal() {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+  backdrop.innerHTML = `
+    <div class="modal" role="dialog" aria-modal="true">
+      <div class="head">
+        <h2>Team</h2>
+        <button class="close" aria-label="Close">×</button>
+      </div>
+      <div class="body">
+        <div class="invite-row">
+          <input id="invite-email" type="email" placeholder="teammate@example.com" autocomplete="email" />
+          <button id="invite-btn">Send invite</button>
+        </div>
+        <div id="team-msg" style="display:none"></div>
+        <div class="team-list" id="team-list"><div class="empty">loading…</div></div>
+      </div>
+    </div>`;
+  document.body.appendChild(backdrop);
+  const close = () => backdrop.remove();
+  backdrop.addEventListener('click', e => { if (e.target === backdrop) close(); });
+  backdrop.querySelector('.close').onclick = close;
+  backdrop.addEventListener('keyup', e => { if (e.key === 'Escape') close(); });
+  backdrop.querySelector('#invite-btn').onclick = sendInvite;
+  backdrop.querySelector('#invite-email').addEventListener('keyup', e => { if (e.key === 'Enter') sendInvite(); });
+  setTimeout(() => backdrop.querySelector('#invite-email').focus(), 50);
+  loadTeam();
+}
+
+function showTeamMsg(msg, kind) {
+  const el = $('#team-msg'); if (!el) return;
+  el.className = kind === 'ok' ? 'ok' : 'err';
+  el.style.display = 'block';
+  el.textContent = msg;
+  setTimeout(() => { if (el) { el.style.display = 'none'; } }, 6000);
+}
+
+async function loadTeam() {
+  try {
+    const { rows } = await api('/api/admin/team');
+    const list = $('#team-list'); if (!list) return;
+    if (!rows.length) { list.innerHTML = '<div class="empty">no team members yet</div>'; return; }
+    list.innerHTML = '';
+    for (const r of rows) list.appendChild(teamRow(r));
+  } catch (e) {
+    const list = $('#team-list'); if (list) list.innerHTML = `<div class="empty">error: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function teamRow(r) {
+  const el = document.createElement('div'); el.className = 'team-row';
+  const isMe = me?.admin?.id === r.id;
+  const active = !!r.accepted_at;
+  const initial = (r.email || '?')[0].toUpperCase();
+  const meta = [];
+  if (r.invited_by_email) meta.push(`invited by ${r.invited_by_email}`);
+  if (r.invited_at) meta.push(new Date(r.invited_at).toLocaleDateString());
+  if (r.last_seen_at) meta.push(`last seen ${timeAgo(r.last_seen_at)}`);
+  el.innerHTML = `
+    <div class="avatar">${escapeHtml(initial)}</div>
+    <div class="info">
+      <div class="email">${escapeHtml(r.email)}</div>
+      <div class="meta">${escapeHtml(meta.join(' · '))}</div>
+    </div>
+    <span class="status ${active ? 'status-active' : 'status-pending'}">${active ? 'active' : 'pending'}</span>
+    ${isMe
+      ? `<span class="you">you</span>`
+      : `<button class="remove" data-id="${escapeHtml(r.id)}">${active ? 'Remove' : 'Cancel'}</button>`}`;
+  const rm = el.querySelector('.remove');
+  if (rm) {
+    rm.onclick = async () => {
+      if (!confirm(`Remove ${r.email} from the admin team?`)) return;
+      try {
+        await api(`/api/admin/team/${r.id}`, { method: 'DELETE' });
+        toast('removed: ' + r.email);
+        loadTeam();
+      } catch (e) { showTeamMsg(e.message, 'err'); }
+    };
+  }
+  return el;
+}
+
+async function sendInvite() {
+  const input = $('#invite-email');
+  const email = input.value.trim();
+  if (!email) return;
+  const btn = $('#invite-btn');
+  btn.disabled = true; btn.textContent = 'Sending…';
+  try {
+    const res = await api('/api/admin/team', {
+      method: 'POST',
+      body: JSON.stringify({ email }),
+    });
+    if (res.email_sent) {
+      showTeamMsg(`Invite sent to ${email}. They'll receive an email to set up their account.`, 'ok');
+    } else if (res.email_error) {
+      showTeamMsg(`Added to team. Email delivery failed (${res.email_error}). They can still sign in with Google or by signing up with this email.`, 'ok');
+    } else {
+      showTeamMsg(`Added ${email} to the team.`, 'ok');
+    }
+    input.value = '';
+    loadTeam();
+  } catch (e) {
+    showTeamMsg(e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Send invite';
+  }
+}
+
+function timeAgo(iso) {
+  const d = new Date(iso).getTime();
+  if (!d) return '';
+  const s = Math.round((Date.now() - d) / 1000);
+  if (s < 60) return 'just now';
+  if (s < 3600) return Math.round(s/60) + 'm ago';
+  if (s < 86400) return Math.round(s/3600) + 'h ago';
+  return Math.round(s/86400) + 'd ago';
+}
+
+window.addEventListener('keydown', handleKey);
+document.addEventListener('play', (e) => {
+  if (!(e.target instanceof HTMLAudioElement)) return;
+  for (const a of document.querySelectorAll('audio')) if (a !== e.target && !a.paused) a.pause();
+}, true);
+
+bootstrap();
+</script>
+</body>
+</html>
