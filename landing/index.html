@@ -55,15 +55,28 @@
  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
  <link rel="stylesheet" href="/styles.css?v=2026-05-13m" />
 
- <!-- Schema.org: Organization -->
+ <!-- Schema.org: Organization (entity graph anchored by @id) -->
  <script type="application/ld+json">
  {
  "@context": "https://schema.org",
  "@type": "Organization",
+ "@id": "https://boulevardai.app/#organization",
  "name": "Boulevard",
  "url": "https://boulevardai.app/",
- "logo": "https://boulevardai.app/icons/android-chrome-512x512.png",
+ "logo": {
+ "@type": "ImageObject",
+ "@id": "https://boulevardai.app/#logo",
+ "url": "https://boulevardai.app/icons/android-chrome-512x512.png",
+ "contentUrl": "https://boulevardai.app/icons/android-chrome-512x512.png",
+ "width": 512,
+ "height": 512,
+ "caption": "Boulevard"
+ },
+ "image": { "@id": "https://boulevardai.app/#logo" },
  "description": "Boulevard is the AI alternative to Spotify. An AI music app that generates songs tuned to how you feel.",
+ "slogan": "AI music, made for you.",
+ "email": "august@magnamarketing.io",
+ "foundingDate": "2026",
  "sameAs": []
  }
  </script>
@@ -73,42 +86,80 @@
  {
  "@context": "https://schema.org",
  "@type": "MobileApplication",
+ "@id": "https://boulevardai.app/#app",
  "name": "Boulevard",
- "operatingSystem": "iOS, Android",
+ "operatingSystem": "iOS 15+, Android 8+",
  "applicationCategory": "MusicApplication",
+ "applicationSubCategory": "AI Music App",
  "description": "AI music app. Tell it how you feel, get a song in seconds. Free to start, no subscription required to listen.",
  "url": "https://boulevardai.app/",
+ "downloadUrl": "https://boulevardai.app/#download",
+ "installUrl": "https://boulevardai.app/#download",
  "image": "https://boulevardai.app/icons/og-image.png",
+ "screenshot": [
+ "https://boulevardai.app/images/screens/screen-create-vibe.jpg",
+ "https://boulevardai.app/images/screens/screen-generating.jpg",
+ "https://boulevardai.app/images/screens/screen-library.jpg"
+ ],
+ "featureList": "Mood-based AI song generation; Full-length AI-composed tracks; Personal taste model that learns from your skips; Human-screened catalog; New AI artists every day; No subscription required to listen",
+ "inLanguage": "en-US",
+ "isAccessibleForFree": true,
+ "publisher": { "@id": "https://boulevardai.app/#organization" },
  "offers": {
  "@type": "Offer",
  "price": "0",
  "priceCurrency": "USD"
- },
- "aggregateRating": {
- "@type": "AggregateRating",
- "ratingValue": "4.7",
- "ratingCount": "128",
- "bestRating": "5"
  }
  }
  </script>
 
- <!-- Schema.org: WebSite (sitelinks search box hint) -->
+ <!-- Schema.org: WebSite -->
  <script type="application/ld+json">
  {
  "@context": "https://schema.org",
  "@type": "WebSite",
+ "@id": "https://boulevardai.app/#website",
  "name": "Boulevard",
  "url": "https://boulevardai.app/",
+ "description": "Boulevard is the AI alternative to Spotify. Tell it how you feel, get an AI-generated song in seconds.",
+ "publisher": { "@id": "https://boulevardai.app/#organization" },
  "inLanguage": "en-US"
  }
  </script>
 
- <!-- Schema.org: FAQPage (mirrors the FAQ section, for AEO) -->
+ <!-- Schema.org: WebPage (homepage) -->
+ <script type="application/ld+json">
+ {
+ "@context": "https://schema.org",
+ "@type": "WebPage",
+ "@id": "https://boulevardai.app/#webpage",
+ "url": "https://boulevardai.app/",
+ "name": "Boulevard. The AI Alternative to Spotify | AI Music App",
+ "description": "Boulevard is the AI alternative to Spotify. Tell it how you feel, get an AI-generated song in seconds. Free on iOS and Android.",
+ "isPartOf": { "@id": "https://boulevardai.app/#website" },
+ "about": { "@id": "https://boulevardai.app/#app" },
+ "primaryImageOfPage": {
+ "@type": "ImageObject",
+ "url": "https://boulevardai.app/icons/og-image.png",
+ "width": 1200,
+ "height": 630
+ },
+ "inLanguage": "en-US",
+ "speakable": {
+ "@type": "SpeakableSpecification",
+ "cssSelector": [".define-answer", ".define-body"]
+ }
+ }
+ </script>
+
+ <!-- Schema.org: FAQPage (mirrors all 11 visible FAQ items, for AEO) -->
  <script type="application/ld+json">
  {
  "@context": "https://schema.org",
  "@type": "FAQPage",
+ "@id": "https://boulevardai.app/#faqpage",
+ "isPartOf": { "@id": "https://boulevardai.app/#webpage" },
+ "inLanguage": "en-US",
  "mainEntity": [
  {
  "@type": "Question",
@@ -152,10 +203,18 @@
  },
  {
  "@type": "Question",
- "name": "Can I use Boulevard without an account?",
+ "name": "Can I listen without making an account?",
  "acceptedAnswer": {
  "@type": "Answer",
  "text": "Yes. You can listen anonymously from the moment the app opens. Signing in with Apple, Google, or Facebook syncs your library and taste profile across devices."
+ }
+ },
+ {
+ "@type": "Question",
+ "name": "How is Boulevard different from Suno, Udio, or Stable Audio?",
+ "acceptedAnswer": {
+ "@type": "Answer",
+ "text": "Suno, Udio, and Stable Audio are AI music generators. You type a prompt, they make a song you download. Boulevard is an AI music app. You pick a vibe, you listen. We do the prompting, screening, and curation for you. Think Spotify, not Photoshop."
  }
  },
  {
@@ -164,6 +223,30 @@
  "acceptedAnswer": {
  "@type": "Answer",
  "text": "In the United States, the U.S. Copyright Office has stated that purely AI-generated works are not eligible for copyright protection. Boulevard owns its catalog as a curated product. You can listen freely, but commercial reuse of individual tracks requires a license from us."
+ }
+ },
+ {
+ "@type": "Question",
+ "name": "Does Boulevard work in the United States?",
+ "acceptedAnswer": {
+ "@type": "Answer",
+ "text": "Yes. Boulevard is built for the U.S. market first, with U.S. English UI and trending content tuned for American listeners. The app works globally, but our content team is in the U.S. and our defaults reflect that."
+ }
+ },
+ {
+ "@type": "Question",
+ "name": "What kinds of music does Boulevard generate?",
+ "acceptedAnswer": {
+ "@type": "Answer",
+ "text": "Lo-fi, focus, late-night R&B, indie folk, synthwave, ambient, hip-hop, house, acoustic, chillhop, drill, bossa nova, dream pop, jazz, and more. We add genres weekly based on what our listeners actually save."
+ }
+ },
+ {
+ "@type": "Question",
+ "name": "Do you store my data?",
+ "acceptedAnswer": {
+ "@type": "Answer",
+ "text": "We store only what is needed to make the app work: your taste profile, listening events, and (if you sign in) an account identifier. We do not sell personal information. Full details are in our Privacy Policy."
  }
  }
  ]

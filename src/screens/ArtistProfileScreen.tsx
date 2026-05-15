@@ -216,12 +216,13 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
                 <SparkleIcon size={11} color={metals.goldHi} />
               </View>
             </View>
-            <Text style={styles.oneLiner} numberOfLines={2}>{artist.one_liner}</Text>
 
             {/* Stats row. Followers fall back to "0" while the count
                 query is in flight so the layout never shows blanks. */}
             <View style={styles.statsRow}>
-              <Stat label="Plays" value={formatCount(artist.total_plays)} />
+              <Stat label="Songs" value={formatCount(artist.song_count)} />
+              <View style={styles.statDivider} />
+              <Stat label="Monthly Listeners" value={formatCount(artist.monthly_listeners)} />
               <View style={styles.statDivider} />
               <Stat
                 label="Followers"
@@ -231,8 +232,7 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
           </View>
         </View>
 
-        {/* Primary actions — Follow + Play Top. Radio lives lower, under
-            the songs, since it is not a signal for whether to follow. */}
+        {/* Primary actions — Follow + Play Top + Start Radio. */}
         <View style={styles.actionsRow}>
           <Pressable
             onPress={onToggleFollow}
@@ -260,6 +260,15 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
           >
             <PlayIcon size={16} color={colors.bg} />
             <Text style={styles.primaryBtnText}>Play Top</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={onStartRadio}
+            style={({ pressed }) => [styles.ghostBtn, pressed && { opacity: 0.85 }]}
+            accessibilityLabel="Start radio"
+          >
+            <WaveformIcon size={16} color={colors.text} />
+            <Text style={styles.ghostBtnText}>Radio</Text>
           </Pressable>
         </View>
 
@@ -290,20 +299,6 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
               </Pressable>
             ) : null}
           </Section>
-        ) : null}
-
-        {/* Artist radio — a quieter entry point, tucked under the songs. */}
-        {topSongs.length > 0 ? (
-          <View style={styles.radioRow}>
-            <Pressable
-              onPress={onStartRadio}
-              style={({ pressed }) => [styles.ghostBtn, pressed && { opacity: 0.85 }]}
-              accessibilityLabel="Start radio"
-            >
-              <WaveformIcon size={16} color={colors.text} />
-              <Text style={styles.ghostBtnText}>Start Radio</Text>
-            </Pressable>
-          </View>
         ) : null}
 
         {/* Latest Drops — horizontal cards. */}
@@ -530,19 +525,13 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: metals.gold,
   },
-  oneLiner: {
-    color: colors.textMuted,
-    fontSize: fonts.size.sm,
-    marginTop: spacing.xs,
-  },
-
   statsRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: spacing.md,
     gap: spacing.md,
   },
-  statCol: { },
+  statCol: { flexShrink: 1 },
   statValue: {
     color: colors.text,
     fontSize: fonts.size.lg,
@@ -621,14 +610,6 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.sm,
     fontWeight: fonts.weight.semibold,
     letterSpacing: 0.3,
-  },
-
-  // Radio sits under Top Songs as a compact, left-aligned pill so it
-  // never competes with the Follow / Play decision at the top.
-  radioRow: {
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.lg,
-    alignItems: 'flex-start',
   },
 
   section: {

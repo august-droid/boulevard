@@ -165,6 +165,23 @@ export function LibraryScreen() {
     openPlayer();
   };
 
+  // Open the playlist detail sheet AND stage its newest song in the player,
+  // so the play button is pre-loaded the instant the user lands here instead
+  // of an empty player. "Newest" = most recently released (created_at), not
+  // most recently added. cuePlaylist no-ops if a song is already playing.
+  const onOpenUserPlaylist = (p: UserPlaylist) => {
+    setDetail(p);
+    const songs = songsForPlaylist(p);
+    if (songs.length === 0) return;
+    let newest = songs[0];
+    for (const s of songs) {
+      const st = s.created_at ? new Date(s.created_at).getTime() : 0;
+      const nt = newest.created_at ? new Date(newest.created_at).getTime() : 0;
+      if (st > nt) newest = s;
+    }
+    void player.cuePlaylist([newest, ...songs.filter((s) => s.id !== newest.id)]);
+  };
+
   /** Play a playlist starting at a specific song. */
   const onPlayFrom = (p: UserPlaylist, startId: string) => {
     const all = songsForPlaylist(p);
@@ -248,7 +265,7 @@ export function LibraryScreen() {
                   if (!id) return null;
                   return player.catalog.find((s) => s.id === id)?.cover_url ?? null;
                 })()}
-                onPress={() => setDetail(p)}
+                onPress={() => onOpenUserPlaylist(p)}
                 onEdit={() => setEditing(p)}
               />
             ))}

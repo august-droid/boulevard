@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Animated, Easing } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Animated, Easing, Linking } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
@@ -249,6 +249,26 @@ export function ProfileScreen() {
             <Text style={styles.devCopyHint}>Tap to copy</Text>
           </Pressable>
         </View>
+
+        {/* ===== Legal ===== */}
+        <Text style={styles.sectionH}>LEGAL</Text>
+        <View style={styles.legalCard}>
+          <LegalRow
+            label="Privacy Policy"
+            onPress={() => Linking.openURL('https://boulevardai.app/privacy-policy')}
+          />
+          <View style={styles.legalDivider} />
+          <LegalRow
+            label="Terms of Service"
+            onPress={() => Linking.openURL('https://boulevardai.app/terms')}
+          />
+          <View style={styles.legalDivider} />
+          <LegalRow
+            label="Delete Account"
+            sub="Request deletion of your account and associated data"
+            onPress={() => Linking.openURL('https://boulevardai.app/delete-account')}
+          />
+        </View>
       </ScrollView>
 
       <PaywallScreen
@@ -292,6 +312,28 @@ function AnimatedAura({ colors: palette }: { colors: [string, string, string] })
         style={StyleSheet.absoluteFill}
       />
     </Animated.View>
+  );
+}
+
+// ===== Legal row ======================================================
+//
+// A single tappable row in the Legal section. Opens a hosted page in the
+// device browser via Linking — no in-app navigation, no destructive logic.
+
+function LegalRow({ label, sub, onPress }: { label: string; sub?: string; onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.legalRow, pressed && { opacity: 0.6 }]}
+      accessibilityRole="link"
+      accessibilityLabel={label}
+    >
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={styles.legalLabel}>{label}</Text>
+        {sub ? <Text style={styles.legalSub}>{sub}</Text> : null}
+      </View>
+      <Text style={styles.legalArrow}>→</Text>
+    </Pressable>
   );
 }
 
@@ -595,4 +637,29 @@ const styles = StyleSheet.create({
   devIdRow: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginTop: 6 },
   devIdText: { color: colors.text, fontSize: fonts.size.sm, fontFamily: 'Menlo', flex: 1 },
   devCopyHint: { color: colors.textDim, fontSize: fonts.size.xs, marginLeft: spacing.sm },
+
+  // ---- Legal ----
+  legalCard: {
+    marginTop: spacing.sm + 2,
+    borderRadius: radii.lg,
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    overflow: 'hidden',
+  },
+  legalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+  },
+  legalDivider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginLeft: spacing.md,
+  },
+  legalLabel: { color: colors.text, fontSize: fonts.size.md, fontWeight: fonts.weight.semibold },
+  legalSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  legalArrow: { color: colors.textMuted, fontSize: 20, fontWeight: fonts.weight.bold },
 });

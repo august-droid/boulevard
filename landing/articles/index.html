@@ -8,7 +8,8 @@
   <link rel="canonical" href="https://boulevardai.app/articles" />
   <meta name="theme-color" content="#0a0a0c" />
   <meta name="color-scheme" content="dark" />
-  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1" />
+  <meta name="author" content="Boulevard Editorial" />
   <meta name="geo.region" content="US" />
 
   <meta property="og:type" content="website" />
@@ -19,8 +20,12 @@
   <meta property="og:image" content="https://boulevardai.app/icons/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Boulevard. The AI alternative to Spotify." />
   <meta property="og:locale" content="en_US" />
   <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Articles. Boulevard" />
+  <meta name="twitter:description" content="AI music explained. Spotify alternatives compared. The honest version of the AI music landscape in 2026." />
+  <meta name="twitter:image" content="https://boulevardai.app/icons/og-image.png" />
 
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32x32.png" />
@@ -35,12 +40,59 @@
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Organization",
+        "@id": "https://boulevardai.app/#organization",
+        "name": "Boulevard",
+        "url": "https://boulevardai.app/",
+        "logo": {
+          "@type": "ImageObject",
+          "@id": "https://boulevardai.app/#logo",
+          "url": "https://boulevardai.app/icons/android-chrome-512x512.png",
+          "contentUrl": "https://boulevardai.app/icons/android-chrome-512x512.png",
+          "width": 512,
+          "height": 512,
+          "caption": "Boulevard"
+        },
+        "image": {"@id": "https://boulevardai.app/#logo"},
+        "description": "Boulevard is the AI alternative to Spotify. An AI music app that generates songs tuned to how you feel.",
+        "slogan": "AI music, made for you.",
+        "email": "august@magnamarketing.io",
+        "foundingDate": "2026",
+        "sameAs": []
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://boulevardai.app/#website",
+        "name": "Boulevard",
+        "url": "https://boulevardai.app/",
+        "description": "Boulevard is the AI alternative to Spotify. Tell it how you feel, get an AI-generated song in seconds.",
+        "publisher": {"@id": "https://boulevardai.app/#organization"},
+        "inLanguage": "en-US"
+      }
+    ]
+  }
+  </script>
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
     "@type": "CollectionPage",
+    "@id": "https://boulevardai.app/articles#webpage",
     "name": "Boulevard Articles",
     "description": "AI music, Spotify alternatives, copyright, royalties, and how Boulevard works. Two pillar guides and 16 in-depth articles.",
     "url": "https://boulevardai.app/articles",
     "inLanguage": "en-US",
-    "publisher": {"@type": "Organization", "name": "Boulevard", "url": "https://boulevardai.app/"},
+    "isPartOf": {"@id": "https://boulevardai.app/#website"},
+    "publisher": {"@id": "https://boulevardai.app/#organization"},
+    "breadcrumb": {"@id": "https://boulevardai.app/articles#breadcrumb"},
+    "primaryImageOfPage": {
+      "@type": "ImageObject",
+      "url": "https://boulevardai.app/icons/og-image.png",
+      "width": 1200,
+      "height": 630
+    },
     "hasPart": [
       {"@type": "WebPage", "@id": "https://boulevardai.app/articles/ai-music", "name": "AI Music: The 2026 Guide"},
       {"@type": "WebPage", "@id": "https://boulevardai.app/articles/spotify-alternative", "name": "The Spotify Alternative Guide (2026)"}
@@ -73,6 +125,7 @@
   {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
+    "@id": "https://boulevardai.app/articles#breadcrumb",
     "itemListElement": [
       {"@type": "ListItem", "position": 1, "name": "Boulevard", "item": "https://boulevardai.app/"},
       {"@type": "ListItem", "position": 2, "name": "Articles", "item": "https://boulevardai.app/articles"}

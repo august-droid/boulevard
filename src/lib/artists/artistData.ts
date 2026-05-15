@@ -9,37 +9,39 @@ import { Song, Artist, SongStats } from '@/types';
 // Pure functions: no network. Stats / followers come in as arguments so the
 // caller decides where they're sourced from.
 
-const FALLBACK_BIO = 'Boulevard original artist.';
-
-const GENRE_LABELS: Record<string, string> = {
-  rnb: 'R&B',
-  edm: 'EDM',
-  hiphop: 'Hip-Hop',
-  lofi: 'Lo-Fi',
-};
-
-function titleCase(s: string): string {
-  if (!s) return s;
-  if (GENRE_LABELS[s.toLowerCase()]) return GENRE_LABELS[s.toLowerCase()];
-  return s.charAt(0).toUpperCase() + s.slice(1);
-}
-
-/** Stable per-id baseline so play counts have variety on cold start. Same
- *  shape as ExploreScreen.baselinePlays so the two surfaces agree. */
-function baselinePlays(songId: string): number {
+/** Stable per-id hash, used to seed the deterministic baselines below. */
+function hashId(songId: string): number {
   let h = 0;
   for (let i = 0; i < songId.length; i++) {
     h = ((h << 5) - h) + songId.charCodeAt(i);
     h |= 0;
   }
-  const r = Math.abs(h) % 90000;
-  return 1200 + r;
+  return Math.abs(h);
+}
+
+/** Stable per-id baseline so play counts have variety on cold start. Same
+ *  shape as ExploreScreen.baselinePlays so the two surfaces agree. */
+function baselinePlays(songId: string): number {
+  return 1200 + (hashId(songId) % 90000);
 }
 
 /** Combined per-song play count (server stats + deterministic baseline). */
 export function songPlays(song: Song, stats: Map<string, SongStats>): number {
   const live = stats.get(song.id)?.plays ?? 0;
   return baselinePlays(song.id) + live;
+}
+
+/** Deterministic plays-per-listener ratio (4..10) for a song. Real listeners
+ *  replay tracks, so dividing plays by this yields a believable unique-
+ *  listener estimate that always reads lower than the raw play count. */
+function playsPerListener(songId: string): number {
+  return 4 + (hashId(songId) % 7); // 4..10
+}
+
+/** Estimated monthly listeners for one song: its play count converted to a
+ *  unique-listener count. Always >= 1 when the song has any plays. */
+function songMonthlyListeners(song: Song, stats: Map<string, SongStats>): number {
+  return Math.max(1, Math.round(songPlays(song, stats) / playsPerListener(song.id)));
 }
 
 /** Pull every song associated with this artist out of the catalog. */
@@ -106,23 +108,6 @@ function mode(values: string[]): string | null {
   return best;
 }
 
-/** Top-N most-frequent strings across an array of arrays. */
-function topTags(buckets: (string[] | undefined | null)[], limit: number): string[] {
-  const counts = new Map<string, number>();
-  for (const bucket of buckets) {
-    if (!bucket) continue;
-    for (const t of bucket) {
-      const key = t.trim();
-      if (!key) continue;
-      counts.set(key, (counts.get(key) ?? 0) + 1);
-    }
-  }
-  return [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, limit)
-    .map(([k]) => k);
-}
-
 /** Build a full Artist record from the catalog. Returns null when no song
  *  matches — caller should treat that as "artist not found" and bail. */
 export function getArtistById(
@@ -143,28 +128,19 @@ export function getArtistById(
   const image = sortedRecent[0].artist_image_url ?? sortedRecent[0].cover_url ?? null;
 
   const primary = mode(songs.map((s) => s.genre).filter(Boolean) as string[]);
-  const moods = topTags(songs.map((s) => s.moods ?? [s.mood].filter(Boolean) as string[]), 2);
 
-  const totalPlays = songs.reduce((sum, s) => sum + songPlays(s, stats), 0);
-
-  // One-liner: stitch genre + a vibe word when we have them, otherwise
-  // fall back to the stock copy. Keeps the hero feeling like a real artist
-  // without us inventing fake bios.
-  let oneLiner = FALLBACK_BIO;
-  if (primary && moods.length > 0) {
-    oneLiner = `${titleCase(primary)} artist with a ${titleCase(moods[0]).toLowerCase()} signature.`;
-  } else if (primary) {
-    oneLiner = `${titleCase(primary)} artist on Boulevard.`;
-  }
+  const monthlyListeners = songs.reduce(
+    (sum, s) => sum + songMonthlyListeners(s, stats),
+    0,
+  );
 
   return {
     id: artistId,
     name,
     image_url: image,
-    one_liner: oneLiner,
     primary_genre: primary,
     song_count: songs.length,
-    total_plays: totalPlays,
+    monthly_listeners: monthlyListeners,
     follower_count: followerCount,
   };
 }

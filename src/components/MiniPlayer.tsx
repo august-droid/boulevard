@@ -11,9 +11,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { colors, fonts, metals, spacing } from '@/theme';
 import { usePlayer } from '@/contexts/PlayerContext';
-import { useAppNav } from '@/contexts/NavigationContext';
 import { PlayIcon, PauseIcon, SkipIcon, PrevIcon } from '@/components/Icon';
 import { Artwork } from '@/components/Artwork';
+import { songArtworkUri } from '@/lib/artwork';
 
 interface Props {
   /** Tapping the mini player opens the full now-playing surface — RootNavigator handles that. */
@@ -28,7 +28,6 @@ interface Props {
 
 export function MiniPlayer({ onPress, bottomOffset }: Props) {
   const player = usePlayer();
-  const nav = useAppNav();
   const song = player.current;
 
   // Small synchronous tap haptic. Fires on press-in so the buzz lands the
@@ -55,34 +54,23 @@ export function MiniPlayer({ onPress, bottomOffset }: Props) {
         />
 
         <Artwork
-          uri={song.artist_image_url ?? song.cover_url}
-          name={song.artist_name ?? song.title}
+          uri={songArtworkUri(song)}
+          name={song.title}
           size={44}
           radius={8}
-          recyclingKey={song.artist_id ?? song.id}
+          recyclingKey={song.id}
           style={styles.cover}
         />
 
-        <Pressable
-          style={styles.meta}
-          onPress={(e) => {
-            // Tap on the artist row should jump to the artist page, not
-            // the full player. Falls back to opening the full player when
-            // the song has no artist link.
-            if (song.artist_id) {
-              e.stopPropagation();
-              if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
-              nav.openArtistProfile(song.artist_id);
-            } else {
-              onPress();
-            }
-          }}
-        >
+        {/* Title + artist text is non-interactive: taps fall through to the
+            bar Pressable, which opens the full player. The mini player must
+            never navigate to an artist page. */}
+        <View style={styles.meta}>
           <Text style={styles.title} numberOfLines={1}>{song.title}</Text>
           <Text style={styles.subtitle} numberOfLines={1}>
             {capitalize(song.genre)} · {song.artist_name ?? 'Boulevard'}
           </Text>
-        </Pressable>
+        </View>
 
         <Pressable
           hitSlop={10}

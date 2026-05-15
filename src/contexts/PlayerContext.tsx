@@ -71,6 +71,11 @@ interface PlayerActions {
   playSpecific: (song: Song) => Promise<void>;
   /** Play a curated list of songs in order. First song plays, rest queue. */
   playPlaylist: (songs: Song[]) => Promise<void>;
+  /** Stage a curated list of songs WITHOUT auto-playing. The first song is
+   *  loaded into the player surface (mini player + queue) so a single play
+   *  tap starts it. Used when the user opens a playlist. No-op while a song
+   *  is actively playing — never hijacks active playback. */
+  cuePlaylist: (songs: Song[]) => Promise<void>;
   /** Play the top 30 most-popular songs nationwide. Ranks by server-side
    *  trending score when available, falls back to launch_score. */
   playPopular: () => Promise<void>;
@@ -857,6 +862,32 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     await playInternal(songs[0]);
   }, [playInternal, recordEndOfSong, checkDailyLimit]);
 
+  // Stage a playlist into the player without starting playback. Used when
+  // the user opens a playlist: the first song is loaded onto the player
+  // surface so a single play tap starts it. Mirrors the cold-start staging
+  // path. Bails when a song is already playing so opening a playlist never
+  // interrupts what the user is currently listening to.
+  const cuePlaylist = useCallback(async (songs: Song[]) => {
+    if (!queueRef.current || songs.length === 0) return;
+    if (stateRef.current.isPlaying) return;
+    // Unload any paused/staged audio so the next play tap starts the cued
+    // song fresh — togglePlay keys off getCurrentSongId() being null.
+    await audioRef.current?.stop();
+    await queueRef.current.setQueue(songs);
+    const first = songs[0];
+    setState((s) => ({
+      ...s,
+      current: first,
+      position: 0,
+      duration: first.duration_seconds * 1000,
+      isPlaying: false,
+      saved: libraryRef.current?.isSaved(first.id) ?? false,
+      liked: likedIdsRef.current.has(first.id),
+    }));
+    // Warm the cued song so the first play tap is instant.
+    preloaderRef.current?.preload(first).catch(() => {});
+  }, []);
+
   const playSpecific = useCallback(async (song: Song) => {
     if (!queueRef.current) return;
     // Limit gate FIRST — never stop the current song if we can't actually
@@ -927,13 +958,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setVibe,
     playSpecific,
     playPlaylist,
+    cuePlaylist,
     playPopular,
     warmSongs,
     getSession,
     buildMoodList,
   }), [
     state, togglePlay, skip, previous, toggleShuffle, replay, save, like, recordShare,
-    seek, setVibe, playSpecific, playPlaylist, playPopular, warmSongs, getSession, buildMoodList,
+    seek, setVibe, playSpecific, playPlaylist, cuePlaylist, playPopular, warmSongs, getSession, buildMoodList,
   ]);
 
   return <PlayerCtx.Provider value={value}>{children}</PlayerCtx.Provider>;

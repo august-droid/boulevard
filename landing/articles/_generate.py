@@ -45,6 +45,10 @@ import re
 
 OUT_DIR = os.path.dirname(os.path.abspath(__file__))
 
+SITE = "https://boulevardai.app"
+ORG_ID = f"{SITE}/#organization"
+WEBSITE_ID = f"{SITE}/#website"
+
 
 # ----------------------------------------------------------------------------
 # Schema rendering
@@ -54,25 +58,70 @@ def _strip_tags(s):
     return re.sub(r"<[^>]+>", "", s)
 
 
-def render_faq_schema(faqs):
+def render_site_context():
+    """Organization + WebSite nodes, identical on every article/pillar page.
+    Gives stable @id anchors that the Article/WebPage/FAQ/Breadcrumb nodes
+    reference, so search and answer engines resolve one connected entity."""
     return json.dumps(
         {
             "@context": "https://schema.org",
-            "@type": "FAQPage",
-            "mainEntity": [
+            "@graph": [
                 {
-                    "@type": "Question",
-                    "name": q,
-                    "acceptedAnswer": {
-                        "@type": "Answer",
-                        "text": re.sub(r"\s+", " ", _strip_tags(a)).strip(),
+                    "@type": "Organization",
+                    "@id": ORG_ID,
+                    "name": "Boulevard",
+                    "url": f"{SITE}/",
+                    "logo": {
+                        "@type": "ImageObject",
+                        "@id": f"{SITE}/#logo",
+                        "url": f"{SITE}/icons/android-chrome-512x512.png",
+                        "contentUrl": f"{SITE}/icons/android-chrome-512x512.png",
+                        "width": 512,
+                        "height": 512,
+                        "caption": "Boulevard",
                     },
-                }
-                for q, a in faqs
+                    "image": {"@id": f"{SITE}/#logo"},
+                    "description": "Boulevard is the AI alternative to Spotify. An AI music app that generates songs tuned to how you feel.",
+                    "slogan": "AI music, made for you.",
+                    "email": "august@magnamarketing.io",
+                    "foundingDate": "2026",
+                    "sameAs": [],
+                },
+                {
+                    "@type": "WebSite",
+                    "@id": WEBSITE_ID,
+                    "name": "Boulevard",
+                    "url": f"{SITE}/",
+                    "description": "Boulevard is the AI alternative to Spotify. Tell it how you feel, get an AI-generated song in seconds.",
+                    "publisher": {"@id": ORG_ID},
+                    "inLanguage": "en-US",
+                },
             ],
         },
         ensure_ascii=False,
     )
+
+
+def render_faq_schema(faqs, page_id=None):
+    data = {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "inLanguage": "en-US",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": q,
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": re.sub(r"\s+", " ", _strip_tags(a)).strip(),
+                },
+            }
+            for q, a in faqs
+        ],
+    }
+    if page_id:
+        data["isPartOf"] = {"@id": page_id}
+    return json.dumps(data, ensure_ascii=False)
 
 
 def render_breadcrumb_schema(article, pillars):
@@ -98,57 +147,71 @@ def render_breadcrumb_schema(article, pillars):
         "item": f"https://boulevardai.app/articles/{article['slug']}",
     })
     return json.dumps(
-        {"@context": "https://schema.org", "@type": "BreadcrumbList", "itemListElement": items},
+        {
+            "@context": "https://schema.org",
+            "@type": "BreadcrumbList",
+            "@id": f"{SITE}/articles/{article['slug']}#breadcrumb",
+            "itemListElement": items,
+        },
         ensure_ascii=False,
     )
 
 
-def render_article_schema(article, authors):
+def render_article_schema(article, authors, pillars):
     author = authors.get(article.get("author", "august"), authors["august"])
+    slug = article["slug"]
+    page_url = f"{SITE}/articles/{slug}"
     author_schema = {
         "@type": "Person",
+        "@id": f"{SITE}{author['url']}#person",
         "name": author["name"],
-        "url": f"https://boulevardai.app{author['url']}",
+        "url": f"{SITE}{author['url']}",
         "jobTitle": author.get("job_title", ""),
         "description": author.get("bio", ""),
     }
     schema_type = article.get("schema_type", "Article")
     word_count = len(_strip_tags(article["body"]).split())
+    pillar_label = (
+        pillars[article["pillar"]]["title"]
+        if article.get("pillar") in pillars
+        else "Articles"
+    )
+    is_part_of = [{"@id": WEBSITE_ID}]
+    if article.get("pillar") and article["pillar"] in pillars:
+        p = pillars[article["pillar"]]
+        is_part_of.append({
+            "@type": "WebPage",
+            "@id": f"{SITE}/articles/{p['slug']}#webpage",
+            "name": p["title"],
+        })
     return json.dumps(
         {
             "@context": "https://schema.org",
             "@type": schema_type,
+            "@id": f"{page_url}#article",
             "headline": article["title"],
             "description": article["meta_desc"],
-            "image": "https://boulevardai.app/icons/og-image.png",
+            "image": {
+                "@type": "ImageObject",
+                "url": f"{SITE}/icons/og-image.png",
+                "width": 1200,
+                "height": 630,
+            },
             "datePublished": article["date"],
             "dateModified": article.get("updated", article["date"]),
             "author": author_schema,
-            "publisher": {
-                "@type": "Organization",
-                "name": "Boulevard",
-                "url": "https://boulevardai.app/",
-                "logo": {
-                    "@type": "ImageObject",
-                    "url": "https://boulevardai.app/icons/android-chrome-512x512.png",
-                },
-            },
-            "mainEntityOfPage": {
-                "@type": "WebPage",
-                "@id": f"https://boulevardai.app/articles/{article['slug']}",
-            },
+            "publisher": {"@id": ORG_ID},
+            "mainEntityOfPage": {"@type": "WebPage", "@id": page_url},
+            "breadcrumb": {"@id": f"{page_url}#breadcrumb"},
+            "articleSection": pillar_label,
             "inLanguage": "en-US",
             "wordCount": word_count,
             "keywords": article.get("keywords", "AI music, Boulevard, Spotify alternative"),
-            "isPartOf": (
-                {
-                    "@type": "WebPage",
-                    "@id": f"https://boulevardai.app/articles/{article['pillar']}",
-                    "name": "AI Music Guides",
-                }
-                if article.get("pillar")
-                else None
-            ),
+            "isPartOf": is_part_of,
+            "speakable": {
+                "@type": "SpeakableSpecification",
+                "cssSelector": [".article-deck", ".quick"],
+            },
         },
         ensure_ascii=False,
     )
@@ -156,28 +219,41 @@ def render_article_schema(article, authors):
 
 def render_pillar_schema(pillar, articles):
     by_slug = {a["slug"]: a for a in articles}
+    page_url = f"{SITE}/articles/{pillar['slug']}"
     item_list = [
         {
             "@type": "ListItem",
             "position": i + 1,
-            "url": f"https://boulevardai.app/articles/{slug}",
-            "name": by_slug[slug]["title"] if slug in by_slug else slug,
+            "url": f"{SITE}/articles/{s}",
+            "name": by_slug[s]["title"] if s in by_slug else s,
         }
-        for i, slug in enumerate(pillar["subtopics"])
-        if slug in by_slug
+        for i, s in enumerate(pillar["subtopics"])
+        if s in by_slug
     ]
+    updated = pillar.get("updated", "2026-05-15")
     return json.dumps(
         {
             "@context": "https://schema.org",
             "@type": "WebPage",
+            "@id": f"{page_url}#webpage",
             "name": pillar["title"],
             "description": pillar["meta_desc"],
-            "url": f"https://boulevardai.app/articles/{pillar['slug']}",
+            "url": page_url,
             "inLanguage": "en-US",
-            "publisher": {
-                "@type": "Organization",
-                "name": "Boulevard",
-                "url": "https://boulevardai.app/",
+            "isPartOf": {"@id": WEBSITE_ID},
+            "publisher": {"@id": ORG_ID},
+            "datePublished": "2026-05-13",
+            "dateModified": updated,
+            "primaryImageOfPage": {
+                "@type": "ImageObject",
+                "url": f"{SITE}/icons/og-image.png",
+                "width": 1200,
+                "height": 630,
+            },
+            "breadcrumb": {"@id": f"{page_url}#breadcrumb"},
+            "speakable": {
+                "@type": "SpeakableSpecification",
+                "cssSelector": [".article-deck", ".quick"],
             },
             "mainEntity": {
                 "@type": "ItemList",
@@ -240,6 +316,7 @@ HEAD = """<!DOCTYPE html>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css?v=2026-05-13j" />
 
+  <script type="application/ld+json">{site_context}</script>
   <script type="application/ld+json">{article_schema}</script>
   <script type="application/ld+json">{faq_schema}</script>
   <script type="application/ld+json">{breadcrumb_schema}</script>
@@ -409,6 +486,7 @@ PILLAR_HEAD = """<!DOCTYPE html>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;1,9..144,500;1,9..144,600&family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/styles.css?v=2026-05-13j" />
 
+  <script type="application/ld+json">{site_context}</script>
   <script type="application/ld+json">{pillar_schema}</script>
   <script type="application/ld+json">{faq_schema}</script>
   <script type="application/ld+json">{breadcrumb_schema}</script>
@@ -608,9 +686,10 @@ def render_subtopic_cards(pillar, all_articles):
 
 def build_article(article, all_articles, authors, pillars):
     author = authors.get(article.get("author", "august"), authors["august"])
-    article_schema = render_article_schema(article, authors)
-    faq_schema = render_faq_schema(article["faqs"])
+    article_schema = render_article_schema(article, authors, pillars)
+    faq_schema = render_faq_schema(article["faqs"], f"{SITE}/articles/{article['slug']}")
     breadcrumb_schema = render_breadcrumb_schema(article, pillars)
+    site_context = render_site_context()
     faq_html = render_faqs(article["faqs"])
     related_html = render_related_cards(article["related"], all_articles)
     breadcrumb_html = render_breadcrumb_html(article, pillars)
@@ -633,6 +712,7 @@ def build_article(article, all_articles, authors, pillars):
         article_schema=article_schema,
         faq_schema=faq_schema,
         breadcrumb_schema=breadcrumb_schema,
+        site_context=site_context,
         breadcrumb_html=breadcrumb_html,
         related_html=related_html,
         author_name=author["name"],
@@ -649,11 +729,13 @@ def build_article(article, all_articles, authors, pillars):
 
 def build_pillar(pillar, all_articles):
     pillar_schema = render_pillar_schema(pillar, all_articles)
-    faq_schema = render_faq_schema(pillar["faqs"])
+    faq_schema = render_faq_schema(pillar["faqs"], f"{SITE}/articles/{pillar['slug']}#webpage")
+    site_context = render_site_context()
     # Breadcrumb for pillar (no pillar-of-pillar, just Home > Articles > Pillar)
     breadcrumb_schema = json.dumps({
         "@context": "https://schema.org",
         "@type": "BreadcrumbList",
+        "@id": f"{SITE}/articles/{pillar['slug']}#breadcrumb",
         "itemListElement": [
             {"@type": "ListItem", "position": 1, "name": "Boulevard", "item": "https://boulevardai.app/"},
             {"@type": "ListItem", "position": 2, "name": "Articles", "item": "https://boulevardai.app/articles"},
@@ -678,6 +760,7 @@ def build_pillar(pillar, all_articles):
         pillar_schema=pillar_schema,
         faq_schema=faq_schema,
         breadcrumb_schema=breadcrumb_schema,
+        site_context=site_context,
         subtopics_html=subtopics_html,
         subtopic_count=subtopic_count,
     )

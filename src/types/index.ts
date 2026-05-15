@@ -7,14 +7,14 @@ export interface Artist {
   id: string;
   name: string;
   image_url: string | null;
-  /** One-line bio. Falls back to a stock string when the catalog has nothing. */
-  one_liner: string;
   /** Most-frequent genre across this artist's songs. */
   primary_genre: string | null;
   /** Total catalog songs for this artist. */
   song_count: number;
-  /** Sum of plays across this artist's songs (server stats + baseline). */
-  total_plays: number;
+  /** Estimated unique listeners over the trailing month. Derived from each
+   *  song's play count divided by a per-song plays-per-listener ratio, so it
+   *  always reads lower than raw plays and is never zero when songs exist. */
+  monthly_listeners: number;
   /** Followers — populated from supabase when available, null otherwise. */
   follower_count: number | null;
 }

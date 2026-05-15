@@ -25,6 +25,7 @@ import { BrandHeader } from '@/components/BrandHeader';
 import { MoodChipsRow } from '@/components/MoodChipsRow';
 import { useAppNav } from '@/contexts/NavigationContext';
 import { Song } from '@/types';
+import { songArtworkUri } from '@/lib/artwork';
 
 const { width } = Dimensions.get('window');
 const HERO_H = Math.round(width * 0.95);
@@ -77,8 +78,9 @@ export function ExploreScreen() {
   // returning to Explore, tapping a tile) are instant from disk.
   useEffect(() => {
     const urls = new Set<string>();
-    if (hero) urls.add(hero.song.artist_image_url ?? hero.song.cover_url);
-    for (const s of sections) for (const r of s.songs) urls.add(r.song.artist_image_url ?? r.song.cover_url);
+    const addArt = (song: Song) => { const u = songArtworkUri(song); if (u) urls.add(u); };
+    if (hero) addArt(hero.song);
+    for (const s of sections) for (const r of s.songs) addArt(r.song);
     if (urls.size > 0) {
       Image.prefetch(Array.from(urls), 'memory-disk').catch(() => {});
     }
@@ -745,7 +747,7 @@ function Hero({ ranked, serverStats, onPlay }: HeroProps) {
   return (
     <Pressable onPress={onPlay} style={styles.hero}>
       <Image
-        source={{ uri: song.artist_image_url ?? song.cover_url }}
+        source={{ uri: songArtworkUri(song) ?? undefined }}
         style={styles.heroImage}
         contentFit="cover"
         cachePolicy="memory-disk"
@@ -965,7 +967,7 @@ function Tile({ ranked, rank, sectionId, serverStats, onPress }: TileProps) {
     <Pressable onPress={onPress} style={({ pressed }) => [styles.tile, pressed && { opacity: 0.85 }]}>
       <View style={styles.tileImageWrap}>
         <Image
-          source={{ uri: song.artist_image_url ?? song.cover_url }}
+          source={{ uri: songArtworkUri(song) ?? undefined }}
           style={styles.tileImage}
           contentFit="cover"
           cachePolicy="memory-disk"
