@@ -6,13 +6,14 @@ import {
   Platform,
   StyleSheet,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { colors, fonts, metals, spacing } from '@/theme';
 import { usePlayer } from '@/contexts/PlayerContext';
 import { PlayIcon, PauseIcon, SkipIcon, PrevIcon } from '@/components/Icon';
+import { Artwork } from '@/components/Artwork';
+import { songArtworkUri } from '@/lib/artwork';
 
 interface Props {
   /** Tapping the mini player opens the full now-playing surface — RootNavigator handles that. */
@@ -52,19 +53,22 @@ export function MiniPlayer({ onPress, bottomOffset }: Props) {
           pointerEvents="none"
         />
 
-        <Image
-          source={{ uri: song.cover_url }}
-          style={styles.cover}
-          contentFit="cover"
-          cachePolicy="memory-disk"
-          transition={150}
+        <Artwork
+          uri={songArtworkUri(song)}
+          name={song.title}
+          size={44}
+          radius={8}
           recyclingKey={song.id}
+          style={styles.cover}
         />
 
+        {/* Title + artist text is non-interactive: taps fall through to the
+            bar Pressable, which opens the full player. The mini player must
+            never navigate to an artist page. */}
         <View style={styles.meta}>
           <Text style={styles.title} numberOfLines={1}>{song.title}</Text>
           <Text style={styles.subtitle} numberOfLines={1}>
-            {capitalize(song.genre)} · Boulevard
+            {capitalize(song.genre)} · {song.artist_name ?? 'Boulevard'}
           </Text>
         </View>
 

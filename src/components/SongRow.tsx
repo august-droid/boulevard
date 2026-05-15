@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
 import { colors, fonts, radii, spacing } from '@/theme';
 import { Song } from '@/types';
+import { songArtworkUri } from '@/lib/artwork';
 import { PlayIcon } from './Icon';
 
 interface Props {
@@ -15,7 +16,7 @@ export function SongRow({ song, onPress, subtitle }: Props) {
   return (
     <Pressable style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]} onPress={onPress}>
       <Image
-        source={{ uri: song.cover_url }}
+        source={{ uri: songArtworkUri(song) ?? undefined }}
         style={styles.cover}
         contentFit="cover"
         cachePolicy="memory-disk"

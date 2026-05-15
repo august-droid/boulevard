@@ -1,4 +1,4 @@
-import { Song, TasteProfile, VocalType } from '@/types';
+import { Song, TasteProfile, SessionProfile, VocalType } from '@/types';
 
 // Online taste profile updates.
 //
@@ -19,6 +19,8 @@ export type Signal =
   | { kind: 'completion_over_70' }
   | { kind: 'save' }
   | { kind: 'unsave' }
+  | { kind: 'like' }
+  | { kind: 'unlike' }
   | { kind: 'replay' }
   | { kind: 'share' };
 
@@ -32,11 +34,37 @@ const WEIGHTS: Record<Signal['kind'], number> = {
   completion_over_70: 2.0,
   save: 3.0,
   unsave: -2.0,
+  // Like is a fast-tap "I love this" — slightly weaker than save (which
+  // implies long-term intent via playlist), stronger than completion.
+  like: 2.5,
+  unlike: -1.5,
   replay: 4.0,
   // Sharing has the highest positive weight — the user is putting their
   // own taste on the line.
   share: 5.0,
 };
+
+// Session-only weight overrides. These let a signal dominate the "right
+// now" feel without permanently rewriting the user's long-term taste.
+//
+// Completion is amplified the most: when a user finishes a song they
+// picked (from Explore, a mood, or anywhere else), that's a strong
+// "this exact vibe is what I want right now" signal. We want the next
+// 5–10 picks to lean hard into similar songs — the "stay in flow"
+// behavior. With the lifetime weight of 2.0, the nudge was too gentle
+// for users to perceive; bumping the session weight to 6.0 makes the
+// queue tilt visibly within 1–2 picks.
+//
+// listen_60s gets a smaller bump for the same reason: a deep listen
+// (not full completion yet) still signals "give me more like this."
+const SESSION_WEIGHTS: Partial<Record<Signal['kind'], number>> = {
+  completion_over_70: 6.0,
+  listen_60s: 2.0,
+};
+
+function sessionWeight(kind: Signal['kind']): number {
+  return SESSION_WEIGHTS[kind] ?? WEIGHTS[kind];
+}
 
 // EMA factor for continuous preferences (bpm, energy).
 // Higher = profile reacts faster but is noisier.
@@ -52,8 +80,59 @@ export function emptyProfile(userId: string): TasteProfile {
     vocal_preferences: { instrumental: 0, male: 0, female: 0, mixed: 0 } as Record<VocalType, number>,
     activity_scores: {},
     similarity_cluster_scores: {},
+    microtag_scores: {},
     updated_at: new Date().toISOString(),
   };
+}
+
+// ===== Session profile =============================================
+//
+// Short-window "right now" preference. Lives in memory only, never persisted.
+// Two behaviors set it apart from the lifetime profile:
+//  • Decay: every new signal multiplies existing session scores by 0.92,
+//    so the last ~10 plays dominate over older session noise.
+//  • Reset: if more than SESSION_TIMEOUT_MS pass between interactions, the
+//    session is wiped — coming back tomorrow doesn't carry yesterday's mood.
+
+const SESSION_DECAY = 0.92;
+export const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+
+export function emptySession(): SessionProfile {
+  return { microtag_scores: {}, last_interaction_at: Date.now() };
+}
+
+export function applySessionSignal(
+  session: SessionProfile,
+  song: Song,
+  signal: Signal,
+  now: number = Date.now(),
+): SessionProfile {
+  // Reset if the user has been away too long. Returning after a break
+  // shouldn't keep penalizing genres they were skipping yesterday.
+  const stale = now - session.last_interaction_at > SESSION_TIMEOUT_MS;
+  const base = stale ? {} : decay(session.microtag_scores, SESSION_DECAY);
+
+  // Use session-specific weights so a finished song produces a much
+  // stronger short-window bias than its lifetime equivalent. Keeps the
+  // user in flow without polluting their long-term taste.
+  const w = sessionWeight(signal.kind);
+  const tags = (song.microtags && song.microtags.length > 0) ? song.microtags : [];
+  if (tags.length === 0 || w === 0) {
+    return { microtag_scores: base, last_interaction_at: now };
+  }
+  const share = w / tags.length;
+  for (const t of tags) base[t] = (base[t] ?? 0) + share;
+  return { microtag_scores: base, last_interaction_at: now };
+}
+
+function decay(map: Record<string, number>, factor: number): Record<string, number> {
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(map)) {
+    const next = v * factor;
+    // Drop near-zero entries so the map doesn't accumulate noise forever.
+    if (Math.abs(next) > 0.01) out[k] = next;
+  }
+  return out;
 }
 
 function bumpMap(map: Record<string, number>, key: string, delta: number) {
@@ -69,6 +148,7 @@ export function applySignal(profile: TasteProfile, song: Song, signal: Signal): 
     vocal_preferences: { ...profile.vocal_preferences },
     activity_scores: { ...profile.activity_scores },
     similarity_cluster_scores: { ...profile.similarity_cluster_scores },
+    microtag_scores: { ...(profile.microtag_scores ?? {}) },
   };
 
   // When a song has multiple genre/mood tags, split the signal across them so
@@ -79,6 +159,16 @@ export function applySignal(profile: TasteProfile, song: Song, signal: Signal): 
   const mShare = w / moods.length;
   for (const g of genres) bumpMap(next.genre_scores, g, gShare);
   for (const m of moods) bumpMap(next.mood_scores, m, mShare);
+
+  // Microtags are the primary recommendation signal. They get the full signal
+  // weight split across the song's tags — a positive replay on a song with 15
+  // microtags spreads +4 across those 15 tags, so a tag that appears across
+  // many of a user's positive interactions accumulates a strong score quickly.
+  const microtags = song.microtags ?? [];
+  if (microtags.length > 0) {
+    const mtShare = w / microtags.length;
+    for (const t of microtags) bumpMap(next.microtag_scores, t, mtShare);
+  }
   bumpMap(next.similarity_cluster_scores, String(song.similarity_cluster), w);
   next.vocal_preferences[song.vocal_type] =
     (next.vocal_preferences[song.vocal_type] ?? 0) + w;

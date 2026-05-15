@@ -25,6 +25,15 @@ export type Producer = (avoidIds: string[], count: number) => Promise<Song[]>;
 
 export class QueueManager {
   private queue: Song[] = [];
+  /**
+   * Overflow from `setQueue` — when a curated list is longer than the
+   * 10-slot in-memory queue, the rest sits here. `refill()` drains this
+   * BEFORE calling the producer, so a 50-song playlist plays in full
+   * before the personalized ranker ever sees it. Without this, the user
+   * tapping their 50-song playlist hears 10 of their songs then silently
+   * gets bounced into ranker picks — the bug this exists to prevent.
+   */
+  private curatedTail: Song[] = [];
   private preloader: Preloader;
   private producer: Producer;
   private listeners = new Set<() => void>();
@@ -66,6 +75,7 @@ export class QueueManager {
     // CDN downloads which was the root cause of the 5–7s play-tap delay.
     this.preloader.clear();
     this.queue = seed ? [seed] : [];
+    this.curatedTail = [];
     await this.refill();
     this.notify();
   }
@@ -80,45 +90,65 @@ export class QueueManager {
 
   /** Insert a song at the front (used for direct play, e.g. Library tap). */
   async playSpecific(song: Song) {
-    // Same latency fix — synchronous clear, async refill.
+    // Same latency fix — synchronous clear, async refill. Drops any curated
+    // tail since the user just navigated away from the playlist context.
     this.preloader.clear();
     this.queue = [song];
+    this.curatedTail = [];
     await this.refill();
     this.notify();
   }
 
   /**
-   * Replace the queue with an explicit ordered list (playlist tap). The first
-   * song becomes current; the rest sit in the queue and are walked by skip /
-   * auto-advance before the ranker refills from beyond the playlist's tail.
+   * Replace the queue with an explicit ordered list (playlist tap).
+   *
+   * The first TOTAL_DEPTH songs sit in the in-memory queue (preloaded as
+   * usual). Anything beyond that goes into `curatedTail` and is drained
+   * by `refill()` before the personalized ranker is consulted. This means
+   * a 50-song playlist plays all 50 songs in order, then the ranker takes
+   * over with songs the user hasn't heard yet.
    */
   async setQueue(songs: Song[]) {
     if (songs.length === 0) return;
     this.preloader.clear();
-    // Cap at TOTAL_DEPTH so the queue stays the right size — we still refill
-    // beyond the playlist's end so the user never hits dead air.
     this.queue = songs.slice(0, TOTAL_DEPTH);
+    this.curatedTail = songs.slice(TOTAL_DEPTH);
     await this.refill();
     this.notify();
   }
 
   /** Ensure queue is full and the next PRELOAD_DEPTH songs are decoding. */
   private async refill() {
-    const need = TOTAL_DEPTH - this.queue.length;
-    if (need > 0) {
-      try {
-        const avoid = this.queue.map((s) => s.id);
-        const more = await this.producer(avoid, need);
-        // Defensively de-dupe in case the producer ignores avoid.
-        const have = new Set(avoid);
-        for (const s of more) {
-          if (!have.has(s.id)) {
-            this.queue.push(s);
-            have.add(s.id);
+    if (this.queue.length < TOTAL_DEPTH) {
+      const have = new Set(this.queue.map((s) => s.id));
+
+      // 1) Drain the curated tail FIRST. A playlist longer than the queue's
+      //    in-memory depth must play to completion before the ranker is
+      //    consulted, otherwise the user silently bounces into recommended
+      //    songs partway through their own playlist.
+      while (this.queue.length < TOTAL_DEPTH && this.curatedTail.length > 0) {
+        const next = this.curatedTail.shift()!;
+        if (have.has(next.id)) continue;
+        this.queue.push(next);
+        have.add(next.id);
+      }
+
+      // 2) Once the curated tail is empty, fall back to the personalized
+      //    producer to keep the queue from running dry.
+      const stillNeed = TOTAL_DEPTH - this.queue.length;
+      if (stillNeed > 0) {
+        try {
+          const avoid = [...have];
+          const more = await this.producer(avoid, stillNeed);
+          for (const s of more) {
+            if (!have.has(s.id)) {
+              this.queue.push(s);
+              have.add(s.id);
+            }
           }
+        } catch {
+          // If the producer fails we still play what we have. The next skip retries.
         }
-      } catch {
-        // If the producer fails we still play what we have. The next skip retries.
       }
     }
 

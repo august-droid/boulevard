@@ -23,11 +23,24 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
+  withSpring,
   withTiming,
+  interpolate,
+  Extrapolation,
 } from 'react-native-reanimated';
 import { colors, fonts, metals, radii, spacing } from '@/theme';
 import { usePlayer } from '@/contexts/PlayerContext';
+import { useFollows } from '@/contexts/FollowsContext';
+import { usePlaylists } from '@/contexts/PlaylistsContext';
+import { useComments, topPositiveComments, fallbackHandle, avatarColor } from '@/contexts/CommentsContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useAppNav } from '@/contexts/NavigationContext';
+import type { SongComment } from '@/types';
+import { PlaylistPicker } from '@/components/PlaylistPicker';
+import { CommentsSheet } from '@/components/CommentsSheet';
 import { PlatinumProgressBar } from '@/components/PlatinumProgressBar';
+import { Artwork } from '@/components/Artwork';
+import { songArtworkUri } from '@/lib/artwork';
 import {
   PlayIcon,
   PauseIcon,
@@ -39,8 +52,11 @@ import {
   ShuffleIcon,
   ChevronDownIcon,
   MoreIcon,
+  CommentIcon,
+  HeartIcon,
 } from '@/components/Icon';
 import { CreateVibeSheet } from '@/screens/CreateVibeSheet';
+import { LyricsSheet } from '@/components/LyricsSheet';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -50,14 +66,66 @@ const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 // the controls sit on a clean dark surface and the bottom nav (which is
 // rendered above this screen) reads as part of the same composition.
 
-export function PlayerFeedScreen() {
+export function PlayerFeedScreen({ onDismiss }: { onDismiss?: () => void } = {}) {
   const player = usePlayer();
   const insets = useSafeAreaInsets();
+  const { playlists } = usePlaylists();
+  const comments = useComments();
+  const auth = useAuth();
+  const nav = useAppNav();
   const [vibeOpen, setVibeOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
+
+  // Gate every engagement-write action behind signup. Anonymous users
+  // can listen freely but cannot save, like, follow, or comment.
+  // Tapping any of these bounces them to the SignupSheet. Reading +
+  // playing is intentionally unblocked so the discovery loop stays
+  // friction-free.
+  const requireSignup = useCallback((): boolean => {
+    if (auth.isAnonymous) {
+      nav.openSignup();
+      return true;
+    }
+    return false;
+  }, [auth.isAnonymous, nav]);
+
+  // Bookmark icon fills when the current song lives in any user playlist.
+  const currentSongId = player.current?.id ?? null;
+  const inAnyPlaylist = !!currentSongId && playlists.some((p) => p.song_ids.includes(currentSongId));
+
+  // Like state + action live on the PlayerContext now. Persists to
+  // user_song_likes and feeds a 'like' signal into the taste profile.
+  const liked = player.liked;
+  const toggleLike = useCallback(() => {
+    if (!currentSongId) return;
+    if (requireSignup()) return;
+    if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
+    void player.like();
+  }, [currentSongId, player, requireSignup]);
+
+  const openPicker = useCallback(() => {
+    if (!currentSongId) return;
+    if (requireSignup()) return;
+    setPickerOpen(true);
+  }, [currentSongId, requireSignup]);
+
+  // Lazily prefetch comment counts when the song changes so the badge on the
+  // comment button reflects reality without waiting for sheet open.
+  useEffect(() => {
+    if (currentSongId && comments.loadedSongId !== currentSongId) {
+      void comments.loadFor(currentSongId);
+    }
+  }, [currentSongId, comments]);
 
   const skip = useCallback(() => {
     if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
     player.skip();
+  }, [player]);
+
+  const goPrevious = useCallback(() => {
+    if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
+    void player.previous();
   }, [player]);
 
   // Small synchronous tap feedback used on every transport button. Fires the
@@ -93,13 +161,107 @@ export function PlayerFeedScreen() {
     }
   }, [player]);
 
-  // Swipe up on the cover advances to the next song. The transport row sits
-  // outside this detector so taps on the controls always win.
-  const pan = Gesture.Pan().onEnd((e) => {
-    if (e.translationY < -80 || (e.translationX < -80 && Math.abs(e.translationY) < 60)) {
-      runOnJS(skip)();
-    }
-  });
+  // Swipe gestures on the cover. Behavior depends on whether the
+  // immersive lyrics sheet is currently open or closed:
+  //
+  //   sheet CLOSED:
+  //     • down  → open lyrics sheet (live-drag, snap on release)
+  //     • up    → next song
+  //     • left  → next song (TikTok-style)
+  //     • right → previous song
+  //     The player chevron (top-left) dismisses to the mini-player.
+  //   sheet OPEN:
+  //     • up    → close lyrics sheet
+  //     • all other directions ignored (lyrics own the surface)
+  //
+  // The sheet's translateY is driven by `sheetProgress` (0=closed, 1=open).
+  // All animation runs on the UI thread via Reanimated worklets.
+  const sheetProgress = useSharedValue(0);
+  const sheetStartProgress = useSharedValue(0);
+  // Tuned for "easy to swipe down on the player and see lyrics":
+  //   • SHEET_TRAVEL 35% of screen height (was 55%) — half the drag distance
+  //     to reach full open, so even a casual flick gives strong visual response.
+  //   • Snap-open triggers at translationY > 50 OR velocityY > 200 (was
+  //     100 / 600) — iOS Simulator mouse drags rarely generate enough
+  //     velocity, so we make distance the dominant signal.
+  const SHEET_TRAVEL = SCREEN_H * 0.35;
+
+  const pan = Gesture.Pan()
+    .onBegin(() => {
+      'worklet';
+      sheetStartProgress.value = sheetProgress.value;
+    })
+    .onUpdate((e) => {
+      'worklet';
+      const start = sheetStartProgress.value;
+      // Only react to mostly-vertical drags. Horizontal-dominant drags
+      // are handled at gesture end (skip/previous) and we want the sheet
+      // to stay put while the user is sliding sideways.
+      if (Math.abs(e.translationX) > Math.abs(e.translationY)) return;
+      if (start === 0) {
+        // Closed: downward drag opens; upward drag is ignored (will be
+        // handled at gesture end as skip-next).
+        if (e.translationY <= 0) return;
+        const next = e.translationY / SHEET_TRAVEL;
+        sheetProgress.value = next > 1 ? 1 : next;
+      } else {
+        // Open: upward drag closes; downward drag holds at 1.
+        if (e.translationY >= 0) return;
+        const next = 1 + e.translationY / SHEET_TRAVEL;
+        sheetProgress.value = next < 0 ? 0 : next;
+      }
+    })
+    .onEnd((e) => {
+      'worklet';
+      const start = sheetStartProgress.value;
+      const verticalDominant = Math.abs(e.translationY) > Math.abs(e.translationX);
+
+      if (start === 0 && verticalDominant && e.translationY > 25) {
+        // Snap open with low threshold so a casual flick is enough.
+        const shouldOpen = e.translationY > 50 || e.velocityY > 200;
+        sheetProgress.value = withSpring(shouldOpen ? 1 : 0, {
+          damping: 22,
+          stiffness: 220,
+          mass: 0.9,
+        });
+        return;
+      }
+      if (start === 1 && verticalDominant && e.translationY < -25) {
+        const shouldClose = e.translationY < -50 || e.velocityY < -200;
+        sheetProgress.value = withSpring(shouldClose ? 0 : 1, {
+          damping: 22,
+          stiffness: 220,
+          mass: 0.9,
+        });
+        return;
+      }
+      // No sheet movement happened — fall back to legacy swipe behaviors
+      // (only when the sheet is closed; never skip out from under an
+      // open lyrics view).
+      if (start !== 0) {
+        sheetProgress.value = withSpring(1, { damping: 22, stiffness: 220 });
+        return;
+      }
+      if (e.translationY < -80 && Math.abs(e.translationX) < 80) {
+        runOnJS(skip)();
+        return;
+      }
+      if (Math.abs(e.translationY) < 60) {
+        if (e.translationX < -80) runOnJS(skip)();
+        else if (e.translationX > 80) runOnJS(goPrevious)();
+      }
+    });
+
+  // Player chrome (controls, title block, action column) fades out as the
+  // lyrics sheet rises. Done in a worklet so no JS frames are involved.
+  const playerChromeStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(sheetProgress.value, [0, 0.6], [1, 0], Extrapolation.CLAMP),
+  }));
+  // Backdrop deepens slightly so the artwork softens behind the lyrics
+  // without going fully black — preserves the artist identity color cast.
+  const backdropDeepenStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(sheetProgress.value, [0, 1], [0, 0.35], Extrapolation.CLAMP),
+  }));
 
   const song = player.current;
 
@@ -108,15 +270,18 @@ export function PlayerFeedScreen() {
       <View style={styles.coverWrap}>
         {song ? (
           <>
-            <Image
-              source={{ uri: song.cover_url }}
-              style={styles.cover}
-              contentFit="cover"
-              cachePolicy="memory-disk"
-              // 220ms crossfade between covers so the swap reads smoothly.
-              transition={220}
-              recyclingKey={song.id}
-            />
+            {/* Persistent backdrop. Same artwork as the animated foreground,
+                scaled up, blurred, darkened. Fills the entire screen so
+                that when the foreground Ken-Burns layer translates or
+                briefly fades during a song swap, the user never sees a
+                black edge or empty container — they see a soft blurred
+                version of the same image. Does NOT animate. */}
+            <ArtworkBackdrop uri={songArtworkUri(song)} songId={song.id} />
+            {/* Always the song's own bespoke cover. The artist portrait is a
+                separate asset (shown only on the artist pill / profile) — it
+                must never stand in for a song's artwork. songArtworkUri()
+                owns this precedence app-wide. */}
+            <KenBurnsCover uri={songArtworkUri(song)} songId={song.id} />
             {/* Hairline glass reflection on the very top. */}
             <LinearGradient
               colors={[metals.glassHi, 'transparent']}
@@ -145,6 +310,13 @@ export function PlayerFeedScreen() {
               style={styles.controlsScrim}
               pointerEvents="none"
             />
+            {/* Sheet-driven darken layer. Sits above the cover + gradients
+                but below the player chrome so it dims the artwork as the
+                lyrics rise. */}
+            <Animated.View
+              style={[StyleSheet.absoluteFill, styles.sheetDeepen, backdropDeepenStyle]}
+              pointerEvents="none"
+            />
             <GestureDetector gesture={pan}>
               {/* Capture swipes everywhere above the controls. */}
               <View style={styles.swipeZone} />
@@ -156,59 +328,116 @@ export function PlayerFeedScreen() {
       </View>
 
       {/* Top bar — chevron, breathing brand logo, overflow menu. */}
-      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <Pressable hitSlop={12} onPress={() => {}} style={styles.iconBtn}>
+      <Animated.View style={[styles.topBar, { paddingTop: insets.top + 8 }, playerChromeStyle]}>
+        <Pressable hitSlop={12} onPress={() => onDismiss?.()} style={styles.iconBtn}>
           <ChevronDownIcon size={22} color={colors.text} />
         </Pressable>
         <BreathingBrandMark />
         <Pressable hitSlop={12} onPress={() => setVibeOpen(true)} style={styles.iconBtn}>
           <MoreIcon size={20} color={colors.text} />
         </Pressable>
-      </View>
+      </Animated.View>
+
+      {/* Lyrics affordance — visible pill telling the user the gesture
+          exists. Sits just below the top bar, fades out as the lyrics
+          sheet rises (no need to advertise once they're in it). Tapping
+          the pill also opens the sheet so it's not gesture-only. */}
+      <Animated.View
+        style={[styles.lyricsHint, { top: insets.top + 56 }, playerChromeStyle]}
+        pointerEvents="box-none"
+      >
+        <Pressable
+          onPress={() => {
+            sheetProgress.value = withSpring(1, { damping: 22, stiffness: 220, mass: 0.9 });
+          }}
+          hitSlop={12}
+          style={({ pressed }) => [styles.lyricsHintPill, pressed && { opacity: 0.6 }]}
+        >
+          <ChevronDownIcon size={14} color={colors.text} />
+          <Text style={styles.lyricsHintText}>LYRICS</Text>
+        </Pressable>
+      </Animated.View>
+
+      {/* Drift comments — top-5 positive/neutral comments float in one
+          at a time over the artwork while the song plays. Tap to open
+          the full thread. Hidden when there's nothing to show. */}
+      {currentSongId && comments.loadedSongId === currentSongId ? (
+        <Animated.View style={[StyleSheet.absoluteFill, playerChromeStyle]} pointerEvents="box-none">
+          <DriftComments
+            songId={currentSongId}
+            comments={comments.topLevel}
+            currentUserId={auth.userId}
+            profilesByUserId={comments.profiles}
+            bottomOffset={insets.bottom + 280}
+            onTapOpen={() => setCommentsOpen(true)}
+          />
+        </Animated.View>
+      ) : null}
 
       {/* Bottom content stack. */}
-      <View
+      <Animated.View
         style={[
           styles.bottomStack,
           // Reserve room for the BottomNav (rendered by RootNavigator).
           { paddingBottom: insets.bottom + 96 },
+          playerChromeStyle,
         ]}
       >
         <View style={styles.titleBlock}>
           <Text style={styles.title} numberOfLines={1}>
             {song?.title ?? ''}
           </Text>
-          <View style={styles.brandPill}>
-            <SparkleIcon size={11} color={metals.goldHi} />
-            <Text style={styles.brandPillText}>Boulevard Original</Text>
+          <View style={styles.artistRow}>
+            <Pressable
+              onPress={() => {
+                if (!song?.artist_id) return;
+                if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
+                nav.openArtistProfile(song.artist_id);
+              }}
+              disabled={!song?.artist_id}
+              style={({ pressed }) => [
+                styles.brandPill,
+                !!song?.artist_id && styles.brandPillArtist,
+                pressed && !!song?.artist_id && { opacity: 0.7 },
+              ]}
+              accessibilityLabel={song?.artist_id ? 'Open artist' : undefined}
+            >
+              {song?.artist_id ? (
+                // Small circular artist photo — instantly recognizable,
+                // replaces the old "Artist:" text label.
+                <Artwork
+                  uri={song.artist_image_url}
+                  name={song.artist_name}
+                  size={20}
+                  circle
+                  recyclingKey={song.artist_id}
+                />
+              ) : (
+                <SparkleIcon size={11} color={metals.goldHi} />
+              )}
+              <Text style={styles.brandPillText} numberOfLines={1}>
+                {song ? formatGenrePill(song) : 'Boulevard Original'}
+              </Text>
+            </Pressable>
+            {song?.artist_id ? <FollowPill artistId={song.artist_id} /> : null}
           </View>
         </View>
 
-        {/* Single transport row — Share / Shuffle / Prev / Play / Skip / Save.
-            All controls on one horizontal axis. Share + Save are plain icons
-            matching the others' visual weight so the row reads as a unified
-            control surface rather than two stacked groups. */}
+        {/* Transport row — five evenly-spaced items with the big play
+            button centered. Shuffle and Share flank the prev/play/skip
+            core so the bottom strip reads as a single balanced unit
+            instead of three controls floating in the middle. The
+            secondary actions (like, comment, save) remain in the
+            right rail. */}
         <View style={styles.transport}>
           <Pressable
             hitSlop={14}
             onPressIn={tapFeedback}
-            onPress={onShare}
-            style={({ pressed }) => pressed ? styles.transportPressed : undefined}
-            accessibilityLabel="Share"
-          >
-            <ShareIcon size={22} color={colors.text} />
-          </Pressable>
-          <Pressable
-            hitSlop={12}
-            onPressIn={tapFeedback}
             onPress={() => player.toggleShuffle()}
-            style={({ pressed }) => pressed ? styles.transportPressed : undefined}
+            style={({ pressed }) => [styles.transportSide, pressed && styles.transportPressed]}
             accessibilityLabel="Shuffle"
           >
-            <ShuffleIcon
-              size={22}
-              color={player.isShuffling ? metals.goldSolidHi : colors.textMuted}
-            />
+            <ShuffleIcon size={22} color={player.isShuffling ? metals.goldSolidHi : colors.text} />
           </Pressable>
           <Pressable
             hitSlop={14}
@@ -216,7 +445,7 @@ export function PlayerFeedScreen() {
             onPress={() => player.previous()}
             style={({ pressed }) => pressed ? styles.transportPressed : undefined}
           >
-            <PrevIcon size={30} color={colors.text} />
+            <PrevIcon size={28} color={colors.text} />
           </Pressable>
           <Pressable
             hitSlop={14}
@@ -238,20 +467,16 @@ export function PlayerFeedScreen() {
             onPress={skip}
             style={({ pressed }) => pressed ? styles.transportPressed : undefined}
           >
-            <SkipIcon size={30} color={colors.text} />
+            <SkipIcon size={28} color={colors.text} />
           </Pressable>
           <Pressable
             hitSlop={14}
             onPressIn={tapFeedback}
-            onPress={() => player.save()}
-            style={({ pressed }) => pressed ? styles.transportPressed : undefined}
-            accessibilityLabel={player.saved ? 'Unsave' : 'Save'}
+            onPress={onShare}
+            style={({ pressed }) => [styles.transportSide, pressed && styles.transportPressed]}
+            accessibilityLabel="Share"
           >
-            <BookmarkIcon
-              size={22}
-              color={player.saved ? metals.goldSolidHi : colors.text}
-              filled={player.saved}
-            />
+            <ShareIcon size={22} color={colors.text} />
           </Pressable>
         </View>
 
@@ -268,9 +493,60 @@ export function PlayerFeedScreen() {
             <Text style={styles.progressMetaText}>{formatTime(player.duration)}</Text>
           </View>
         </View>
-      </View>
+      </Animated.View>
+
+      {/* Vertical action column — TikTok-style. Trimmed to three items
+          (Like / Comment / Save) so the column stops visually dominating
+          the lower third. Shuffle + Share moved into the transport row.
+          Anchored so the BOTTOM of the column sits just above the title
+          block, never extending past the transport row level — that
+          alignment is what makes the lower screen feel symmetric. */}
+      <Animated.View
+        style={[
+          styles.actionColumn,
+          { bottom: insets.bottom + 260 },
+          playerChromeStyle,
+        ]}
+        pointerEvents="box-none"
+      >
+        <Pressable hitSlop={10} onPressIn={tapFeedback} onPress={toggleLike} style={({ pressed }) => [styles.actionBtn, pressed && styles.transportPressed]} accessibilityLabel={liked ? 'Unlike' : 'Like'}>
+          <HeartIcon size={28} color={liked ? colors.like : colors.text} filled={liked} />
+        </Pressable>
+        <Pressable hitSlop={10} onPressIn={tapFeedback} onPress={() => { if (currentSongId) setCommentsOpen(true); }} style={({ pressed }) => [styles.actionBtn, pressed && styles.transportPressed]} accessibilityLabel="Comments">
+          <View>
+            <CommentIcon size={28} color={colors.text} />
+            {/* Small red dot — fires whenever the song has any comments so
+                the user notices there's a conversation worth opening. */}
+            {comments.loadedSongId === currentSongId && comments.totalCount > 0 ? (
+              <View style={styles.commentDot} />
+            ) : null}
+          </View>
+        </Pressable>
+        <Pressable hitSlop={10} onPressIn={tapFeedback} onPress={openPicker} style={({ pressed }) => [styles.actionBtn, pressed && styles.transportPressed]} accessibilityLabel={inAnyPlaylist ? 'Edit playlists' : 'Save to playlist'}>
+          <BookmarkIcon size={26} color={inAnyPlaylist ? metals.goldSolidHi : colors.text} filled={inAnyPlaylist} />
+        </Pressable>
+      </Animated.View>
+
+      {/* Immersive lyrics overlay. Lazy-mounts on first open; pan gesture
+          on the cover drives `sheetProgress`. Tap a line → seek. Long-press
+          → share that line. */}
+      <LyricsSheet
+        song={song}
+        positionMs={player.position}
+        durationMs={player.duration}
+        progress={sheetProgress}
+        onSeek={(ms) => { void player.seek(ms); }}
+      />
 
       <CreateVibeSheet visible={vibeOpen} onClose={() => setVibeOpen(false)} />
+      <PlaylistPicker visible={pickerOpen} songId={currentSongId} onClose={() => setPickerOpen(false)} />
+      <CommentsSheet
+        visible={commentsOpen}
+        songId={currentSongId}
+        currentPositionMs={player.position}
+        onSeek={(ms) => { void player.seek(ms); }}
+        onClose={() => setCommentsOpen(false)}
+      />
     </GestureHandlerRootView>
   );
 }
@@ -284,12 +560,189 @@ function formatTime(ms: number): string {
   return `${m}:${r.toString().padStart(2, '0')}`;
 }
 
+/**
+ * The brand-pill text. When the song has an artist we show the bare artist
+ * name — the small circular artist photo next to it already signals "this is
+ * a person you can open / follow", so no "Artist:" prefix is needed. Falls
+ * back to a cleaned cross-genre label when the song has no artist (legacy /
+ * test rows).
+ */
+function formatGenrePill(song: { genre?: string; genres?: string[]; artist_name?: string | null }): string {
+  if (song.artist_name) return song.artist_name;
+  let label = song.genre ?? 'Boulevard Original';
+  if (label === 'Viral Mashup' && song.genres && song.genres.length > 1) {
+    label = cleanCrossGenre(song.genres[1]);
+  }
+  return label;
+}
+
+function cleanCrossGenre(raw: string): string {
+  // "Modern-Country x Trap" → "Country × Trap" — only used in the artist-less
+  // fallback above; kept around in case we want to surface the cross-genre
+  // tag in another part of the UI later.
+  const parts = raw.split(/\s+x\s+/i).map((p) => p.split('-')[0]?.trim()).filter(Boolean);
+  if (parts.length >= 2) return `${parts[0]} × ${parts[1]}`;
+  return raw;
+}
+
 // ---- Breathing brand mark -------------------------------------------
 //
 // Subtle "boulevard" wordmark at the top of the now-playing surface. Loops
 // a slow opacity pulse so the screen feels alive even when the cover is
 // motionless. Deliberately quiet — the cover art is the hero; this is just
 // a soft signature.
+
+// ---- Artwork backdrop ------------------------------------------------
+//
+// Static blurred fill that sits behind the animated cover so the screen
+// is never left with a black edge when the Ken-Burns transform translates
+// or scales. Same image as the foreground, slightly larger so its own
+// edges never appear, blurred and darkened. No animation. Memoized on
+// the artwork uri so progress ticks never re-render or reload it.
+
+function ArtworkBackdropBase({ uri, songId }: { uri: string | null; songId: string }) {
+  // Memoize the source object so referential equality survives parent
+  // re-renders. Without this, every `{ uri }` literal is a new object
+  // reference and expo-image may treat it as a new source.
+  const source = React.useMemo(() => ({ uri: uri ?? undefined }), [uri]);
+  return (
+    <View style={styles.backdrop} pointerEvents="none">
+      <Image
+        source={source}
+        style={styles.backdropImage}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        // Match the Ken-Burns layer's crossfade so a song swap doesn't
+        // animate the backdrop and foreground out of sync.
+        transition={220}
+        recyclingKey={songId}
+        blurRadius={48}
+      />
+      <View style={styles.backdropTint} pointerEvents="none" />
+    </View>
+  );
+}
+
+const ArtworkBackdrop = React.memo(
+  ArtworkBackdropBase,
+  (prev, next) => prev.uri === next.uri && prev.songId === next.songId,
+);
+
+// ---- Ken Burns cover -------------------------------------------------
+//
+// Slow zoom + drift on the hero cover so the screen feels alive without
+// adding new assets, bandwidth, or per-frame React work. Everything runs
+// on the UI thread via Reanimated worklets, zero impact on the JS thread
+// that handles audio playback. The animation is driven by shared values
+// so swapping `song.cover_url` does NOT restart the loop (avoids any
+// stutter when the next song begins decoding).
+//
+// Memoized on `uri` + `songId`: the parent re-renders on every position
+// tick and we never want the Image to remount or reload mid-track. The
+// recyclingKey is the song id, so each song shows its own bespoke cover.
+
+function KenBurnsCoverBase({ uri, songId }: { uri: string | null; songId: string }) {
+  const scale = useSharedValue(1.08);
+  const tx = useSharedValue(0);
+  const ty = useSharedValue(0);
+  const opacity = useSharedValue(1);
+
+  // Memoize the source so the parent's per-tick re-render never hands the
+  // Image a fresh source literal.
+  const source = React.useMemo(() => ({ uri: uri ?? undefined }), [uri]);
+
+  useEffect(() => {
+    // Slow breathing zoom. Min scale 1.08, max 1.22 — keeping the floor
+    // above 1.00 means the translate values can never expose the edge
+    // of the underlying container regardless of phase combination, which
+    // is what produced the black-on-the-left flicker users were seeing.
+    scale.value = withRepeat(
+      withTiming(1.22, { duration: 8000, easing: Easing.inOut(Easing.quad) }),
+      -1,
+      true,
+    );
+    // Drift sideways. Different period so the two never sync up. Kept
+    // small relative to the over-scale so the image still fills its
+    // container at every frame.
+    tx.value = withRepeat(
+      withTiming(28, { duration: 11000, easing: Easing.inOut(Easing.quad) }),
+      -1,
+      true,
+    );
+    ty.value = withRepeat(
+      withTiming(-22, { duration: 13000, easing: Easing.inOut(Easing.quad) }),
+      -1,
+      true,
+    );
+    // No cleanup. We intentionally let the animation persist across
+    // re-renders and song swaps. Reanimated tears these down on unmount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    opacity: opacity.value,
+    transform: [
+      { scale: scale.value },
+      { translateX: tx.value },
+      { translateY: ty.value },
+    ],
+  }));
+
+  return (
+    <Animated.View
+      style={[StyleSheet.absoluteFill, styles.coverClip, animatedStyle]}
+      pointerEvents="none"
+    >
+      <Image
+        source={source}
+        style={styles.cover}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        transition={220}
+        recyclingKey={songId}
+      />
+    </Animated.View>
+  );
+}
+
+const KenBurnsCover = React.memo(
+  KenBurnsCoverBase,
+  (prev, next) => prev.uri === next.uri && prev.songId === next.songId,
+);
+
+// ---- Follow / Unfollow pill ------------------------------------------
+//
+// Sits next to the genre·artist pill. Tap toggles follow status. When
+// followed, the artist's new songs surface in Library → From Your Follows
+// and (when push notifications are wired) a notification fires on release.
+
+function FollowPill({ artistId }: { artistId: string }) {
+  const follows = useFollows();
+  const auth = useAuth();
+  const nav = useAppNav();
+  const following = follows.isFollowing(artistId);
+  return (
+    <Pressable
+      onPress={() => {
+        // Following an artist writes to user_followed_artists and is a
+        // social action — gated the same way as save / like / comment.
+        if (auth.isAnonymous) { nav.openSignup(); return; }
+        void follows.toggleFollow(artistId);
+      }}
+      hitSlop={8}
+      style={({ pressed }) => [
+        styles.followPill,
+        following && styles.followPillOn,
+        pressed && { opacity: 0.85 },
+      ]}
+      accessibilityLabel={following ? 'Unfollow artist' : 'Follow artist'}
+    >
+      <Text style={[styles.followPillText, following && styles.followPillTextOn]}>
+        {following ? '✓ Following' : '+ Follow'}
+      </Text>
+    </Pressable>
+  );
+}
 
 function BreathingBrandMark() {
   const opacity = useSharedValue(0.65);
@@ -321,8 +774,107 @@ function BreathingBrandMark() {
   );
 }
 
-// ---- helpers ---------------------------------------------------------
+// ---- Drift comments ---------------------------------------------------
+//
+// Floating TikTok-style comment that appears over the artwork while the
+// song plays. Cycles the top-5 most-liked positive/neutral comments at
+// random intervals: one fades in, sits for ~5s, fades out, the next one
+// fades in. Tap opens the full comments sheet.
+//
+// We deliberately don't crossfade two at once — single-track keeps the
+// surface calm and doesn't compete with the lyric / title overlays.
 
+interface DriftCommentsProps {
+  songId: string;
+  comments: SongComment[];
+  currentUserId: string | null;
+  profilesByUserId: Record<string, { user_id: string; username: string | null; display_name: string | null; avatar_seed: string | null }>;
+  /** Distance from the bottom of the screen where the pill sits. */
+  bottomOffset: number;
+  /** Tap handler — opens the full comments sheet. */
+  onTapOpen: () => void;
+}
+
+function DriftComments({
+  songId,
+  comments,
+  currentUserId,
+  profilesByUserId,
+  bottomOffset,
+  onTapOpen,
+}: DriftCommentsProps) {
+  // Compute the top-5 once per comment-set change. The same set persists
+  // for the lifetime of the song (it only refreshes when CommentsContext
+  // reloads), so we can cycle through a stable list.
+  const pool = React.useMemo(
+    () => topPositiveComments(comments, currentUserId, 5),
+    [comments, currentUserId],
+  );
+
+  // Index into pool. Reset to 0 whenever the song id changes so we never
+  // briefly flash the previous song's comments while the new ones load.
+  const [idx, setIdx] = useState(0);
+  useEffect(() => { setIdx(0); }, [songId]);
+
+  // Animated opacity for the current pill. -1 means "not yet started."
+  const opacity = useSharedValue(0);
+
+  // Run the loop only when there's something to show. Each cycle:
+  //   delay 4-9s → fade in 350ms → hold 5s → fade out 350ms → next.
+  useEffect(() => {
+    if (pool.length === 0) return;
+    let cancelled = false;
+    const tick = async () => {
+      while (!cancelled) {
+        const delayMs = 4000 + Math.floor(Math.random() * 5000);
+        await new Promise((r) => setTimeout(r, delayMs));
+        if (cancelled) return;
+        opacity.value = withTiming(1, { duration: 350, easing: Easing.out(Easing.cubic) });
+        await new Promise((r) => setTimeout(r, 5000));
+        if (cancelled) return;
+        opacity.value = withTiming(0, { duration: 350, easing: Easing.in(Easing.cubic) });
+        await new Promise((r) => setTimeout(r, 360));
+        if (cancelled) return;
+        setIdx((i) => (i + 1) % pool.length);
+      }
+    };
+    void tick();
+    return () => {
+      cancelled = true;
+      opacity.value = 0;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pool.length, songId]);
+
+  const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
+
+  if (pool.length === 0) return null;
+  const c = pool[idx];
+  if (!c) return null;
+  const profile = profilesByUserId[c.user_id];
+  const handle = profile?.username ?? fallbackHandle(c.user_id);
+  const av = avatarColor(profile?.avatar_seed || c.user_id);
+
+  return (
+    <Animated.View
+      pointerEvents="box-none"
+      style={[styles.driftWrap, { bottom: bottomOffset }, animatedStyle]}
+    >
+      <Pressable onPress={onTapOpen} style={styles.driftPill} hitSlop={6}>
+        <LinearGradient
+          colors={[av.from, av.to]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.driftAvatar}
+        />
+        <View style={{ flexShrink: 1, minWidth: 0 }}>
+          <Text style={styles.driftHandle} numberOfLines={1}>{handle}</Text>
+          <Text style={styles.driftBody} numberOfLines={2}>{c.body}</Text>
+        </View>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 // ---- styles ----------------------------------------------------------
 
@@ -331,6 +883,36 @@ const styles = StyleSheet.create({
 
   coverWrap: {
     ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+    // The Ken-Burns transform can briefly leave a transparent edge.
+    // The ArtworkBackdrop layer above fills the screen with a blurred
+    // version of the same image, so we never want black behind it. The
+    // surface color is a non-black neutral so the very first frame
+    // (before the network image lands) does not flash pure black.
+    backgroundColor: colors.surface,
+  },
+  // Persistent blurred fill behind the animated cover. Slightly larger
+  // than the screen so the blur's own soft edges never enter the frame.
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
+  },
+  backdropImage: {
+    position: 'absolute',
+    top: -40,
+    left: -40,
+    right: -40,
+    bottom: -40,
+    transform: [{ scale: 1.15 }],
+  },
+  backdropTint: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(10,10,12,0.42)',
+  },
+  // Clip-mask for the animated foreground. Prevents any sub-pixel bleed
+  // from the transform exposing the layer underneath.
+  coverClip: {
+    overflow: 'hidden',
   },
   cover: {
     ...StyleSheet.absoluteFillObject,
@@ -339,12 +921,46 @@ const styles = StyleSheet.create({
   },
 
   swipeZone: {
-    // Top ~60% of the screen — leaves the controls untouched.
+    // Top ~75% of the screen — captures any cover-area swipe. Sits below
+    // the title block + transport so taps on controls still register.
+    // Wider zone = easier to discover "swipe down for lyrics".
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: SCREEN_H * 0.6,
+    height: SCREEN_H * 0.75,
+  },
+
+  // Lyrics affordance — sits below the top bar as a centered pill.
+  // Subtle but always visible so the gesture is discoverable.
+  lyricsHint: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  lyricsHintPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.22)',
+  },
+  lyricsHintText: {
+    color: '#ffffff',
+    fontSize: 10,
+    letterSpacing: 1.4,
+    fontWeight: '600',
+  },
+
+  // Sheet-driven darken layer. Opacity is animated 0 → 0.35 as the
+  // lyrics sheet rises so the artwork softens without going fully black.
+  sheetDeepen: {
+    backgroundColor: '#000',
   },
 
   // Strong dark wash that sits behind the title block + waveform + transport.
@@ -388,6 +1004,28 @@ const styles = StyleSheet.create({
     letterSpacing: 4.5,
   },
 
+  // ---- Drift comment overlay ----
+  driftWrap: {
+    position: 'absolute',
+    left: spacing.lg,
+    right: spacing.xxl + spacing.md + 28, // keep clear of the right action rail
+  },
+  driftPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+    paddingLeft: 8,
+    paddingRight: 14,
+    borderRadius: radii.pill,
+    backgroundColor: 'rgba(12,12,14,0.78)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.10)',
+  },
+  driftAvatar: { width: 28, height: 28, borderRadius: 14 },
+  driftHandle: { color: colors.textMuted, fontSize: 11, fontWeight: fonts.weight.semibold },
+  driftBody: { color: colors.text, fontSize: fonts.size.sm, lineHeight: 18 },
+
   bottomStack: {
     position: 'absolute',
     left: 0,
@@ -397,7 +1035,10 @@ const styles = StyleSheet.create({
   },
 
   titleBlock: {
-    marginBottom: spacing.lg,
+    // Title sits directly above the transport row with zero gap, which
+    // pulls it visually further down on the screen — below the bottom of
+    // the right-side action column where it stops fighting for space.
+    marginBottom: 0,
   },
   title: {
     color: colors.text,
@@ -418,19 +1059,106 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: metals.gold,
   },
+  // When an artist photo sits in the pill, tighten the left padding so the
+  // circular image hugs the pill edge and the pill stays compact.
+  brandPillArtist: {
+    paddingLeft: 4,
+    paddingVertical: 4,
+    gap: 7,
+  },
   brandPillText: {
     color: colors.text,
     fontSize: fonts.size.xs,
     fontWeight: fonts.weight.semibold,
     letterSpacing: 0.3,
   },
+  artistRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  followPill: {
+    // Same vertical rhythm as the brand pill so the two reads as a
+    // single metadata cluster, not two floating chips.
+    marginTop: 10,
+    marginLeft: 2,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radii.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: metals.gold,
+    backgroundColor: 'transparent',
+  },
+  followPillOn: {
+    backgroundColor: metals.gold,
+    borderColor: metals.gold,
+  },
+  followPillText: {
+    color: colors.text,
+    fontSize: fonts.size.xs,
+    fontWeight: fonts.weight.semibold,
+    letterSpacing: 0.3,
+  },
+  followPillTextOn: {
+    color: '#1a1408',
+  },
 
   transport: {
     flexDirection: 'row',
     alignItems: 'center',
+    // space-between with five items locks the play button to dead-center
+    // and mirrors shuffle ↔ share + prev ↔ skip on either side.
     justifyContent: 'space-between',
-    paddingHorizontal: 4,
-    marginTop: spacing.lg,
+    paddingHorizontal: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  // Auxiliary slots inside transport (shuffle on the left, share on the
+  // right). Fixed-width hit targets so the row stays visually symmetric
+  // even when the icons swap between active/inactive tints.
+  transportSide: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // TikTok-style vertical column anchored to the right edge of the screen.
+  // Pinned absolute so the cover art shows through. `box-none` on the
+  // container lets taps fall through anywhere that isn't a button. Now
+  // three items only (Like / Comment / Save) so the rail no longer
+  // visually dominates the lower third.
+  actionColumn: {
+    position: 'absolute',
+    right: spacing.md,
+    alignItems: 'center',
+    gap: spacing.lg,
+  },
+  actionBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 44,
+    paddingVertical: 2,
+  },
+  actionCount: {
+    color: colors.text,
+    fontSize: 11,
+    fontWeight: fonts.weight.semibold,
+    marginTop: 4,
+    fontVariant: ['tabular-nums'],
+    textShadowColor: 'rgba(0,0,0,0.6)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
+  },
+  commentDot: {
+    position: 'absolute',
+    top: -2,
+    right: -2,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ff2d55',
+    borderWidth: 1.5,
+    borderColor: colors.bg,
   },
   progressBarWrap: {
     marginTop: spacing.md,
@@ -476,6 +1204,24 @@ const styles = StyleSheet.create({
   transportPressed: {
     opacity: 0.55,
     transform: [{ scale: 0.88 }],
+  },
+  commentBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -8,
+    backgroundColor: metals.goldSolidHi,
+    borderRadius: 8,
+    paddingHorizontal: 5,
+    minWidth: 16,
+    height: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  commentBadgeText: {
+    color: '#1a1408',
+    fontSize: 10,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
   playBtnPressed: {
     opacity: 0.85,

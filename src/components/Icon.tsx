@@ -176,6 +176,15 @@ export const ChevronDownIcon = (p: IconProps) => {
   );
 };
 
+export const ChevronLeftIcon = (p: IconProps) => {
+  const { width, height, color } = D(p);
+  return (
+    <Svg width={width} height={height} viewBox="0 0 24 24" fill="none">
+      <Path d="M15 6l-6 6 6 6" stroke={color} strokeWidth={2.2} />
+    </Svg>
+  );
+};
+
 export const CloseIcon = (p: IconProps) => {
   const { width, height, color } = D(p);
   return (
@@ -191,6 +200,21 @@ export const ShareIcon = (p: IconProps) => {
     <Svg width={width} height={height} viewBox="0 0 24 24" fill="none">
       <Path d="M12 3v13M12 3l-4 4M12 3l4 4" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" />
       <Path d="M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6" stroke={color} strokeWidth={1.8} strokeLinecap="round" />
+    </Svg>
+  );
+};
+
+export const CommentIcon = (p: IconProps) => {
+  const { width, height, color } = D(p);
+  return (
+    <Svg width={width} height={height} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinejoin="round"
+        strokeLinecap="round"
+      />
     </Svg>
   );
 };
@@ -297,6 +321,15 @@ export const FacebookIcon = (p: IconProps) => {
         fill="#fff"
         d="M16.671 15.543l.532-3.47h-3.328v-2.25c0-.949.465-1.874 1.956-1.874h1.513V4.996s-1.374-.235-2.686-.235c-2.741 0-4.533 1.662-4.533 4.669v2.643H7.078v3.47h3.047v8.385a12.118 12.118 0 0 0 3.75 0v-8.385z"
       />
+    </Svg>
+  );
+};
+
+export const TikTokIcon = (p: IconProps) => {
+  const { width, height, color } = D(p);
+  return (
+    <Svg width={width} height={height} viewBox="0 0 24 24" fill={color}>
+      <Path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74a2.89 2.89 0 0 1 2.31-4.64a2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5.8 20.1a6.34 6.34 0 0 0 10.86-4.43V8.81a8.16 8.16 0 0 0 4.77 1.52V6.88a4.85 4.85 0 0 1-1.84-.19" />
     </Svg>
   );
 };

@@ -2,7 +2,7 @@
   "expo": {
     "name": "Boulevard",
     "slug": "boulevard",
-    "version": "0.1.0",
+    "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "boulevard",
     "userInterfaceStyle": "dark",
@@ -26,7 +26,7 @@
       }
     },
     "android": {
-      "package": "io.boulevard.app",
+      "package": "com.boulevard.app",
       "versionCode": 1,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -54,6 +54,15 @@
         "expo-notifications",
         {
           "color": "#c8ae7a"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "compileSdkVersion": 35,
+            "targetSdkVersion": 35
+          }
         }
       ]
     ],
