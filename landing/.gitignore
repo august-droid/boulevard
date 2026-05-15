@@ -1,0 +1,6 @@
+# Python bytecode cache produced by the article generator (articles/_generate.py).
+__pycache__/
+*.pyc
+
+# Netlify CLI local state.
+.netlify/
