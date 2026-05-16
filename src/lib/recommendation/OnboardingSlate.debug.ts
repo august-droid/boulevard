@@ -107,6 +107,9 @@ function anchors(a: Song, b: Song): number {
 }
 const byTitle = (t: string) => CATALOG.find((s) => s.title === t)!;
 const inCluster = (c: number) => CATALOG.filter((s) => s.similarity_cluster === c);
+// Mirrors OnboardingSlate.clusterKey — genre-first (similarity_cluster is
+// often a single default value catalog-wide, so genre is the real cluster).
+const clusterKeyOf = (s: Song) => s.genre || String(s.similarity_cluster);
 
 function main() {
   let ok = true;
@@ -129,41 +132,49 @@ function main() {
   check('no two adjacent slate songs share an artist', !adjacentArtistRepeat(slate));
 
   // ---- 3. Anchored-surprise validation ----
+  // Anchored surprise only applies once there is positive behaviour to anchor
+  // to — before any signal the surprise slots are wide exploration. So feed a
+  // fresh slate two completions, then verify its surprise slots are anchored.
   console.log('\n3) ANCHORED-SURPRISE VALIDATION');
-  const trustRefs = snap0.slate.slice(0, 2).map((r) => byTitle(r.title));
-  for (const r of snap0.slate.filter((x) => x.role === 'surprise')) {
+  const sSlate = new OnboardingSlate(CATALOG, { safetyMode: true });
+  const sc5 = inCluster(5);
+  sSlate.applySignal(sc5[0], ['completion_over_70'], true);
+  sSlate.applySignal(sc5[1], ['completion_over_70', 'save'], true);
+  const sSnap = sSlate.debugSnapshot();
+  const sRefs = [sc5[0], sc5[1], ...sSnap.slate.slice(0, 2).map((r) => byTitle(r.title))];
+  for (const r of sSnap.slate.filter((x) => x.role === 'surprise')) {
     const song = byTitle(r.title);
-    const shared = Math.max(...trustRefs.map((ref) => anchors(song, ref)));
-    check(`surprise "${r.title}" shares >=1 anchor with a trust pick`, shared >= 1,
-      `${shared} shared anchors`);
+    const shared = Math.max(...sRefs.map((ref) => anchors(song, ref)));
+    check(`surprise "${r.title}" shares >=1 anchor with a positive/trust pick`,
+      shared >= 1, `${shared} shared anchors`);
   }
 
   // ---- 4. LEAN-IN: 2 completions in one cluster → exploit leans into it ----
   console.log('\n4) LEAN-IN AFTER 2 COMPLETIONS (same cluster)');
   console.log('   confidence before any signal:', snap0.confidence, `(${snap0.confidenceBucket})`);
-  const leanCluster = 5;
-  const c5 = inCluster(leanCluster);
+  const c5 = inCluster(5);
+  const leanKey = clusterKeyOf(c5[0]);
   slate.applySignal(c5[0], ['completion_over_70'], true);
   slate.applySignal(c5[1], ['completion_over_70', 'save'], true);
   const snap4 = slate.debugSnapshot();
-  console.log('   after 2 completions in cluster', leanCluster, '→ confidence',
+  console.log(`   after 2 completions in cluster "${leanKey}" → confidence`,
     snap4.confidence, `(${snap4.confidenceBucket})`, '| lean-in:', snap4.leanClusters);
   check('confidence rose after strong positives', snap4.confidence > snap0.confidence);
   check('cluster with 2 completions flips to LEAN-IN',
-    snap4.leanClusters.includes(String(leanCluster)));
+    snap4.leanClusters.includes(leanKey));
   const exploitRow = snap4.slate.find((r) => r.role === 'exploit')!;
   check('exploit slot leans into the learned cluster',
-    exploitRow.cluster === String(leanCluster),
+    exploitRow.cluster === leanKey,
     `exploit = "${exploitRow.title}" cluster ${exploitRow.cluster}`);
 
   // ---- 5. RECOVERY + SUPPRESS after a hard skip ----
   console.log('\n5) RECOVERY + SUPPRESSION AFTER HARD SKIP');
-  const skipCluster = 1;
-  const d1 = inCluster(skipCluster);
+  const d1 = inCluster(1);
+  const skipKey = clusterKeyOf(d1[0]);
   const beforeSkip = slate.debugSnapshot().confidence;
   slate.applySignal(d1[0], ['skip_under_5'], true); // hard skip → recovery armed
   const snap5 = slate.debugSnapshot();
-  console.log('   after HARD SKIP in cluster', skipCluster, '→ confidence',
+  console.log(`   after HARD SKIP in cluster "${skipKey}" → confidence`,
     snap5.confidence, `(${snap5.confidenceBucket})`);
   console.log(slate.describe());
   check('confidence dropped after the hard skip', snap5.confidence < beforeSkip);
@@ -173,16 +184,16 @@ function main() {
     recoveryRow ? `slot ${recoveryRow.slot} "${recoveryRow.title}"` : 'none');
   if (recoveryRow) {
     check('recovery song avoids the hard-skipped cluster',
-      recoveryRow.cluster !== String(skipCluster));
+      recoveryRow.cluster !== skipKey);
   }
   slate.applySignal(d1[1], ['skip_under_15'], true); // 2nd skip in cluster → suppress
   const snap5b = slate.debugSnapshot();
   check('2 skips in a cluster SUPPRESS it',
-    snap5b.suppressedClusters.includes(String(skipCluster)),
+    snap5b.suppressedClusters.includes(skipKey),
     'suppressed: ' + JSON.stringify(snap5b.suppressedClusters));
   const upcoming = snap5b.slate.slice(snap5b.playedCount).map((r) => r.cluster);
   check('suppressed cluster is gone from all upcoming slots',
-    !upcoming.includes(String(skipCluster)));
+    !upcoming.includes(skipKey));
 
   // ---- 6. Performance ----
   console.log('\n6) PERFORMANCE (no heavy work during playback)');

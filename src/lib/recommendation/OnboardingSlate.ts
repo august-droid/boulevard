@@ -120,7 +120,12 @@ export type ConfidenceBucket = 'low' | 'medium' | 'high';
 // ---- small pure helpers --------------------------------------------------
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
-const clusterKey = (s: Song) => String(s.similarity_cluster);
+// Cluster identity for the slate's diversity cap + suppress/lean logic.
+// Genre is the primary key: it is always populated and meaningfully varied,
+// whereas `similarity_cluster` is frequently a single default value across
+// the whole catalog — keying on it alone would collapse every song into one
+// cluster and break the diversity cap. similarity_cluster only refines it.
+const clusterKey = (s: Song) => (s.genre || String(s.similarity_cluster));
 const quality = (s: Song) =>
   (s.hook_strength ?? 0) * 1.5 +
   (s.mainstream_fit ?? 0) * 1.0 +
@@ -397,7 +402,7 @@ export class OnboardingSlate {
         continue;
       }
 
-      const { score, reason } = this.scoreForRole(cand, role, prev);
+      const { score, reason } = this.scoreForRole(cand, role, prev, clusterCounts);
       if (score > bestScore) {
         bestScore = score;
         best = cand;
@@ -416,6 +421,7 @@ export class OnboardingSlate {
     cand: Song,
     role: SlotRole,
     prev: Song | null,
+    clusterCounts: Map<string, number>,
   ): { score: number; reason: string } {
     const conf = this.confidence();
     const ck = clusterKey(cand);
@@ -426,6 +432,17 @@ export class OnboardingSlate {
     let score = base + learned;
     if (this.suppressedClusters.has(ck)) score -= 20;
     if (this.leanClusters.has(ck)) score += 4;
+    // Soft penalty for any genre the user has already skipped — move on
+    // rather than re-serving a rejected lane (the hard suppress needs 2).
+    score -= (this.clusterSkips.get(ck) ?? 0) * 5;
+
+    // "Searching" — no positive signal has landed yet. The trust anchors may
+    // be the wrong lane entirely, so the novelty compass (measured against
+    // them) is unreliable; the explore slots instead cast a wide net by
+    // BREADTH — genres the slate has not tried yet — so a user whose taste
+    // is far from mainstream pop still gets sampled into their lane.
+    const searching = this.positives.length === 0;
+    const untried = !clusterCounts.has(ck);
 
     // Extreme energy/loudness outliers cause instant skips early (brief
     // soft-block) — penalise until the user shows they want intensity.
@@ -448,49 +465,75 @@ export class OnboardingSlate {
         reason = 'trust: safe broad-appeal anchor';
         break;
       case 'adjacent':
-        // Same broad vibe, exactly one dimension varied from the anchor.
-        if (prev) {
-          const shared = anchorMatchCount(cand, prev);
-          // Sweet spot: 3-4 shared anchors (close but not identical).
-          score += shared >= 3 && shared <= 4 ? 5 : shared >= 2 ? 2 : -3;
+        if (searching) {
+          // Still no signal by slot 3 — the trust anchors were rejected, so
+          // don't spend the slot on a mainstream variation of a rejected
+          // lane; explore an un-tried genre instead.
+          score += untried ? 6 + Math.random() * 8 : -4;
+          reason = 'adjacent: wide exploration (no signal yet)';
+        } else {
+          // Same broad vibe, exactly one dimension varied from the anchor.
+          if (prev) {
+            const shared = anchorMatchCount(cand, prev);
+            // Sweet spot: 3-4 shared anchors (close but not identical).
+            score += shared >= 3 && shared <= 4 ? 5 : shared >= 2 ? 2 : -3;
+          }
+          score += (cand.mainstream_fit ?? 0) * 1.5;
+          score -= novelty * 2;
+          reason = 'adjacent: one-dimension variation';
         }
-        score += (cand.mainstream_fit ?? 0) * 1.5;
-        score -= novelty * 2;
-        reason = 'adjacent: one-dimension variation';
         break;
       case 'probe': {
-        // Deliberate taste probe — reward NEW territory to gain information,
-        // but stay within the confidence-scaled novelty ceiling.
-        const ceiling = 0.35 + conf * 0.4;          // low conf ⇒ tighter probe
-        score += novelty <= ceiling ? novelty * 6 : -8;
-        score += base * 0.5;
-        reason = 'probe: controlled taste probe';
+        if (searching) {
+          // No signal yet — cast the widest net: prefer un-tried genres, and
+          // pick AMONG them with a strong random term (not by quality, which
+          // would bias toward mainstream) so a far-from-mainstream taste gets
+          // discovered and two users never get the same exploration sequence.
+          score += untried ? 8 + Math.random() * 9 : -6;
+          score += base * 0.15;
+          reason = 'probe: wide exploration (no signal yet)';
+        } else {
+          // Deliberate taste probe — reward NEW territory to gain information,
+          // but stay within the confidence-scaled novelty ceiling.
+          const ceiling = 0.35 + conf * 0.4;        // low conf ⇒ tighter probe
+          score += novelty <= ceiling ? novelty * 6 : -8;
+          score += base * 0.5;
+          reason = 'probe: controlled taste probe';
+        }
         break;
       }
       case 'recovery':
-        // Safe re-anchor close to the last positive; low novelty; must NOT
-        // echo the just-skipped song's cluster (spec #6).
         if (this.lastPositive) {
+          // Safe re-anchor close to the last positive; low novelty.
           score += anchorMatchCount(cand, this.lastPositive) * 4;
+          score -= novelty * 7;
+          reason = 'recovery: safe re-anchor near last positive';
         } else {
-          score += (cand.mainstream_fit ?? 0) * 3; // no positive yet ⇒ act like trust
+          // No positive to recover toward — keep exploring un-tried genres
+          // (randomised) rather than re-serving the rejected mainstream.
+          score += untried ? 6 + Math.random() * 9 : -4;
+          reason = 'recovery: widen — no positive yet';
         }
-        score -= novelty * 7;
+        // Never echo the just-hard-skipped cluster (spec #6).
         if (this.lastHardSkip && ck === clusterKey(this.lastHardSkip)) score -= 30;
-        reason = 'recovery: safe re-anchor near last positive';
         break;
       case 'surprise': {
-        // Anchored serendipity (spec #5): a surprise MUST share >=1 anchor
-        // with recent positive behaviour — un-anchored novelty is rejected
-        // outright. An anchored song is always a *valid* surprise; the
-        // confidence-scaled ceiling only caps how much novelty we reward and
-        // gently damps an over-the-ceiling "abrupt jump" — it never makes the
-        // slot un-fillable.
-        if (!this.isAnchored(cand)) {
+        if (searching) {
+          // Nothing to anchor a surprise to yet — treat the slot as wide,
+          // randomised exploration so the slate keeps covering new genres.
+          score += untried ? 7 + Math.random() * 9 : -5;
+          score += base * 0.15;
+          reason = 'surprise: wide exploration (no signal yet)';
+        } else if (!this.isAnchored(cand)) {
+          // Anchored serendipity (spec #5): a surprise MUST share >=1 anchor
+          // with recent positive behaviour — un-anchored novelty is rejected.
           score -= 25;
           reason = 'surprise: REJECTED (un-anchored novelty)';
         } else {
-          const ceiling = 0.55 + conf * 0.4;        // low confidence ⇒ tighter
+          // An anchored song is always a valid surprise; the confidence-scaled
+          // ceiling only caps how much novelty we reward and gently damps an
+          // over-the-ceiling "abrupt jump".
+          const ceiling = 0.55 + conf * 0.4;
           const rewarded = Math.min(novelty, ceiling);
           const overshoot = Math.max(0, novelty - ceiling);
           score += rewarded * 7 + 4 - overshoot * 6;
@@ -499,10 +542,17 @@ export class OnboardingSlate {
         break;
       }
       case 'exploit':
-        // Lean hard into the single strongest learned signal.
-        score += learned * 3;
-        if (this.leanClusters.has(ck)) score += 8;
-        reason = 'exploit: strongest learned signal';
+        if (searching) {
+          // No learned signal — explore a fresh genre (randomised) rather
+          // than serving the top mainstream song the user likely rejected.
+          score += untried ? 5 + Math.random() * 9 : -3;
+          reason = 'exploit: explore (no signal yet)';
+        } else {
+          // Lean hard into the single strongest learned signal.
+          score += learned * 3;
+          if (this.leanClusters.has(ck)) score += 8;
+          reason = 'exploit: strongest learned signal';
+        }
         break;
       case 'retention':
         // Memorable, save/follow-worthy closer. hook_strength is "how

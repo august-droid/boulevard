@@ -201,7 +201,10 @@ export function buildWorldPlaylist(catalog: Song[], world: SessionWorld, limit =
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 const bpmBand = (bpm: number | null | undefined) => (bpm == null ? -1 : Math.round(bpm / 12));
-const clusterKey = (s: Song) => String(s.similarity_cluster);
+// Genre-first cluster key — `similarity_cluster` is often a single default
+// value across the whole catalog, so keying anti-fatigue on it alone would
+// flag every song as the same cluster. Genre is the reliable signal.
+const clusterKey = (s: Song) => (s.genre || String(s.similarity_cluster));
 function sharedTagCount(a: string[] | undefined, b: string[] | undefined): number {
   if (!a || !b || a.length === 0 || b.length === 0) return 0;
   const set = new Set(b);
