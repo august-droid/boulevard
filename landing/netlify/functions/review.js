@@ -1,7 +1,7 @@
 const { sb, json, requireAdmin, handleOptions } = require("./_supabase");
 
 const FIELDS = [
-  "id", "title", "genre", "genres", "mood", "bpm",
+  "id", "title", "artist_name", "genre", "genres", "mood", "bpm",
   "duration_seconds", "audio_url", "cover_url", "lyrics",
   "rating", "approval_status", "replayability_score",
   "energy_score", "vocal_type", "voice_gender", "similarity_cluster",

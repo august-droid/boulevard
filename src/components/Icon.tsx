@@ -308,6 +308,21 @@ export const ArrowRightIcon = (p: IconProps) => {
   );
 };
 
+export const SearchIcon = (p: IconProps) => {
+  const { width, height, color } = D(p);
+  return (
+    <Svg width={width} height={height} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M21 21l-4.3-4.3M11 18a7 7 0 100-14 7 7 0 000 14z"
+        stroke={color}
+        strokeWidth={2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+};
+
 // --- Brand icons (Apple / Google / Facebook) ---
 // These follow each brand's logo guidelines closely enough for buttons;
 // production builds should consider using the official asset packs.

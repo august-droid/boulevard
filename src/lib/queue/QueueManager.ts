@@ -1,6 +1,7 @@
 import { Image as ExpoImage } from 'expo-image';
 import { Song } from '@/types';
 import { Preloader } from '@/lib/audio/Preloader';
+import { spaceProducedBatch } from '@/lib/recommendation/artistSpacing';
 
 // QueueManager — Boulevard's Infinite Personalized Playback engine.
 //
@@ -63,6 +64,9 @@ export class QueueManager {
   private preloader: Preloader;
   private producer: Producer;
   private listeners = new Set<() => void>();
+  // When true the queue is an explicit artist-focused session (artist page
+  // Play Top Songs / radio) and the artist-variation spacing is skipped.
+  private artistFocused = false;
 
   constructor(producer: Producer, preloader: Preloader) {
     this.producer = producer;
@@ -71,6 +75,12 @@ export class QueueManager {
 
   setProducer(p: Producer) {
     this.producer = p;
+  }
+
+  /** Artist-focused sessions opt out of the artist-variation spacing so an
+   *  artist's own songs can play back-to-back (spec PART 5B exception). */
+  setArtistFocused(v: boolean) {
+    this.artistFocused = v;
   }
 
   getQueue(): readonly Song[] {
@@ -143,6 +153,29 @@ export class QueueManager {
     this.notify();
   }
 
+  /**
+   * Re-rank hook for first-session onboarding. Keeps the currently-playing
+   * song (queue[0]) fixed and swaps the UPCOMING songs for a freshly
+   * re-ranked list. Lighter than setQueue(): it does not clear the curated
+   * tail, and the Preloader dedupes by id so songs that survive the re-rank
+   * are not re-downloaded. Already-played songs are gone from the queue
+   * already (advance() shifted them off), so "keep played fixed" is implicit.
+   */
+  async replaceUpcoming(upcoming: Song[]) {
+    const head = this.queue[0] ?? null;
+    const seen = new Set<string>(head ? [head.id] : []);
+    const next: Song[] = head ? [head] : [];
+    for (const s of upcoming) {
+      if (seen.has(s.id)) continue;
+      next.push(s);
+      seen.add(s.id);
+      if (next.length >= TOTAL_DEPTH) break;
+    }
+    this.queue = next;
+    await this.refill();
+    this.notify();
+  }
+
   /** Ensure queue is full and the next PRELOAD_DEPTH songs are decoding. */
   private async refill() {
     if (this.queue.length < TOTAL_DEPTH) {
@@ -166,11 +199,14 @@ export class QueueManager {
         try {
           const avoid = [...have];
           const more = await this.producer(avoid, stillNeed);
-          for (const s of more) {
-            if (!have.has(s.id)) {
-              this.queue.push(s);
-              have.add(s.id);
-            }
+          const fresh = more.filter((s) => !have.has(s.id));
+          // Artist-variation rule (spec PART 5B): space the produced batch so
+          // the same artist is not stacked. The curated queue prefix is never
+          // reordered; artist-focused sessions keep the raw producer order.
+          const ordered = this.artistFocused ? fresh : spaceProducedBatch(this.queue, fresh);
+          for (const s of ordered) {
+            this.queue.push(s);
+            have.add(s.id);
           }
         } catch {
           // If the producer fails we still play what we have. The deep
@@ -196,11 +232,13 @@ export class QueueManager {
         try {
           const queueOnly = this.queue.map((s) => s.id);
           const recycled = await this.producer(queueOnly, TOTAL_DEPTH - this.queue.length);
-          for (const s of recycled) {
-            if (!have.has(s.id)) {
-              this.queue.push(s);
-              have.add(s.id);
-            }
+          const freshRecycled = recycled.filter((s) => !have.has(s.id));
+          const orderedRecycled = this.artistFocused
+            ? freshRecycled
+            : spaceProducedBatch(this.queue, freshRecycled);
+          for (const s of orderedRecycled) {
+            this.queue.push(s);
+            have.add(s.id);
           }
         } catch {
           // Last-resort failure. Whatever's left in the queue still plays;

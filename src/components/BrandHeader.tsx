@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ViewStyle } from 'react-native';
+import { View, Text, StyleSheet, ViewStyle, Platform, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, metals, spacing } from '@/theme';
@@ -18,6 +18,11 @@ interface Props {
 
 export function BrandHeader({ withSafeArea = true, style }: Props) {
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
+  // On desktop web (>=1024px) the DesktopShell sidebar already carries the
+  // Boulevard logo, so the in-screen wordmark would be redundant. Hidden only
+  // there — native and mobile-web render it exactly as before.
+  if (Platform.OS === 'web' && width >= 1024) return null;
   return (
     <View
       style={[

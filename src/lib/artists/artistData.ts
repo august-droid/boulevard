@@ -49,6 +49,28 @@ export function getArtistSongs(catalog: Song[], artistId: string): Song[] {
   return catalog.filter((s) => s.artist_id === artistId);
 }
 
+/**
+ * Best available portrait for an artist. `artist_image_url` is denormalized
+ * onto every Song, but plenty of rows ship without it — so a single recent
+ * row missing the portrait must not blank the artist's avatar. Scan ALL of
+ * the artist's songs for the first real portrait; only fall back to a song
+ * cover when the artist genuinely has no portrait anywhere.
+ */
+export function resolveArtistImage(
+  catalog: Song[],
+  artistId: string | null | undefined,
+): string | null {
+  if (!artistId) return null;
+  const songs = getArtistSongs(catalog, artistId);
+  for (const s of songs) {
+    if (s.artist_image_url) return s.artist_image_url;
+  }
+  for (const s of songs) {
+    if (s.cover_url) return s.cover_url;
+  }
+  return null;
+}
+
 /** Top N songs for an artist, sorted by:
  *    1) server play count + baseline (best signal we have),
  *    2) launch_score (editorial),
@@ -125,7 +147,9 @@ export function getArtistById(
     (b.created_at ?? '').localeCompare(a.created_at ?? ''),
   );
   const name = sortedRecent[0].artist_name ?? 'Boulevard Artist';
-  const image = sortedRecent[0].artist_image_url ?? sortedRecent[0].cover_url ?? null;
+  // Scan every song for a real portrait — don't blank the hero just because
+  // the most-recent row happens to miss artist_image_url.
+  const image = resolveArtistImage(catalog, artistId);
 
   const primary = mode(songs.map((s) => s.genre).filter(Boolean) as string[]);
 

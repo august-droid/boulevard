@@ -251,9 +251,12 @@ function baseRank(input: RankerInput, salt: number): RankedSong[] {
         skips: Math.round(serverStat.plays * serverStat.skip_rate),
         plays_prev_day: Math.max(1, Math.round(serverStat.plays / Math.max(0.1, 0.5 + serverStat.velocity_score))),
       };
-      // Trust the server's blended score, with a small per-render jitter so
-      // ties don't always resolve the same way.
-      const jitter = (Math.random() - 0.5) * 0.05;
+      // Trust the server's blended score, with a small DETERMINISTIC
+      // tiebreaker (seeded by song id + day salt) so equal scores resolve
+      // the same way on every render. Math.random() here reshuffled Explore
+      // on every recompute — tiles changed under the user's finger, so a tap
+      // opened a different song than the one shown.
+      const jitter = (rotationJitter(song.id, salt) - 0.5) * 0.05;
       return { song, score: serverStat.trending_score + jitter, metrics };
     }
     const metrics = real.get(song.id) ?? synthesizeMetrics(song, salt);

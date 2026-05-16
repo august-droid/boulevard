@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Animated, Easing, Linking } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Animated, Easing, Linking, Platform } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
@@ -61,6 +61,23 @@ export function ProfileScreen() {
     Alert.alert('Copied', 'Your user ID is in your clipboard.');
   };
 
+  // Sign out — confirms first, then drops back to a fresh guest session.
+  // RN-Web doesn't render Alert button rows reliably, so web uses the
+  // native browser confirm dialog instead.
+  const handleSignOut = () => {
+    const doSignOut = () => { void auth.signOut(); };
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.confirm('Sign out of Boulevard?')) {
+        doSignOut();
+      }
+      return;
+    }
+    Alert.alert('Sign out', 'Sign out of Boulevard?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign out', style: 'destructive', onPress: doSignOut },
+    ]);
+  };
+
   // Identity computations — re-run when the lifetime taste changes.
   const identity = useMemo(() => pickSoundIdentity(player.taste), [player.taste]);
 
@@ -97,6 +114,52 @@ export function ProfileScreen() {
       <BrandHeader />
       <ScrollView contentContainerStyle={{ paddingBottom: 160 }} showsVerticalScrollIndicator={false}>
 
+        {/* ===== ACCOUNT — first card on Profile so the user can see at a
+            glance whether they're signed in, and log in with one tap. ===== */}
+        {auth.hasSignedUp ? (
+          <View style={styles.accountSignedIn}>
+            <View style={styles.accountCheck}>
+              <CheckIcon size={15} color={metals.goldSolidHi} />
+            </View>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.accountSignedInTitle}>You're signed in</Text>
+              <Text style={styles.accountSignedInSub}>
+                Your library, likes and follows are saved to your account.
+              </Text>
+            </View>
+            <Pressable
+              onPress={handleSignOut}
+              hitSlop={10}
+              style={({ pressed }) => pressed && { opacity: 0.6 }}
+              accessibilityLabel="Sign out"
+            >
+              <Text style={styles.signOutText}>Sign out</Text>
+            </Pressable>
+          </View>
+        ) : (
+          <Pressable
+            onPress={() => setSignupOpen(true)}
+            style={({ pressed }) => [pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] }]}
+            accessibilityLabel="Log in or create an account"
+          >
+            <LinearGradient
+              colors={['#e0c898', '#c8ae7a', '#a88a4e']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.accountCta}
+            >
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.accountCtaEyebrow}>BROWSING AS GUEST</Text>
+                <Text style={styles.accountCtaTitle}>Log in or create an account</Text>
+                <Text style={styles.accountCtaSub}>
+                  Sign in to save your library, like songs and follow artists.
+                </Text>
+              </View>
+              <Text style={styles.accountCtaArrow}>→</Text>
+            </LinearGradient>
+          </Pressable>
+        )}
+
         {/* ===== YOUR SOUND (hero) ===== */}
         <View style={styles.hero}>
           <AnimatedAura colors={identity.identity.palette} />
@@ -128,8 +191,9 @@ export function ProfileScreen() {
         </View>
 
         {/* ===== Premium upgrade — prominent gold button right under the hero.
-            Only renders when the user isn't already on Premium. ===== */}
-        {!auth.isPremium && (
+            Renders only when the user isn't already on Premium, and NEVER on
+            web: the web app has no paywall / no subscription (web spec). ===== */}
+        {Platform.OS !== 'web' && !auth.isPremium && (
           <Pressable onPress={() => setPaywallOpen(true)} style={({ pressed }) => [pressed && { opacity: 0.92, transform: [{ scale: 0.99 }] }]}>
             <LinearGradient
               colors={['#e0c898', '#c8ae7a', '#a88a4e']}
@@ -144,29 +208,6 @@ export function ProfileScreen() {
               </View>
               <Text style={styles.goldUpgradeArrow}>→</Text>
             </LinearGradient>
-          </Pressable>
-        )}
-
-        {/* Sign-in entry. Only shows for users still on the anonymous
-            session. After the SignupSheet auto-fires at 5 completions
-            and gets dismissed, this is the only remaining surface that
-            lets them log in to recover their library on a new device. */}
-        {!auth.hasSignedUp && (
-          <Pressable
-            onPress={() => setSignupOpen(true)}
-            style={({ pressed }) => [
-              styles.signInRow,
-              pressed && { opacity: 0.85 },
-            ]}
-          >
-            <View style={styles.signInIcon}>
-              <SparkleIcon size={16} color={colors.text} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.signInTitle}>Sign in or create an account</Text>
-              <Text style={styles.signInSub}>Save your library across devices</Text>
-            </View>
-            <Text style={styles.signInArrow}>→</Text>
           </Pressable>
         )}
 
@@ -460,31 +501,60 @@ const styles = StyleSheet.create({
   goldUpgradeText: { color: '#1a1408', fontSize: fonts.size.md, fontWeight: fonts.weight.bold, letterSpacing: -0.1 },
   goldUpgradeSub: { color: 'rgba(26,20,8,0.72)', fontSize: 11, fontWeight: fonts.weight.semibold, marginTop: 2, letterSpacing: 0.1 },
   goldUpgradeArrow: { color: '#1a1408', fontSize: 22, fontWeight: fonts.weight.bold },
-  signInRow: {
+  // ---- Account card (guest CTA / signed-in status) ----
+  // Guest state — a bold gold card so logging in is the first, most
+  // obvious thing on the Profile screen.
+  accountCta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md + 2,
+    borderRadius: radii.lg,
+    marginTop: spacing.md,
+  },
+  accountCtaEyebrow: {
+    color: 'rgba(26,20,8,0.6)',
+    fontSize: 10,
+    fontWeight: fonts.weight.bold,
+    letterSpacing: 1.6,
+    marginBottom: 3,
+  },
+  accountCtaTitle: { color: '#1a1408', fontSize: fonts.size.md, fontWeight: fonts.weight.bold, letterSpacing: -0.1 },
+  accountCtaSub: {
+    color: 'rgba(26,20,8,0.72)',
+    fontSize: 11,
+    fontWeight: fonts.weight.semibold,
+    marginTop: 3,
+    lineHeight: 15,
+  },
+  accountCtaArrow: { color: '#1a1408', fontSize: 22, fontWeight: fonts.weight.bold },
+  // Signed-in state — quiet status row with a Sign out action.
+  accountSignedIn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderRadius: radii.lg,
-    marginTop: spacing.sm,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    marginTop: spacing.md,
+    backgroundColor: colors.surface,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: metals.gold,
   },
-  signInIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
+  accountCheck: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(138,123,255,0.12)',
+    backgroundColor: 'rgba(200,174,122,0.12)',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: metals.platinum,
+    borderColor: metals.gold,
   },
-  signInTitle: { color: colors.text, fontSize: fonts.size.md, fontWeight: fonts.weight.semibold },
-  signInSub: { color: colors.textMuted, fontSize: 12, marginTop: 1 },
-  signInArrow: { color: colors.textMuted, fontSize: 22, fontWeight: fonts.weight.bold },
+  accountSignedInTitle: { color: colors.text, fontSize: fonts.size.md, fontWeight: fonts.weight.bold },
+  accountSignedInSub: { color: colors.textMuted, fontSize: 11, marginTop: 2, lineHeight: 15 },
+  signOutText: { color: metals.goldSolidHi, fontSize: fonts.size.sm, fontWeight: fonts.weight.bold },
   heroName: {
     color: colors.text,
     fontSize: 30,

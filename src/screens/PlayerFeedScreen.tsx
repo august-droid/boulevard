@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -26,7 +26,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { colors, fonts, metals, radii, spacing } from '@/theme';
-import { usePlayer } from '@/contexts/PlayerContext';
+import { usePlayer, usePlayerProgress } from '@/contexts/PlayerContext';
 import { useFollows } from '@/contexts/FollowsContext';
 import { usePlaylists } from '@/contexts/PlaylistsContext';
 import { useComments, topPositiveComments, fallbackHandle, avatarColor } from '@/contexts/CommentsContext';
@@ -53,6 +53,7 @@ import {
 import { CreateVibeSheet } from '@/screens/CreateVibeSheet';
 import { PlayerSheet, PlayerSheetHandle, PLAYER_SHEET_PEEK } from '@/components/PlayerSheet';
 import { ScrollingTitle } from '@/components/ScrollingTitle';
+import { resolveArtistImage } from '@/lib/artists/artistData';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -64,6 +65,7 @@ const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 export function PlayerFeedScreen({ onDismiss }: { onDismiss?: () => void } = {}) {
   const player = usePlayer();
+  const progress = usePlayerProgress();
   const insets = useSafeAreaInsets();
   const { playlists } = usePlaylists();
   const comments = useComments();
@@ -109,8 +111,8 @@ export function PlayerFeedScreen({ onDismiss }: { onDismiss?: () => void } = {})
     setPickerOpen(true);
   }, [currentSongId, requireSignup]);
 
-  // Lazily prefetch comment counts when the song changes so the badge on the
-  // comment button reflects reality without waiting for sheet open.
+  // Lazily prefetch comments when the song changes so the sheet teaser +
+  // drift overlay reflect reality without waiting for the sheet to open.
   useEffect(() => {
     if (currentSongId && comments.loadedSongId !== currentSongId) {
       void comments.loadFor(currentSongId);
@@ -183,6 +185,14 @@ export function PlayerFeedScreen({ onDismiss }: { onDismiss?: () => void } = {})
   });
 
   const song = player.current;
+
+  // The artist portrait is denormalized per-song and frequently missing on a
+  // given row — resolve it across the whole catalog so the player pill always
+  // shows the same photo as the artist page.
+  const artistImageUrl = useMemo(
+    () => resolveArtistImage(player.catalog, song?.artist_id),
+    [player.catalog, song?.artist_id],
+  );
 
   return (
     <GestureHandlerRootView style={styles.root}>
@@ -283,6 +293,9 @@ export function PlayerFeedScreen({ onDismiss }: { onDismiss?: () => void } = {})
                 if (!song?.artist_id) return;
                 if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
                 nav.openArtistProfile(song.artist_id);
+                // The artist page renders beneath this full-screen player
+                // overlay — dismiss the player so it becomes visible.
+                onDismiss?.();
               }}
               disabled={!song?.artist_id}
               style={({ pressed }) => [
@@ -296,7 +309,7 @@ export function PlayerFeedScreen({ onDismiss }: { onDismiss?: () => void } = {})
                 // Small circular artist photo — instantly recognizable,
                 // replaces the old "Artist:" text label.
                 <Artwork
-                  uri={song.artist_image_url}
+                  uri={artistImageUrl}
                   name={song.artist_name}
                   size={20}
                   circle
@@ -313,12 +326,11 @@ export function PlayerFeedScreen({ onDismiss }: { onDismiss?: () => void } = {})
           </View>
         </View>
 
-        {/* Transport row — five evenly-spaced items with the big play
-            button centered. Shuffle and Share flank the prev/play/skip
-            core so the bottom strip reads as a single balanced unit
-            instead of three controls floating in the middle. The
-            secondary actions (like, comment, save) remain in the
-            right rail. */}
+        {/* Transport row — playback controls only. Shuffle pins to the left
+            edge; prev / play / skip ride as one centered cluster, balanced
+            by an equal-width spacer on the right so the big play button
+            sits dead-center. The secondary actions (like, save, share) all
+            live together in the right-hand rail. */}
         <View style={styles.transport}>
           <Pressable
             hitSlop={14}
@@ -329,45 +341,41 @@ export function PlayerFeedScreen({ onDismiss }: { onDismiss?: () => void } = {})
           >
             <ShuffleIcon size={22} color={player.isShuffling ? metals.goldSolidHi : colors.text} />
           </Pressable>
-          <Pressable
-            hitSlop={14}
-            onPressIn={tapFeedback}
-            onPress={() => player.previous()}
-            style={({ pressed }) => pressed ? styles.transportPressed : undefined}
-          >
-            <PrevIcon size={28} color={colors.text} />
-          </Pressable>
-          <Pressable
-            hitSlop={14}
-            onPressIn={tapFeedback}
-            onPress={() => player.togglePlay()}
-            style={({ pressed }) => [styles.playBtn, pressed && styles.playBtnPressed]}
-            accessibilityRole="button"
-            accessibilityLabel={player.isPlaying ? 'Pause' : 'Play'}
-          >
-            <View style={styles.playInner}>
-              {player.isPlaying
-                ? <PauseIcon size={26} color={colors.text} />
-                : <PlayIcon size={26} color={colors.text} />}
-            </View>
-          </Pressable>
-          <Pressable
-            hitSlop={14}
-            onPressIn={tapFeedback}
-            onPress={skip}
-            style={({ pressed }) => pressed ? styles.transportPressed : undefined}
-          >
-            <SkipIcon size={28} color={colors.text} />
-          </Pressable>
-          <Pressable
-            hitSlop={14}
-            onPressIn={tapFeedback}
-            onPress={onShare}
-            style={({ pressed }) => [styles.transportSide, pressed && styles.transportPressed]}
-            accessibilityLabel="Share"
-          >
-            <ShareIcon size={22} color={colors.text} />
-          </Pressable>
+          <View style={styles.transportCore}>
+            <Pressable
+              hitSlop={14}
+              onPressIn={tapFeedback}
+              onPress={() => player.previous()}
+              style={({ pressed }) => pressed ? styles.transportPressed : undefined}
+            >
+              <PrevIcon size={28} color={colors.text} />
+            </Pressable>
+            <Pressable
+              hitSlop={14}
+              onPressIn={tapFeedback}
+              onPress={() => player.togglePlay()}
+              style={({ pressed }) => [styles.playBtn, pressed && styles.playBtnPressed]}
+              accessibilityRole="button"
+              accessibilityLabel={player.isPlaying ? 'Pause' : 'Play'}
+            >
+              <View style={styles.playInner}>
+                {player.isPlaying
+                  ? <PauseIcon size={26} color={colors.text} />
+                  : <PlayIcon size={26} color={colors.text} />}
+              </View>
+            </Pressable>
+            <Pressable
+              hitSlop={14}
+              onPressIn={tapFeedback}
+              onPress={skip}
+              style={({ pressed }) => pressed ? styles.transportPressed : undefined}
+            >
+              <SkipIcon size={28} color={colors.text} />
+            </Pressable>
+          </View>
+          {/* Equal-width spacer mirrors the shuffle slot so prev/play/skip
+              stay optically centered. */}
+          <View style={styles.transportSide} />
         </View>
 
         {/* Platinum→gold progress bar — sits between the transport row and
@@ -375,25 +383,26 @@ export function PlayerFeedScreen({ onDismiss }: { onDismiss?: () => void } = {})
             against the right edge so the user always knows the song's length. */}
         <View style={styles.progressBarWrap}>
           <PlatinumProgressBar
-            position={player.position}
-            duration={player.duration}
+            position={progress.position}
+            duration={progress.duration}
             onSeek={(ms) => player.seek(ms)}
           />
           <View style={styles.progressMetaRow}>
-            <Text style={styles.progressMetaText}>{formatTime(player.duration)}</Text>
+            <Text style={styles.progressMetaText}>{formatTime(progress.duration)}</Text>
           </View>
         </View>
       </View>
 
-      {/* Vertical action column — TikTok-style. Trimmed to three items
-          (Like / Comment / Save) so the column stops visually dominating
-          the lower third. Shuffle + Share moved into the transport row.
-          Anchored so the BOTTOM of the column sits just above the title
-          block, never extending past the transport row level — that
-          alignment is what makes the lower screen feel symmetric. */}
+      {/* Vertical action column — the three secondary actions (Like / Save /
+          Share) grouped as one evenly-spaced rail on the right edge, so they
+          read as a deliberate cluster instead of single icons scattered down
+          the screen. `box-none` lets taps fall through everywhere that isn't
+          a button. */}
       <View
         style={[
           styles.actionColumn,
+          // Anchored so the BOTTOM icon (Share) clears the transport row;
+          // the rail then grows upward as one evenly-spaced group.
           { bottom: insets.bottom + 260 },
         ]}
         pointerEvents="box-none"
@@ -404,6 +413,9 @@ export function PlayerFeedScreen({ onDismiss }: { onDismiss?: () => void } = {})
         <Pressable hitSlop={10} onPressIn={tapFeedback} onPress={openPicker} style={({ pressed }) => [styles.actionBtn, pressed && styles.transportPressed]} accessibilityLabel={inAnyPlaylist ? 'Edit playlists' : 'Save to playlist'}>
           <BookmarkIcon size={26} color={inAnyPlaylist ? metals.goldSolidHi : colors.text} filled={inAnyPlaylist} />
         </Pressable>
+        <Pressable hitSlop={10} onPressIn={tapFeedback} onPress={onShare} style={({ pressed }) => [styles.actionBtn, pressed && styles.transportPressed]} accessibilityLabel="Share">
+          <ShareIcon size={25} color={colors.text} />
+        </Pressable>
       </View>
 
       {/* Comments + lyrics bottom sheet. Collapsed teaser by default;
@@ -413,6 +425,7 @@ export function PlayerFeedScreen({ onDismiss }: { onDismiss?: () => void } = {})
         song={song}
         songId={currentSongId}
         navHeight={navHeight}
+        onSeek={(ms) => player.seek(ms)}
       />
 
       <CreateVibeSheet visible={vibeOpen} onClose={() => setVibeOpen(false)} />
@@ -876,6 +889,11 @@ const styles = StyleSheet.create({
     // pulls it visually further down on the screen — below the bottom of
     // the right-side action column where it stops fighting for space.
     marginBottom: 0,
+    // Reserve the right-edge lane for the Like / Save / Share action rail
+    // so a long title (or the artist pills) never runs underneath those
+    // icons. Without this, titles like "Choir at the Listening" collide
+    // with the heart icon.
+    paddingRight: 44,
   },
   title: {
     color: colors.text,
@@ -944,15 +962,23 @@ const styles = StyleSheet.create({
   transport: {
     flexDirection: 'row',
     alignItems: 'center',
-    // space-between with five items locks the play button to dead-center
-    // and mirrors shuffle ↔ share + prev ↔ skip on either side.
+    // Shuffle | centered prev/play/skip cluster | equal-width spacer.
+    // space-between pins shuffle and the spacer to the edges, which leaves
+    // the cluster — and the big play button — dead-center.
     justifyContent: 'space-between',
     paddingHorizontal: spacing.xs,
     marginTop: spacing.sm,
   },
-  // Auxiliary slots inside transport (shuffle on the left, share on the
-  // right). Fixed-width hit targets so the row stays visually symmetric
-  // even when the icons swap between active/inactive tints.
+  // The prev / play / skip cluster. Kept as its own row so it stays a
+  // single centered unit regardless of what flanks it.
+  transportCore: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.xl,
+  },
+  // Auxiliary slot inside transport — the shuffle button on the left and a
+  // matching invisible spacer on the right. Fixed width so the row stays
+  // symmetric even as the shuffle icon swaps active/inactive tints.
   transportSide: {
     width: 40,
     height: 40,
@@ -968,7 +994,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: spacing.md,
     alignItems: 'center',
-    gap: spacing.lg,
+    gap: spacing.md,
   },
   actionBtn: {
     alignItems: 'center',

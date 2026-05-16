@@ -24,13 +24,18 @@ import {
   SparkleIcon,
   AppleIcon,
   GoogleIcon,
-  FacebookIcon,
-  TikTokIcon,
 } from '@/components/Icon';
 
 interface Props {
   visible: boolean;
   onClose: () => void;
+  /**
+   * Hard gate. When true the sheet cannot be dismissed — no close button,
+   * no "Maybe later", back/Esc is a no-op. Used by the web app once an
+   * anonymous listener has used their 5 free plays: they must sign in to
+   * continue. `onClose` then only fires on a successful sign-in.
+   */
+  mandatory?: boolean;
 }
 
 type Mode = 'signup' | 'login' | 'forgot';
@@ -41,7 +46,7 @@ const BULLETS = [
   'Saved songs, likes and playlists stay safe',
 ];
 
-export function SignupSheet({ visible, onClose }: Props) {
+export function SignupSheet({ visible, onClose, mandatory = false }: Props) {
   const insets = useSafeAreaInsets();
   const auth = useAuth();
 
@@ -160,7 +165,12 @@ export function SignupSheet({ visible, onClose }: Props) {
       : email.trim().length > 0 && password.length > 0;
 
   return (
-    <Modal visible={visible} animationType="slide" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      animationType="slide"
+      // A mandatory sheet ignores Android-back / Esc — the user must sign in.
+      onRequestClose={mandatory ? () => {} : onClose}
+    >
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1, backgroundColor: colors.bg }}
@@ -176,19 +186,34 @@ export function SignupSheet({ visible, onClose }: Props) {
             style={styles.glow}
             pointerEvents="none"
           />
-          <Pressable onPress={onClose} style={styles.close} hitSlop={12}>
-            <CloseIcon size={22} color={colors.textDim} />
-          </Pressable>
+          {/* No dismiss affordance when the sheet is a hard gate. */}
+          {!mandatory && (
+            <Pressable onPress={onClose} style={styles.close} hitSlop={12}>
+              <CloseIcon size={22} color={colors.textDim} />
+            </Pressable>
+          )}
 
           <ScrollView
             contentContainerStyle={styles.scroll}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
           >
+            {/* Capped, centered content column. On phones (always narrower
+                than the cap) this is a no-op; on desktop web it stops the
+                buttons + form from stretching the full window width. */}
+            <View style={styles.contentColumn}>
             <View style={styles.iconWrap}>
               <SparkleIcon size={28} color={colors.text} />
             </View>
-            <Text style={styles.eyebrow}>YOU'RE 5 SONGS IN</Text>
+            {/* Native fires at 5 completions; the web hard gate (mandatory)
+                at 10; the web entry nudge fires on open (0 songs in). */}
+            <Text style={styles.eyebrow}>
+              {mandatory
+                ? "YOU'RE 10 SONGS IN"
+                : Platform.OS === 'web'
+                  ? 'FREE TO JOIN'
+                  : "YOU'RE 5 SONGS IN"}
+            </Text>
             <Text style={styles.h1}>
               {mode === 'forgot' ? 'Reset your password' : 'Become a part of Boulevard Family'}
             </Text>
@@ -211,20 +236,24 @@ export function SignupSheet({ visible, onClose }: Props) {
               </View>
             )}
 
-            {/* Social sign-in — the fast path, shown first above email. */}
+            {/* Social sign-in — the fast path, shown first above email.
+                Apple sign-in is native-only for now: the web app has no
+                Apple OAuth configured, so the button is hidden on web. */}
             {mode !== 'forgot' && (
               <View style={styles.providers}>
-                <ProviderButton
-                  provider="apple"
-                  loading={loadingProvider === 'apple'}
-                  disabled={loadingProvider !== null || emailBusy}
-                  onPress={() => doSocial('apple')}
-                  label="Continue with Apple"
-                  background="#000000"
-                  textColor="#ffffff"
-                  border={metals.platinum}
-                  icon={<AppleIcon size={20} color="#ffffff" />}
-                />
+                {Platform.OS !== 'web' && (
+                  <ProviderButton
+                    provider="apple"
+                    loading={loadingProvider === 'apple'}
+                    disabled={loadingProvider !== null || emailBusy}
+                    onPress={() => doSocial('apple')}
+                    label="Continue with Apple"
+                    background="#000000"
+                    textColor="#ffffff"
+                    border={metals.platinum}
+                    icon={<AppleIcon size={20} color="#ffffff" />}
+                  />
+                )}
                 <ProviderButton
                   provider="google"
                   loading={loadingProvider === 'google'}
@@ -234,27 +263,6 @@ export function SignupSheet({ visible, onClose }: Props) {
                   background="#ffffff"
                   textColor="#0f0f12"
                   icon={<GoogleIcon size={20} />}
-                />
-                <ProviderButton
-                  provider="tiktok"
-                  loading={loadingProvider === 'tiktok'}
-                  disabled={loadingProvider !== null || emailBusy}
-                  onPress={() => doSocial('tiktok')}
-                  label="Continue with TikTok"
-                  background="#000000"
-                  textColor="#ffffff"
-                  border="#25F4EE"
-                  icon={<TikTokIcon size={20} color="#ffffff" />}
-                />
-                <ProviderButton
-                  provider="facebook"
-                  loading={loadingProvider === 'facebook'}
-                  disabled={loadingProvider !== null || emailBusy}
-                  onPress={() => doSocial('facebook')}
-                  label="Continue with Facebook"
-                  background="#1877F2"
-                  textColor="#ffffff"
-                  icon={<FacebookIcon size={20} />}
                 />
               </View>
             )}
@@ -342,9 +350,12 @@ export function SignupSheet({ visible, onClose }: Props) {
             {info ? <Text style={styles.info}>{info}</Text> : null}
             {error ? <Text style={styles.error}>{error}</Text> : null}
 
-            <Pressable onPress={skip} hitSlop={8} style={styles.skipBtn}>
-              <Text style={styles.skipText}>Maybe later</Text>
-            </Pressable>
+            {/* "Maybe later" is hidden when the sheet is a hard gate. */}
+            {!mandatory && (
+              <Pressable onPress={skip} hitSlop={8} style={styles.skipBtn}>
+                <Text style={styles.skipText}>Maybe later</Text>
+              </Pressable>
+            )}
 
             {!HAS_SUPABASE && (
               <Text style={styles.devNote}>
@@ -352,6 +363,7 @@ export function SignupSheet({ visible, onClose }: Props) {
                 dashboard to enable real sign-in.
               </Text>
             )}
+            </View>
           </ScrollView>
         </View>
       </KeyboardAvoidingView>
@@ -387,11 +399,12 @@ function ProviderButton({ label, background, textColor, border, icon, loading, d
         },
       ]}
     >
-      <View style={styles.providerIconSlot}>{icon}</View>
-      <Text style={[styles.providerLabel, { color: textColor }]}>{label}</Text>
-      <View style={styles.providerIconSlot}>
-        {loading ? <ActivityIndicator color={textColor} /> : null}
+      {/* Icon pinned to a fixed left inset so every provider's mark sits on
+          the same vertical line; the label stays centered in the button. */}
+      <View style={styles.providerIcon}>
+        {loading ? <ActivityIndicator color={textColor} /> : icon}
       </View>
+      <Text style={[styles.providerLabel, { color: textColor }]}>{label}</Text>
     </Pressable>
   );
 }
@@ -409,6 +422,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   scroll: { paddingTop: spacing.lg, alignItems: 'center', paddingBottom: spacing.xl },
+  // Caps the sheet content so buttons + form don't stretch the full window
+  // on desktop web. Phones are always narrower than the cap, so it has no
+  // effect there — the mobile layout is unchanged.
+  contentColumn: {
+    width: '100%',
+    maxWidth: Platform.OS === 'web' ? 460 : undefined,
+    alignItems: 'center',
+  },
   iconWrap: {
     width: 64,
     height: 64,
@@ -511,15 +532,22 @@ const styles = StyleSheet.create({
   provider: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     height: 52,
     borderRadius: radii.pill,
     borderWidth: StyleSheet.hairlineWidth,
     paddingHorizontal: spacing.md,
   },
-  providerIconSlot: { width: 32, alignItems: 'center', justifyContent: 'center' },
+  providerIcon: {
+    position: 'absolute',
+    left: spacing.lg,
+    top: 0,
+    bottom: 0,
+    width: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   providerLabel: {
-    flex: 1,
-    textAlign: 'center',
     fontSize: fonts.size.md,
     fontWeight: fonts.weight.semibold,
     letterSpacing: 0.1,

@@ -1,4 +1,6 @@
 import { Song, TasteProfile, SessionProfile, Activity, SongStats } from '@/types';
+import { artistRepeatPenalty } from '@/lib/recommendation/artistSpacing';
+import { contextBoost, type ActiveSessionContext } from '@/lib/recommendation/SessionContext';
 
 // Rule-based recommendation engine.
 //
@@ -16,6 +18,16 @@ export interface ScoreInput {
   interactionCount: number;
   /** Per-song aggregate stats. Empty in MVP / when offline. */
   stats?: Map<string, SongStats>;
+  /** Artist of the currently-playing song — feeds the artist-variation rule. */
+  currentArtistId?: string | null;
+  /** Artist ids of recently played songs, most recent first. */
+  recentArtistIds?: string[];
+  /** True inside an explicit artist-focused session — disables the penalty. */
+  artistFocused?: boolean;
+  /** Active contextual-session bias (Contextual Session Engine — a
+   *  complementary layer). Optional: when absent the ranker behaves exactly
+   *  as it did before the session engine existed. */
+  context?: ActiveSessionContext | null;
 }
 
 const RECENT_PENALTY = 4;     // big hit if we just played this
@@ -179,6 +191,21 @@ export function scoreSong(song: Song, ctx: ScoreInput): number {
   // hook is the single biggest predictor of replay across users.
   if (song.hook_strength != null) score += song.hook_strength * 1.5;
   if (song.mainstream_fit != null && coldStart) score += song.mainstream_fit * 0.8;
+
+  // Artist-variation rule (spec PART 5B): keep the same artist from stacking
+  // up in the auto-extended queue. No-op inside artist-focused sessions.
+  score -= artistRepeatPenalty(song.artist_id, {
+    currentArtistId: ctx.currentArtistId,
+    recentArtistIds: ctx.recentArtistIds,
+    artistFocused: ctx.artistFocused,
+  });
+
+  // Contextual Session Engine (complementary layer): a TEMPORARY additive
+  // bias toward the user's current intent — artist universe, mood world,
+  // genre lane, search, or discovery. Already folds in confidence × time
+  // decay, so it fades smoothly back into long-term taste. Returns 0 when no
+  // context is active, leaving everything above this line fully preserved.
+  if (ctx.context) score += contextBoost(song, ctx.context);
 
   // A little noise so deterministic ties don't always resolve the same way.
   score += (Math.random() - 0.5) * EXPLORATION_NOISE;

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/theme';
 import { PlayerFeedScreen } from '@/screens/PlayerFeedScreen';
@@ -13,6 +13,10 @@ import { SignupSheet } from '@/screens/SignupSheet';
 import { ArtistProfileScreen } from '@/screens/ArtistProfileScreen';
 import { useAuth } from '@/contexts/AuthContext';
 import { NavigationProvider } from '@/contexts/NavigationContext';
+import { DesktopShell } from '@/components/desktop/DesktopShell';
+import { MediaSessionBridge } from '@/components/MediaSessionBridge';
+import { FirstListenerModal } from '@/components/FirstListenerModal';
+import { ListenMoreModal } from '@/components/ListenMoreModal';
 
 // Gating model:
 //   1) No signup required to start. The first launch creates an anonymous
@@ -35,6 +39,7 @@ const CONTENT_TABS: ContentTab[] = ['explore', 'library', 'profile'];
 export function RootNavigator() {
   const auth = useAuth();
   const insets = useSafeAreaInsets();
+  const { width } = useWindowDimensions();
   // Default content tab depends on personalization state:
   //   • Pre-unlock (<20 songs heard): Explore. The user is still teaching the
   //     recommender, so the discovery surface is the most useful landing.
@@ -102,8 +107,9 @@ export function RootNavigator() {
   // Premium paywall — fires when the 10-full-listens cap is hit. Re-fires
   // whenever `blockedAttempts` increments so that after the user dismisses
   // the paywall and tries to play again, the paywall comes back instead of
-  // silently failing.
+  // silently failing. Native only — the web app has no paywall.
   useEffect(() => {
+    if (Platform.OS === 'web') return;
     if (auth.isPremium) return;
     if (paywallOpen) return;
     if (!auth.completedLimitHit) return;
@@ -114,8 +120,10 @@ export function RootNavigator() {
 
   // Signup prompt — fires once when the user crosses 5 full listens AND
   // is still anonymous AND we haven't already shown the sheet. The
-  // paywall always wins if both would fire simultaneously.
+  // paywall always wins if both would fire simultaneously. Native only —
+  // on web the login gate below replaces this completion-based prompt.
   useEffect(() => {
+    if (Platform.OS === 'web') return;
     if (signupOpen || paywallOpen) return;
     if (!auth.isAnonymous) return;
     if (auth.signupPromptShownAt) return;
@@ -126,6 +134,33 @@ export function RootNavigator() {
     auth.completedCount, auth.isAnonymous, auth.signupPromptShownAt,
     auth.completedLimitHit, signupOpen, paywallOpen,
   ]);
+
+  // Web login gate — the web app has no paywall. After 5 plays an anonymous
+  // listener must sign in to continue. PlayerContext's checkWebGate blocks
+  // the 6th play and bumps `blockedAttempts`; we open the sign-in sheet in
+  // response. Driven by the blocked-play event (not the raw play count) so
+  // the 5th song is never interrupted mid-listen. Re-fires on every blocked
+  // attempt so a dismissed sheet reopens on the next play tap.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    if (!auth.webLoginRequired) return;
+    if (auth.blockedAttempts === 0) return;
+    if (signupOpen) return;
+    setSignupOpen(true);
+  }, [auth.blockedAttempts, auth.webLoginRequired, signupOpen]);
+
+  // Web only — a gentle, one-time "log in" nudge shortly after the app opens.
+  // It is NOT a gate: the sheet is dismissible (webLoginRequired is false here,
+  // so `mandatory` is false) and the listener can keep browsing anonymously.
+  // signupPromptShownAt persists, so the nudge fires once per device, ever;
+  // the top-bar "Log in" button is the always-available path after that.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    if (!auth.isAnonymous) return;
+    if (auth.signupPromptShownAt) return;
+    const t = setTimeout(() => setSignupOpen(true), 1400);
+    return () => clearTimeout(t);
+  }, [auth.isAnonymous, auth.signupPromptShownAt]);
 
   // Bottom nav height (approx) — used to push the MiniPlayer up by the right amount.
   const NAV_HEIGHT = 56 + Math.max(insets.bottom, 8);
@@ -165,6 +200,11 @@ export function RootNavigator() {
 
   const topArtistId = artistStack[artistStack.length - 1] ?? null;
 
+  // Desktop web (>=1024px) gets the sidebar shell; native + mobile-web keep
+  // the original layout. `isDesktop` is always false on native, so the native
+  // app never reaches the DesktopShell branch.
+  const isDesktop = Platform.OS === 'web' && width >= 1024;
+
   return (
     <NavigationProvider
       openPlayer={openPlayer}
@@ -172,11 +212,26 @@ export function RootNavigator() {
       openArtistProfile={openArtistProfile}
       closeArtistProfile={closeArtistProfile}
     >
+      {isDesktop ? (
+        <DesktopShell
+          tab={tab}
+          mountedTabs={mountedTabs}
+          onTabChange={handleTabChange}
+          playerOpen={playerOpen}
+          onOpenPlayer={openPlayer}
+          onClosePlayer={closePlayer}
+          topArtistId={topArtistId}
+          onCloseArtist={closeArtistProfile}
+        />
+      ) : (
       <View style={styles.root}>
         {/* Content tabs. Every visited tab stays mounted; inactive tabs are
-            hidden with display:none so their scroll position + state survive
-            navigating to the player or another tab. collapsable={false}
-            keeps the native view alive on Android. */}
+            hidden so their scroll position + state survive navigating to the
+            player or another tab. On native that uses display:none (cheapest
+            — skips layout/paint). On web display:none resets a scroll
+            container's offset, so inactive web tabs stay laid out (absolute,
+            opacity 0, non-interactive) to keep their scrollTop. collapsable
+            ={false} keeps the native view alive on Android. */}
         <View style={styles.screen}>
           {CONTENT_TABS.map((t) =>
             mountedTabs.has(t) ? (
@@ -184,6 +239,7 @@ export function RootNavigator() {
                 key={t}
                 style={tab === t ? styles.tabActive : styles.tabHidden}
                 collapsable={false}
+                pointerEvents={tab === t ? 'auto' : 'none'}
               >
                 {t === 'explore' && <ExploreScreen />}
                 {t === 'library' && <LibraryScreen />}
@@ -222,24 +278,40 @@ export function RootNavigator() {
           />
         )}
         <BottomNav active={playerOpen ? 'home' : tab} onChange={handleTabChange} />
-        <PaywallScreen
-          visible={paywallOpen}
-          onClose={() => setPaywallOpen(false)}
-          onOpenSignIn={() => {
-            // Close the paywall first so the SignupSheet slides up cleanly
-            // over a single surface instead of stacking modals.
-            setPaywallOpen(false);
-            setSignupOpen(true);
-          }}
-        />
-        <SignupSheet
-          visible={signupOpen}
-          onClose={() => {
-            setSignupOpen(false);
-            void auth.markSignupPromptShown();
-          }}
-        />
       </View>
+      )}
+      {/* Hardware media keys → playback (web). No-op on native, where the
+          OS audio session already handles them. */}
+      <MediaSessionBridge />
+      {/* "You discovered this first" celebration — self-gates on
+          PlayerContext.firstListen; shared by both shells. */}
+      <FirstListenerModal />
+      {/* First-time explainer: recommendations sharpen the more you listen.
+          Fires once, the first time the player is opened. */}
+      <ListenMoreModal active={playerOpen} />
+      {/* Paywall + signup sheets — shared by both shells. They are Modals, so
+          they overlay regardless of tree position; native behavior of the
+          mobile shell above is unchanged. */}
+      <PaywallScreen
+        visible={paywallOpen}
+        onClose={() => setPaywallOpen(false)}
+        onOpenSignIn={() => {
+          // Close the paywall first so the SignupSheet slides up cleanly
+          // over a single surface instead of stacking modals.
+          setPaywallOpen(false);
+          setSignupOpen(true);
+        }}
+      />
+      <SignupSheet
+        visible={signupOpen}
+        onClose={() => {
+          setSignupOpen(false);
+          void auth.markSignupPromptShown();
+        }}
+        // On web, once the free limit is reached the sheet is a hard gate:
+        // no dismiss, no "Maybe later" — the user must sign in to continue.
+        mandatory={Platform.OS === 'web' && auth.webLoginRequired}
+      />
     </NavigationProvider>
   );
 }
@@ -248,10 +320,21 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.bg },
   screen: { flex: 1 },
   // Active content tab fills the screen. Inactive tabs stay mounted (so
-  // their scroll position + component state are preserved) but are removed
-  // from layout via display:none.
-  tabActive: { flex: 1 },
-  tabHidden: { display: 'none' },
+  // their scroll position + component state are preserved).
+  //
+  // Native: inactive tabs use display:none — removed from layout, cheapest,
+  // and native FlatList/ScrollView keep their offset across it.
+  //
+  // Web: display:none resets a scroll container's scrollTop, so inactive
+  // tabs instead stay fully laid out as an absolute, transparent layer.
+  // pointerEvents="none" (set on the View) keeps them click-through. Every
+  // tab is absolute so there's no flow⇄absolute reflow on switch.
+  tabActive: Platform.OS === 'web'
+    ? { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }
+    : { flex: 1 },
+  tabHidden: Platform.OS === 'web'
+    ? { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, opacity: 0 }
+    : { display: 'none' },
   // Artist overlay covers the tab content but stops short of the docked
   // MiniPlayer + BottomNav (those float above this layer thanks to render
   // order). Background is the bg color so the underlying tab does not

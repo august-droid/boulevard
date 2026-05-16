@@ -18,6 +18,12 @@ type LoadFailedListener = (songId: string, reason: string) => void;
 
 export class AudioPlayer {
   private sound: Audio.Sound | null = null;
+  // A sound a still-in-flight play() call created/started but has not yet
+  // promoted to `this.sound`. Tracked so a concurrent play() can silence it.
+  // Without this, two back-to-back play() calls each see `this.sound === null`
+  // (the first call nulled it) and neither stops the other — so two songs
+  // play at once until the older call's generation check unloads its sound.
+  private pendingSound: Audio.Sound | null = null;
   private currentSongId: string | null = null;
   private tickListeners = new Set<TickListener>();
   private endListeners = new Set<EndListener>();
@@ -45,32 +51,27 @@ export class AudioPlayer {
    * Load and immediately play a song. Accepts an already-loaded Sound to skip
    * the network hop.
    *
-   * Fast-path skip: the previous sound is detached + paused synchronously and
-   * its unload is fired in the background. We DO NOT await it. That removes
-   * ~200-500ms of latency between user-taps-skip and audio-starts. The next
-   * song's playAsync() resolves in ~10-50ms when preloaded.
-   *
-   * Concurrency: every call grabs a generation number. If a newer play() has
-   * started by the time this one's async work resolves, we clean up the sound
-   * we just loaded and bail without making it the current.
+   * Concurrency: every call grabs a generation number and, before doing any
+   * async work, retires BOTH the established current sound AND any sound a
+   * still-in-flight play() left in `pendingSound`. The sound this call starts
+   * is published to `pendingSound` *before* it can make noise, so a newer
+   * play() that races in can find and silence it. If a newer play() has
+   * started by the time this one's async work resolves, we discard the sound
+   * we loaded and bail. The net effect: no matter how many play() calls fire
+   * back to back, only the newest one is ever audible.
    */
-  async play(song: Song, prelodedSound?: Audio.Sound) {
+  async play(song: Song, preloadedSound?: Audio.Sound) {
     const myGen = ++this.generation;
 
-    // ---- Detach + retire the previous sound. Synchronous wherever possible. ----
-    const oldSound = this.sound;
+    // Retire every sound that is or could be audible right now — the
+    // established current sound AND any sound an in-flight play() started.
+    this.retire(this.sound);
+    this.retire(this.pendingSound);
     this.sound = null;
+    this.pendingSound = null;
     this.currentSongId = null;
-    if (oldSound) {
-      try { oldSound.setOnPlaybackStatusUpdate(null); } catch { /* nothing */ }
-      // Best-effort silence so we don't briefly play two streams. Both calls
-      // are async but fire-and-forget — we don't await them.
-      oldSound.setStatusAsync({ shouldPlay: false, volume: 0 }).catch(() => {});
-      oldSound.unloadAsync().catch(() => {});
-    }
 
-    // ---- Start the new sound. ----
-    let sound = prelodedSound;
+    let sound: Audio.Sound | null = preloadedSound ?? null;
     try {
       if (!sound) {
         const created = await Audio.Sound.createAsync(
@@ -78,23 +79,34 @@ export class AudioPlayer {
           { shouldPlay: true, volume: 1.0, progressUpdateIntervalMillis: 250 },
         );
         sound = created.sound;
+        // A newer play() started while createAsync was awaiting — discard.
+        if (myGen !== this.generation) { await this.safeUnload(sound); return; }
+        // Visible to a concurrent play() from here on.
+        this.pendingSound = sound;
       } else {
-        // Preloaded sounds were created with shouldPlay=false.
+        if (myGen !== this.generation) { await this.safeUnload(sound); return; }
+        // Publish BEFORE playAsync makes the preloaded sound audible, so a
+        // concurrent play() can find and silence it during the awaits below.
+        this.pendingSound = sound;
         await sound.playAsync();
         await sound.setProgressUpdateIntervalAsync(250);
       }
     } catch (err) {
-      // Load failed — emit a loadFailed event so the caller can auto-skip,
-      // then give up cleanly so we don't poison the player state.
-      if (sound) { try { await sound.unloadAsync(); } catch {} }
+      // If a newer play() superseded us, the failure is just our own sound
+      // being torn down by that call — not a real load error. Stay silent.
+      if (myGen !== this.generation) return;
+      await this.safeUnload(sound);
+      if (this.pendingSound === sound) this.pendingSound = null;
       const reason = (err as Error)?.message ?? 'audio_load_failed';
       this.loadFailedListeners.forEach((l) => l(song.id, reason));
       return;
     }
 
-    // A newer play() started during our await — discard the sound we loaded.
-    if (myGen !== this.generation) {
-      try { await sound.unloadAsync(); } catch {}
+    // A newer play() started during our awaits — discard the sound we loaded.
+    // (`!sound` can't happen here in practice, but it narrows the type.)
+    if (myGen !== this.generation || !sound) {
+      if (this.pendingSound === sound) this.pendingSound = null;
+      await this.safeUnload(sound);
       return;
     }
 
@@ -102,7 +114,24 @@ export class AudioPlayer {
     // callback can't fire end events for the now-current song.
     sound.setOnPlaybackStatusUpdate(this.bindStatusListener(myGen));
     this.sound = sound;
+    this.pendingSound = null;
     this.currentSongId = song.id;
+  }
+
+  /** Detach + silence + unload a sound. Fire-and-forget; safe on null. */
+  private retire(s: Audio.Sound | null) {
+    if (!s) return;
+    try { s.setOnPlaybackStatusUpdate(null); } catch { /* nothing */ }
+    // Best-effort instant silence, then unload — both fire-and-forget.
+    s.setStatusAsync({ shouldPlay: false, volume: 0 }).catch(() => {});
+    s.unloadAsync().catch(() => {});
+  }
+
+  /** Awaitable detach + unload. Safe on null. */
+  private async safeUnload(s: Audio.Sound | null) {
+    if (!s) return;
+    try { s.setOnPlaybackStatusUpdate(null); } catch { /* nothing */ }
+    try { await s.unloadAsync(); } catch { /* already gone */ }
   }
 
   private bindStatusListener(gen: number) {
@@ -147,15 +176,22 @@ export class AudioPlayer {
   }
 
   async stop() {
-    if (!this.sound) return;
-    try {
-      this.sound.setOnPlaybackStatusUpdate(null);
-      await this.sound.unloadAsync();
-    } catch {
-      // Sound may already be torn down by the OS; safe to ignore.
-    }
+    // Invalidate any in-flight play() so it bails instead of promoting its
+    // sound after we've stopped, and retire a sound it may have started.
+    this.generation++;
+    this.retire(this.pendingSound);
+    this.pendingSound = null;
+    const s = this.sound;
     this.sound = null;
     this.currentSongId = null;
+    if (s) {
+      try {
+        s.setOnPlaybackStatusUpdate(null);
+        await s.unloadAsync();
+      } catch {
+        // Sound may already be torn down by the OS; safe to ignore.
+      }
+    }
   }
 
   getCurrentSongId() {

@@ -131,15 +131,18 @@ export function LibraryScreen() {
         .catch(() => {});
     }
     // Best-effort local notification. Permission was requested at app
-    // launch (App.tsx); if the user denied, this resolves silently.
-    Notifications.scheduleNotificationAsync({
-      content: {
-        title: 'Your AI is now listening',
-        body: 'Boulevard learned your taste. Your personalized playlists are ready.',
-        sound: 'default',
-      },
-      trigger: null, // fire immediately
-    }).catch(() => {});
+    // launch (App.tsx); if the user denied, this resolves silently. Web has
+    // no local notifications, so the in-app unlock modal is the only signal.
+    if (Platform.OS !== 'web') {
+      Notifications.scheduleNotificationAsync({
+        content: {
+          title: 'Your AI is now listening',
+          body: 'Boulevard learned your taste. Your personalized playlists are ready.',
+          sound: 'default',
+        },
+        trigger: null, // fire immediately
+      }).catch(() => {});
+    }
   }, [auth.songsHeard, auth.personalizationUnlockedAt, auth.markPersonalizationUnlocked]);
 
   const onPlayPlaylist = (p: BuiltPlaylist) => {

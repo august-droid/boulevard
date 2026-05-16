@@ -71,6 +71,9 @@ export interface Song {
   activity_fit: Activity[];
   duration_seconds: number;
   is_featured?: boolean;
+  /** Lifetime qualified-stream count (>=30s or >=70% plays). Maintained
+   *  server-side by the record_stream RPC; read-only on the client. */
+  stream_count?: number;
   /** 0..1 — editorial "this should land for new users" score. */
   launch_score?: number;
   /** 0..1 — derived from generation QA. Higher = better. */

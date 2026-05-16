@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   Modal,
   View,
@@ -31,6 +31,10 @@ export function MoodPickerSheet() {
   const player = usePlayer();
   const [visible, setVisible] = useState(false);
   const [ready, setReady] = useState(false);
+  // One-shot guard: a fast double-tap on a mood tile must only ever start
+  // one playlist. Two playPlaylist() calls racing each other is what made
+  // the player briefly start two songs at once.
+  const pickedRef = useRef(false);
 
   // Check the dismissal flag once on mount. Don't show until the player
   // catalog has loaded — otherwise tapping a mood produces an empty
@@ -57,13 +61,20 @@ export function MoodPickerSheet() {
   };
 
   const onPick = async (mood: Mood) => {
+    // Ignore every tap after the first — guards against a double-tap (or the
+    // web touch+click pair) firing two playlists into the player at once.
+    if (pickedRef.current) return;
+    pickedRef.current = true;
     if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
     const list = buildMoodPlaylist(mood, player.catalog, player.taste, 20);
     if (list.length > 0) await player.playPlaylist(list);
     void dismiss(true);
   };
 
-  if (!ready || !visible) return null;
+  // Hold the sheet back until the catalog has actually loaded — tapping a
+  // mood against an empty catalog builds an empty playlist and silently
+  // plays nothing, stranding the user on a dismissed sheet with no music.
+  if (!ready || !visible || player.catalog.length === 0) return null;
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={() => dismiss(true)}>

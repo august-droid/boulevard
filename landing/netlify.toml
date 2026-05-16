@@ -72,6 +72,17 @@
   status = 200
 
 # ---------------------------------------------------------------------------
+# Web app (Expo build) — served at /app on the same domain. SPA fallback:
+# any /app/* path that is not a real file serves the app's index.html. Real
+# assets (/app/_expo/*, /app/assets/*) are served directly because Netlify
+# serves existing files before applying a non-forced 200 rewrite.
+# ---------------------------------------------------------------------------
+[[redirects]]
+  from = "/app/*"
+  to = "/app/index.html"
+  status = 200
+
+# ---------------------------------------------------------------------------
 # API → Netlify Functions
 # The /admin dashboard hits /api/queue-stats, /api/archetypes, /api/review,
 # and /api/songs/:id/:action. Route them to functions.

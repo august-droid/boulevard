@@ -18,9 +18,29 @@ interface LoadResult {
   source: 'supabase' | 'local' | 'empty';
 }
 
+/**
+ * Suno returns scaffolding tokens like "[instrumental]" or "[Verse]" as the
+ * title when a track has no real name — common for songs with no lyrics.
+ * Turn those into something human so the UI never shows raw brackets.
+ */
+export function cleanSongTitle(
+  raw: string | null | undefined,
+  fallbackGenre?: string | null,
+): string {
+  const title = (raw ?? '').trim();
+  // A real title never reduces to a single bracketed token.
+  if (title && !/^\[.*\]$/.test(title)) return title;
+  const inner = title.replace(/^\[+|\]+$/g, '').trim();
+  if (/instrument/i.test(inner)) return 'Instrumental';
+  if (inner) return inner.charAt(0).toUpperCase() + inner.slice(1);
+  const genre = (fallbackGenre ?? '').trim();
+  return genre || 'Untitled';
+}
+
 function normalize(row: Song): Song {
   return {
     ...row,
+    title: cleanSongTitle(row.title, row.genre),
     genres: row.genres && row.genres.length > 0 ? row.genres : [row.genre],
     moods: row.moods && row.moods.length > 0 ? row.moods : [row.mood],
     drop_timestamps: row.drop_timestamps ?? [],

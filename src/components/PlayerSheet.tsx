@@ -19,11 +19,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAppNav } from '@/contexts/NavigationContext';
 import type { Song, SongComment, UserProfile } from '@/types';
 import { HeartIcon, ArrowRightIcon } from '@/components/Icon';
+import { usePlayerProgress } from '@/contexts/PlayerContext';
 
 // Spotify-style player bottom sheet.
 //
 // Collapsed: a compact translucent teaser docked above the BottomNav showing
-// the comment count + a "swipe up" hint. Expanded: a blurred dark sheet with
+// the comment count. Expanded: a blurred dark sheet with
 // two tabs, Comments (default, the priority surface) and Lyrics. The teaser
 // deliberately shows no comment bodies — the user forms an opinion of the
 // song first, then opens the sheet when they want the conversation.
@@ -36,6 +37,12 @@ const EXPANDED_H = Math.round(SCREEN_H * 0.62);
 const DRAG_RANGE = EXPANDED_H - HEADER_H;
 const SPRING = { damping: 24, stiffness: 240, mass: 0.9 };
 const SECTION_HEADER = /^\s*\[.*\]\s*$/;           // [Verse], [Chorus] scaffolding
+// One-tap emoji reactions shown above the comment composer.
+const QUICK_REACTIONS = ['🔥', '❤️', '😂', '🙌', '💯', '🎶'];
+
+// Comments are a core part of the experience on every platform — the web
+// app gets the same Comments + Lyrics tabs as native.
+const COMMENTS_ENABLED = true;
 
 export interface PlayerSheetHandle {
   expand: () => void;
@@ -47,6 +54,8 @@ interface Props {
   songId: string | null;
   /** Docked BottomNav height. The collapsed sheet sits just above it. */
   navHeight: number;
+  /** Seek the player to an absolute position (ms) — tapping a lyric line. */
+  onSeek: (ms: number) => void;
 }
 
 type TabKey = 'comments' | 'lyrics';
@@ -60,7 +69,7 @@ function splitLyricLines(raw: string | null | undefined): string[] {
 }
 
 export const PlayerSheet = forwardRef<PlayerSheetHandle, Props>(function PlayerSheet(
-  { song, songId, navHeight }, ref,
+  { song, songId, navHeight, onSeek }, ref,
 ) {
   const comments = useComments();
   const auth = useAuth();
@@ -72,7 +81,7 @@ export const PlayerSheet = forwardRef<PlayerSheetHandle, Props>(function PlayerS
   const kb = useSharedValue(0); // keyboard height — lifts the sheet so the composer clears it
 
   const [expanded, setExpanded] = useState(false);
-  const [tab, setTab] = useState<TabKey>('comments');
+  const [tab, setTab] = useState<TabKey>(COMMENTS_ENABLED ? 'comments' : 'lyrics');
   const [draft, setDraft] = useState('');
   const [replyTo, setReplyTo] = useState<SongComment | null>(null);
   const [posting, setPosting] = useState(false);
@@ -84,7 +93,7 @@ export const PlayerSheet = forwardRef<PlayerSheetHandle, Props>(function PlayerS
     if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
     progress.value = withSpring(1, SPRING);
     setExpanded(true);
-    setTab('comments');
+    setTab(COMMENTS_ENABLED ? 'comments' : 'lyrics');
   }, [progress]);
 
   const collapse = useCallback(() => {
@@ -189,6 +198,15 @@ export const PlayerSheet = forwardRef<PlayerSheetHandle, Props>(function PlayerS
     }
   }, [songId, auth.isAnonymous, nav, draft, posting, comments, replyTo]);
 
+  // One-tap emoji reaction — posts the emoji as a top-level comment so a
+  // user can respond without opening the keyboard. Gated like the composer.
+  const handleQuickReaction = useCallback((emoji: string) => {
+    if (!songId) return;
+    if (auth.isAnonymous) { nav.openSignup(); return; }
+    if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
+    void comments.post({ songId, body: emoji, timestampSeconds: null, parentId: null });
+  }, [songId, auth.isAnonymous, nav, comments]);
+
   return (
     <>
       {/* Scrim — darkens the player behind the sheet; tap to collapse. */}
@@ -221,7 +239,7 @@ export const PlayerSheet = forwardRef<PlayerSheetHandle, Props>(function PlayerS
               pointerEvents={expanded ? 'none' : 'auto'}
             >
               <Pressable style={styles.teaserRow} onPress={expand} hitSlop={6}>
-                {teaserSeeds.length > 0 ? (
+                {COMMENTS_ENABLED && teaserSeeds.length > 0 ? (
                   <View style={styles.teaserAvatars}>
                     {teaserSeeds.map((seed, i) => (
                       <AvatarOrb key={seed + i} seed={seed} size={26} style={i > 0 ? styles.teaserAvatarStacked : undefined} />
@@ -230,10 +248,10 @@ export const PlayerSheet = forwardRef<PlayerSheetHandle, Props>(function PlayerS
                 ) : null}
                 <View style={styles.teaserText}>
                   <Text style={styles.teaserMain} numberOfLines={1}>
-                    {count > 0 ? `${count} comments` : 'Comments'} <Text style={styles.teaserMainDim}>• Swipe up</Text>
+                    {COMMENTS_ENABLED ? (count > 0 ? `${count} comments` : 'Comments') : 'Lyrics'}
                   </Text>
                   <Text style={styles.teaserSub} numberOfLines={1}>
-                    Comments first • Lyrics second
+                    {COMMENTS_ENABLED ? 'Comments first • Lyrics second' : 'Tap to read along'}
                   </Text>
                 </View>
               </Pressable>
@@ -244,10 +262,12 @@ export const PlayerSheet = forwardRef<PlayerSheetHandle, Props>(function PlayerS
               style={[styles.slot, styles.tabStrip, expandedStyle]}
               pointerEvents={expanded ? 'auto' : 'none'}
             >
-              <Pressable style={styles.tabBtn} onPress={() => setTab('comments')} hitSlop={8}>
-                <Text style={[styles.tabLabel, tab === 'comments' && styles.tabLabelActive]}>Comments</Text>
-                {tab === 'comments' ? <View style={styles.tabUnderline} /> : null}
-              </Pressable>
+              {COMMENTS_ENABLED ? (
+                <Pressable style={styles.tabBtn} onPress={() => setTab('comments')} hitSlop={8}>
+                  <Text style={[styles.tabLabel, tab === 'comments' && styles.tabLabelActive]}>Comments</Text>
+                  {tab === 'comments' ? <View style={styles.tabUnderline} /> : null}
+                </Pressable>
+              ) : null}
               <Pressable style={styles.tabBtn} onPress={() => setTab('lyrics')} hitSlop={8}>
                 <Text style={[styles.tabLabel, tab === 'lyrics' && styles.tabLabelActive]}>Lyrics</Text>
                 {tab === 'lyrics' ? <View style={styles.tabUnderline} /> : null}
@@ -261,7 +281,7 @@ export const PlayerSheet = forwardRef<PlayerSheetHandle, Props>(function PlayerS
           style={[styles.body, expandedStyle]}
           pointerEvents={expanded ? 'auto' : 'none'}
         >
-          {tab === 'comments' ? (
+          {tab === 'comments' && COMMENTS_ENABLED ? (
             <>
               <FlatList
                 data={comments.topLevel}
@@ -301,6 +321,21 @@ export const PlayerSheet = forwardRef<PlayerSheetHandle, Props>(function PlayerS
                 </View>
               ) : null}
 
+              {/* One-tap emoji reactions — the fast path to respond. */}
+              <View style={styles.reactionsRow}>
+                {QUICK_REACTIONS.map((emoji) => (
+                  <Pressable
+                    key={emoji}
+                    onPress={() => handleQuickReaction(emoji)}
+                    hitSlop={6}
+                    style={({ pressed }) => [styles.reactionChip, pressed && styles.reactionChipPressed]}
+                    accessibilityLabel={`React with ${emoji}`}
+                  >
+                    <Text style={styles.reactionEmoji}>{emoji}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
               {/* Composer. Anonymous users get bounced to signup on tap. */}
               <View style={styles.composer}>
                 <AvatarOrb seed={auth.userId ?? 'me'} size={32} />
@@ -339,26 +374,137 @@ export const PlayerSheet = forwardRef<PlayerSheetHandle, Props>(function PlayerS
               </View>
             </>
           ) : (
-            <ScrollView
-              showsVerticalScrollIndicator={false}
-              contentContainerStyle={styles.lyricsContent}
-            >
-              {lyricLines.length > 0 ? (
-                lyricLines.map((line, i) => (
-                  <Text key={i} style={styles.lyricLine}>{line}</Text>
-                ))
-              ) : (
-                <View style={styles.empty}>
-                  <Text style={styles.emptyText}>Lyrics not available yet.</Text>
-                </View>
-              )}
-            </ScrollView>
+            <LyricsTab
+              lines={lyricLines}
+              songId={songId}
+              visible={expanded}
+              onSeek={onSeek}
+            />
           )}
         </Animated.View>
       </Animated.View>
     </>
   );
 });
+
+// ---- Lyrics tab ------------------------------------------------------
+//
+// Read-along lyrics. As the song plays, the current line is highlighted
+// and the list auto-scrolls to keep it centered; tapping a line seeks
+// there. `songs.lyrics` has no per-line timestamps, so the active line is
+// derived pseudo-synchronously — lines are distributed linearly across the
+// song's duration. Replace with real timestamps when the data carries them.
+//
+// usePlayerProgress() re-renders this component on every position tick, so
+// it lives in its own component (not the PlayerSheet body) — the heavy
+// sheet, the comment list and the composer never re-render on a tick.
+
+function LyricsTab({
+  lines,
+  songId,
+  visible,
+  onSeek,
+}: {
+  lines: string[];
+  songId: string | null;
+  visible: boolean;
+  onSeek: (ms: number) => void;
+}) {
+  const { position, duration } = usePlayerProgress();
+  const scrollRef = useRef<ScrollView>(null);
+  const lineYs = useRef<number[]>([]);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  // Derive the active line from playback progress. Only while the sheet is
+  // open — no work when it's collapsed (the dominant state).
+  useEffect(() => {
+    if (!visible || lines.length === 0 || duration <= 0) return;
+    const ratio = Math.min(0.999, Math.max(0, position / duration));
+    const idx = Math.min(lines.length - 1, Math.floor(ratio * lines.length));
+    setActiveIndex((prev) => (prev === idx ? prev : idx));
+  }, [visible, position, duration, lines.length]);
+
+  // When the lyrics tab opens, jump straight to the line the song has
+  // reached — the listener should land where the track is, not at the top.
+  // The lines aren't measured on the first frame, so retry the jump on a
+  // short delay until the active line's offset is known.
+  useEffect(() => {
+    if (!visible || lines.length === 0 || duration <= 0) return;
+    const ratio = Math.min(0.999, Math.max(0, position / duration));
+    const target = Math.min(lines.length - 1, Math.floor(ratio * lines.length));
+    let tries = 0;
+    let timer: ReturnType<typeof setTimeout>;
+    const jump = () => {
+      const y = lineYs.current[target];
+      if (typeof y === 'number') {
+        scrollRef.current?.scrollTo({ y: Math.max(0, y - 140), animated: false });
+      } else if (tries++ < 12) {
+        timer = setTimeout(jump, 50);
+      }
+    };
+    timer = setTimeout(jump, 50);
+    return () => clearTimeout(timer);
+    // Only re-run when the tab becomes visible — not on every position tick.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
+  // Keep the active line roughly centered. Runs only when activeIndex flips.
+  useEffect(() => {
+    if (!visible) return;
+    const y = lineYs.current[activeIndex];
+    if (typeof y === 'number') {
+      scrollRef.current?.scrollTo({ y: Math.max(0, y - 140), animated: true });
+    }
+  }, [activeIndex, visible]);
+
+  // Reset scroll + active line whenever the song changes.
+  useEffect(() => {
+    setActiveIndex(0);
+    lineYs.current = [];
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [songId]);
+
+  if (lines.length === 0) {
+    return (
+      <View style={styles.empty}>
+        <Text style={styles.emptyText}>Lyrics not available yet.</Text>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView
+      ref={scrollRef}
+      showsVerticalScrollIndicator={false}
+      contentContainerStyle={styles.lyricsContent}
+    >
+      {lines.map((line, i) => {
+        const active = i === activeIndex;
+        const past = i < activeIndex;
+        return (
+          <Pressable
+            key={i}
+            onPress={() => {
+              if (duration > 0) onSeek(Math.floor((i / lines.length) * duration));
+            }}
+            onLayout={(e) => { lineYs.current[i] = e.nativeEvent.layout.y; }}
+            style={styles.lyricLinePressable}
+          >
+            <Text
+              style={[
+                styles.lyricLine,
+                past && styles.lyricLinePast,
+                active && styles.lyricLineActive,
+              ]}
+            >
+              {line}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </ScrollView>
+  );
+}
 
 // ---- Comment row -----------------------------------------------------
 
@@ -509,10 +655,6 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.md,
     fontWeight: fonts.weight.bold,
   },
-  teaserMainDim: {
-    color: colors.textMuted,
-    fontWeight: fonts.weight.semibold,
-  },
   teaserSub: {
     color: metals.goldHi,
     fontSize: fonts.size.xs,
@@ -652,6 +794,26 @@ const styles = StyleSheet.create({
     fontWeight: fonts.weight.semibold,
   },
 
+  reactionsRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.xs,
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: 'rgba(255,255,255,0.10)',
+  },
+  reactionChip: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+  },
+  reactionChipPressed: {
+    opacity: 0.5,
+    transform: [{ scale: 0.86 }],
+  },
+  reactionEmoji: {
+    fontSize: 26,
+  },
   composer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -659,8 +821,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.sm,
     paddingBottom: spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.10)',
   },
   inputWrap: {
     flex: 1,
@@ -704,12 +864,30 @@ const styles = StyleSheet.create({
   lyricsContent: {
     paddingHorizontal: spacing.xl,
     paddingTop: spacing.md,
-    paddingBottom: spacing.xxl,
+    // Generous tail so the final lines can still scroll up to the centred
+    // active-line position instead of being stuck at the bottom edge.
+    paddingBottom: 220,
   },
+  lyricLinePressable: {
+    paddingVertical: 3,
+  },
+  // Base lyric line — intentionally dimmed so the active line stands out.
   lyricLine: {
-    color: colors.text,
+    color: 'rgba(255,255,255,0.45)',
     fontSize: 17,
-    lineHeight: 30,
+    lineHeight: 28,
     fontWeight: fonts.weight.medium,
+  },
+  // Lines already sung — dimmed further so the eye lands on the active line.
+  lyricLinePast: {
+    color: 'rgba(255,255,255,0.28)',
+  },
+  // The line playing right now — bright, bold, slightly larger.
+  lyricLineActive: {
+    color: colors.text,
+    fontSize: 19,
+    lineHeight: 28,
+    fontWeight: fonts.weight.bold,
+    letterSpacing: -0.2,
   },
 });

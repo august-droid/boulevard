@@ -10,7 +10,7 @@ import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { colors, fonts, metals, spacing } from '@/theme';
-import { usePlayer } from '@/contexts/PlayerContext';
+import { usePlayer, usePlayerProgress } from '@/contexts/PlayerContext';
 import { PlayIcon, PauseIcon, SkipIcon, PrevIcon } from '@/components/Icon';
 import { Artwork } from '@/components/Artwork';
 import { songArtworkUri } from '@/lib/artwork';
@@ -28,6 +28,7 @@ interface Props {
 
 export function MiniPlayer({ onPress, bottomOffset }: Props) {
   const player = usePlayer();
+  const { position, duration } = usePlayerProgress();
   const song = player.current;
 
   // Small synchronous tap haptic. Fires on press-in so the buzz lands the
@@ -39,7 +40,7 @@ export function MiniPlayer({ onPress, bottomOffset }: Props) {
   if (!song) return null;
 
   const progress =
-    player.duration > 0 ? Math.min(1, player.position / player.duration) : 0;
+    duration > 0 ? Math.min(1, position / duration) : 0;
 
   return (
     <View style={[styles.wrap, { bottom: bottomOffset }]} pointerEvents="box-none">

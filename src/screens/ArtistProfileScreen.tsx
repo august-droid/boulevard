@@ -5,8 +5,8 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Dimensions,
   Platform,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
@@ -25,7 +25,6 @@ import {
   getLatestDrops,
   getSimilarArtists,
   getTopSongs,
-  songPlays,
 } from '@/lib/artists/artistData';
 import {
   ChevronLeftIcon,
@@ -37,8 +36,9 @@ import {
 import { Artwork } from '@/components/Artwork';
 import type { Song, SongStats } from '@/types';
 
-const { width: SCREEN_W } = Dimensions.get('window');
-const HERO_H = Math.round(SCREEN_W * 1.05);
+// Desktop web caps the hero to a cinematic banner height; mobile/native use
+// the portrait-width-scaled hero (see `heroHeight` in the component).
+const DESKTOP_HERO_H = 440;
 
 interface Props {
   artistId: string;
@@ -57,6 +57,15 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
   const follows = useFollows();
   const auth = useAuth();
   const nav = useAppNav();
+
+  // Hero height. Desktop web caps it to a banner; native + mobile-web use a
+  // width-scaled hero kept deliberately short (0.72×) so the artist's name,
+  // the actions row and the first few Top Songs are all on screen the moment
+  // the page opens — no scrolling past a full screen of image.
+  const { width: winWidth } = useWindowDimensions();
+  const heroHeight = Platform.OS === 'web' && winWidth >= 1024
+    ? DESKTOP_HERO_H
+    : Math.round(winWidth * 0.72);
 
   // Pull fresh server stats when the screen opens so play counts on the
   // hero stat row and the top-songs list reflect today's traffic. The
@@ -132,7 +141,7 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
   const onPlayTop = useCallback(() => {
     tap();
     if (topSongs.length === 0) return;
-    void player.playPlaylist(topSongs);
+    void player.playPlaylist(topSongs, { artistFocused: true });
     nav.openPlayer();
   }, [tap, topSongs, player, nav]);
 
@@ -146,7 +155,7 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
 
   const onPlaySong = useCallback((s: Song) => {
     tap();
-    void player.playSpecific(s);
+    void player.playSpecific(s, { artistFocused: true });
     nav.openPlayer();
   }, [tap, player, nav]);
 
@@ -180,7 +189,7 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
         {/* Hero — full-bleed cinematic image with a long fade into the page.
             Falls back to a seeded gradient + initial when the artist has no
             portrait so the hero is never a flat grey block. */}
-        <View style={[styles.hero, { height: HERO_H }]}>
+        <View style={[styles.hero, { height: heroHeight }]}>
           <Artwork
             uri={artist.image_url}
             name={artist.name}
@@ -218,10 +227,10 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
             </View>
 
             {/* Stats row. Followers fall back to "0" while the count
-                query is in flight so the layout never shows blanks. */}
+                query is in flight so the layout never shows blanks. Song
+                count is intentionally omitted — it's not a signal listeners
+                care about. */}
             <View style={styles.statsRow}>
-              <Stat label="Songs" value={formatCount(artist.song_count)} />
-              <View style={styles.statDivider} />
               <Stat label="Monthly Listeners" value={formatCount(artist.monthly_listeners)} />
               <View style={styles.statDivider} />
               <Stat
@@ -232,7 +241,8 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
           </View>
         </View>
 
-        {/* Primary actions — Follow + Play Top + Start Radio. */}
+        {/* Primary actions — Follow + Play Top. Radio is no longer a top
+            button; it lives as its own section further down the page. */}
         <View style={styles.actionsRow}>
           <Pressable
             onPress={onToggleFollow}
@@ -253,6 +263,7 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
             disabled={topSongs.length === 0}
             style={({ pressed }) => [
               styles.primaryBtn,
+              styles.primaryBtnWide,
               topSongs.length === 0 && { opacity: 0.4 },
               pressed && { opacity: 0.85 },
             ]}
@@ -260,15 +271,6 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
           >
             <PlayIcon size={16} color={colors.bg} />
             <Text style={styles.primaryBtnText}>Play Top</Text>
-          </Pressable>
-
-          <Pressable
-            onPress={onStartRadio}
-            style={({ pressed }) => [styles.ghostBtn, pressed && { opacity: 0.85 }]}
-            accessibilityLabel="Start radio"
-          >
-            <WaveformIcon size={16} color={colors.text} />
-            <Text style={styles.ghostBtnText}>Radio</Text>
           </Pressable>
         </View>
 
@@ -280,7 +282,7 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
                 key={s.id}
                 rank={idx + 1}
                 song={s}
-                plays={songPlays(s, serverStats)}
+                plays={s.stream_count ?? 0}
                 isCurrent={player.current?.id === s.id}
                 isPlaying={player.current?.id === s.id && player.isPlaying}
                 onPress={() => onPlaySong(s)}
@@ -290,7 +292,7 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
               <Pressable
                 onPress={() => {
                   tap();
-                  void player.playPlaylist(allSongs);
+                  void player.playPlaylist(allSongs, { artistFocused: true });
                   nav.openPlayer();
                 }}
                 style={({ pressed }) => [styles.seeAll, pressed && { opacity: 0.7 }]}
@@ -300,6 +302,30 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
             ) : null}
           </Section>
         ) : null}
+
+        {/* Artist Radio — a nonstop mix. Moved out of the top action row so
+            the page leads with the artist + their top songs; the user
+            scrolls down to start radio. */}
+        <Section title="Radio">
+          <Pressable
+            onPress={onStartRadio}
+            style={({ pressed }) => [styles.radioCard, pressed && { opacity: 0.85 }]}
+            accessibilityLabel={`Start ${artist.name} radio`}
+          >
+            <View style={styles.radioIcon}>
+              <WaveformIcon size={22} color={metals.goldSolidHi} />
+            </View>
+            <View style={styles.radioMeta}>
+              <Text style={styles.radioTitle} numberOfLines={1}>{artist.name} Radio</Text>
+              <Text style={styles.radioSub} numberOfLines={1}>
+                A nonstop mix based on {artist.name}
+              </Text>
+            </View>
+            <View style={styles.radioPlay}>
+              <PlayIcon size={16} color={colors.bg} />
+            </View>
+          </Pressable>
+        </Section>
 
         {/* Latest Drops — horizontal cards. */}
         {drops.length > 0 ? (
@@ -419,7 +445,9 @@ function SongRow({
           {song.title}
         </Text>
         <Text style={styles.songSub} numberOfLines={1}>
-          {isCurrent && isPlaying ? 'Playing now' : `${formatCount(plays)} plays`}
+          {isCurrent && isPlaying
+            ? 'Playing now'
+            : plays === 1 ? '1 play' : `${formatCount(plays)} plays`}
         </Text>
       </View>
       <Pressable
@@ -594,22 +622,54 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
 
-  ghostBtn: {
+  // With Radio removed from this row, Play Top takes the remaining width so
+  // the two actions read as a balanced pair.
+  primaryBtnWide: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+
+  radioCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: spacing.md,
+    marginHorizontal: spacing.lg,
     paddingHorizontal: spacing.md,
-    paddingVertical: 10,
-    borderRadius: radii.pill,
+    paddingVertical: spacing.md,
+    borderRadius: radii.lg,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: metals.platinum,
     backgroundColor: 'rgba(20,20,24,0.55)',
   },
-  ghostBtnText: {
+  radioIcon: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: metals.gold,
+  },
+  radioMeta: { flex: 1, minWidth: 0 },
+  radioTitle: {
     color: colors.text,
-    fontSize: fonts.size.sm,
-    fontWeight: fonts.weight.semibold,
-    letterSpacing: 0.3,
+    fontSize: fonts.size.md,
+    fontWeight: fonts.weight.bold,
+    letterSpacing: -0.1,
+  },
+  radioSub: {
+    color: colors.textMuted,
+    fontSize: fonts.size.xs,
+    marginTop: 2,
+  },
+  radioPlay: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: metals.goldSolid,
   },
 
   section: {

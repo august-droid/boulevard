@@ -1,3 +1,4 @@
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase, HAS_SUPABASE } from '@/lib/supabase';
 
@@ -52,8 +53,16 @@ async function migrateLegacyKeyOnce(targetUserId: string): Promise<void> {
 
 export const FREE_COMPLETED_LIMIT = 10;
 
-/** Threshold (0..1) at which a play counts as a full listen. */
-export const COMPLETION_THRESHOLD = 0.9;
+/**
+ * Threshold (0..1) at which a play counts as a full listen.
+ *
+ * Native: 0.9 — a song heard to 90% counts toward the 10-listen free cap.
+ * Web:    0.7 — the web app gates on "10 songs heard to at least 70% each",
+ *               after which sign-in is required (no paywall on web).
+ *
+ * Platform-branched so native enforcement is byte-for-byte unchanged.
+ */
+export const COMPLETION_THRESHOLD = Platform.OS === 'web' ? 0.7 : 0.9;
 
 export interface CompletionState {
   count: number;

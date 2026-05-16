@@ -1,8 +1,10 @@
 import React, { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import uuid from 'react-native-uuid';
 import { supabase, HAS_SUPABASE } from '@/lib/supabase';
 import { registerPushTokenForUser } from '@/lib/push/registerPushToken';
+import { setAppsFlyerCustomerUserId } from '@/lib/attribution/AppsFlyer';
 import {
   configureBilling,
   onCustomerInfo,
@@ -69,6 +71,12 @@ export interface AuthValue {
   signupPromptShownAt: string | null;
   /** ISO timestamp when songsHeard first crossed the personalization threshold. */
   personalizationUnlockedAt: string | null;
+  /**
+   * Web only: true once an anonymous listener has used their 5 free plays
+   * and must sign in to continue. Always false on native — native gates on
+   * completions (signup prompt at 5, paywall at 10) instead.
+   */
+  webLoginRequired: boolean;
   bumpEngagement: () => Promise<void>;
   bumpSongsHeard: () => Promise<void>;
   bumpSkipCount: () => Promise<void>;
@@ -292,10 +300,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Register the Expo push token for this user once auth resolves.
+  // Register the Expo push token for this user once auth resolves, and tie
+  // the AppsFlyer attribution profile to the same app user id. The user id
+  // is stable across the anonymous-to-real upgrade, so attribution follows
+  // the user through sign-up with no extra work. setAppsFlyerCustomerUserId
+  // no-ops when AppsFlyer is unconfigured and never throws.
   useEffect(() => {
     if (!userId) return;
     void registerPushTokenForUser(userId);
+    setAppsFlyerCustomerUserId(userId);
   }, [userId]);
 
   // Wire RevenueCat: configure once the user id resolves, then mirror the
@@ -352,6 +365,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       paywallShownAt,
       signupPromptShownAt,
       personalizationUnlockedAt,
+      // Web login gate. Fires once an anonymous web listener has heard 10
+      // songs to >=70% each (completedLimitHit, tracked by CompletionLimiter
+      // and persisted + server-reconciled). Signing in flips `isAnonymous`
+      // false and lifts the gate.
+      webLoginRequired:
+        Platform.OS === 'web' && isAnonymous && completedLimitHit,
       bumpEngagement: async () => {
         const next = engagementCount + 1;
         setEngagementCount(next);

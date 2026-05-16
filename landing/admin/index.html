@@ -96,7 +96,8 @@
  .rate button { width:26px; height:26px; padding:0; border:1px solid var(--border); background:var(--card); color:var(--fg); border-radius:6px; cursor:pointer; font-size:11px; font-weight:600; transition:all .12s; }
  .rate button:hover { border-color:var(--gold); }
  .rate button.on { background:linear-gradient(180deg, var(--gold-hi), var(--gold)); color:#1a1408; border-color:var(--gold); }
- .reasons { display:flex; gap:4px; flex-wrap:wrap; margin-top:4px; }
+ .reasons { display:none; gap:4px; flex-wrap:wrap; margin-top:8px; }
+ .reasons.show { display:flex; }
  .reasons .label { font-size:11px; color:var(--muted); width:100%; margin-bottom:4px; letter-spacing:1.6px; text-transform:uppercase; }
  .reasons button { font-size:11px; padding:4px 10px; border:1px solid var(--border); background:rgba(0,0,0,0.25); color:var(--muted); border-radius:99px; cursor:pointer; transition:all .12s; }
  .reasons button:hover { border-color:var(--border-strong); }
@@ -161,6 +162,16 @@
  .progress .fill { height:100%; background:linear-gradient(90deg, var(--gold-hi), var(--gold)); transition:width .3s; }
  .keyhint { font-size:11.5px; color:var(--muted); padding:8px 24px 4px; }
  .keyhint kbd { background:var(--card); padding:2px 7px; border-radius:5px; border:1px solid var(--border); font-family:ui-monospace, Menlo, monospace; color:var(--fg); font-size:10.5px; }
+ /* Simplified review card */
+ .ai-rating { font-size:13px; font-weight:700; padding:4px 11px; border-radius:99px; border:1px solid; white-space:nowrap; flex:none; }
+ .ai-good { background:rgba(74,222,128,0.16); color:#9beba8; border-color:rgba(74,222,128,0.40); }
+ .ai-warn { background:rgba(245,158,11,0.16); color:#fcd34d; border-color:rgba(245,158,11,0.40); }
+ .ai-bad  { background:rgba(239,68,68,0.16); color:#f99; border-color:rgba(239,68,68,0.40); }
+ .hook-line { font-size:13px; color:var(--fg); }
+ .hook-line b { color:var(--gold-hi); }
+ .lyrics-toggle { align-self:flex-start; background:rgba(255,255,255,0.04); border:1px solid var(--border); color:var(--muted); padding:6px 12px; border-radius:8px; cursor:pointer; font:inherit; font-size:12px; }
+ .lyrics-toggle:hover { border-color:var(--gold); color:var(--gold-hi); }
+ .confirm-reject { margin-top:8px; width:100%; padding:8px 0; border-radius:8px; border:none; font-weight:600; cursor:pointer; font:inherit; background:linear-gradient(180deg, #f47171, var(--bad)); color:#fff; }
 </style>
 </head>
 <body>
@@ -400,7 +411,7 @@ async function renderDashboard() {
       </div>
       <div class="bar"><div class="fill" id="progress-fill" style="width:0%"></div></div>
     </div>
-    <div class="keyhint"><kbd>A</kbd> approve · <kbd>R</kbd> reject · <kbd>G</kbd> regen · <kbd>Space</kbd> play/pause · <kbd>J</kbd>/<kbd>K</kbd> next/prev · <kbd>1</kbd>–<kbd>9</kbd>/<kbd>0</kbd> rate</div>
+    <div class="keyhint"><kbd>A</kbd> approve · <kbd>R</kbd> reject (press twice to confirm) · <kbd>G</kbd> regen · <kbd>Space</kbd> play/pause · <kbd>J</kbd>/<kbd>K</kbd> next/prev</div>
     <main id="grid"><div class="empty">loading…</div></main>`;
 
   $('#logout').onclick = async () => {
@@ -482,7 +493,6 @@ async function loadGrid() {
   }
 }
 
-function fmtDur(s){ if(!s) return '?:??'; const n=Math.round(Number(s)); const m=Math.floor(n/60); const r=String(n%60).padStart(2,'0'); return `${m}:${r}`; }
 const REJECT_REASON_OPTS = [
  ['vocal_ai','vocal sounds AI'],
  ['generic','generic'],
@@ -502,111 +512,75 @@ const REJECT_REASON_OPTS = [
  ['too_repetitive','too repetitive'],
  ['other','other'],
 ];
-const FLAG_LABELS = {
- hook_missing:'hook missing',
- title_mismatch:'title mismatch',
- chorus_forced:'chorus feels forced',
- lyrics_generic:'lyrics too generic',
- title_random_sounding:'title looks random',
-};
 function card(r) {
   const el = document.createElement('div'); el.className='card'; el.tabIndex = -1; el.dataset.songId = r.id;
-  const rating = r.rating ?? 0;
-  const cover = r.cover_url ? `style="background-image:url('${escapeHtml(r.cover_url)}')"` : '';
-  const stage = r.distribution_stage || 'new_test';
-  const stageBadge = `<span class="stage stage-${stage}" title="${r.suppression_reason ? 'Suppressed: ' + escapeHtml(r.suppression_reason) : 'Stage: ' + stage}">${stage}</span>`;
-  const microtags = Array.isArray(r.microtags) ? r.microtags : [];
-  const microtagStrip = microtags.length
-    ? `<div class="microtag-row">${microtags.slice(0, 18).map(t => `<span class="microtag">${escapeHtml(t)}</span>`).join('')}${microtags.length > 18 ? `<span class="microtag">+${microtags.length - 18}</span>` : ''}</div>`
-    : '';
-  const contexts = Array.isArray(r.primary_listener_contexts) ? r.primary_listener_contexts : [];
-  const risks = Array.isArray(r.skip_risks) ? r.skip_risks : [];
-  const distRow = `<div class="dist-row">
-    <span>listeners <b>${r.lifetime_unique_listeners ?? 0}</b></span>
-    <span>impressions <b>${r.impression_count ?? 0}</b></span>
-    <span>promo <b>${Number(r.promotion_score ?? 0).toFixed(3)}</b></span>
-    <span>hook <b>${Number(r.hook_strength ?? 0).toFixed(2)}</b></span>
-    <span>main <b>${Number(r.mainstream_fit ?? 0).toFixed(2)}</b></span>
-    <span>unique <b>${Number(r.uniqueness_score_v2 ?? 0).toFixed(2)}</b></span>
-    ${contexts.length ? `<span>ctx <b>${escapeHtml(contexts.join(', '))}</b></span>` : ''}
-    ${risks.length ? `<span class="skip-risk">risks <b>${escapeHtml(risks.join(', '))}</b></span>` : ''}
-  </div>`;
 
-  const hasIntent = !!(r.intended_title || r.intended_hook_phrase || r.song_concept);
-  const flags = Array.isArray(r.review_flags) ? r.review_flags : [];
-  const mismatch = !!r.needs_review_hook_mismatch ||
-    flags.includes('hook_missing') || flags.includes('title_mismatch') ||
-    (r.intended_title && r.title && r.intended_title.toLowerCase() !== r.title.toLowerCase());
-  const intentBanner = hasIntent ? `
-    <div class="intent-banner${mismatch ? ' mismatch' : ''}">
-      <div class="intent-row">
-        <span class="intent-tag">intent</span>
-        ${r.intended_title ? `<span>title <b>${escapeHtml(r.intended_title)}</b>${mismatch && r.title !== r.intended_title ? ` → got <b>${escapeHtml(r.title)}</b>` : ''}</span>` : ''}
-        ${r.intended_hook_phrase ? `<span>hook <b>"${escapeHtml(r.intended_hook_phrase)}"</b></span>` : ''}
-        ${typeof r.chorus_repeat_count === 'number' ? `<span>repeats <b>${r.chorus_repeat_count}×</b></span>` : ''}
-        ${r.emotional_core ? `<span>core <b>${escapeHtml(r.emotional_core)}</b></span>` : ''}
-      </div>
-      ${r.song_concept ? `<div style="margin-top:4px;color:rgba(255,255,255,0.55);font-size:11px;">${escapeHtml(r.song_concept)}</div>` : ''}
-      ${flags.length ? `<div class="flag-chips">${flags.map(f => `<span class="flag-chip flag-${escapeHtml(f)}">${escapeHtml(FLAG_LABELS[f] || f)}</span>`).join('')}</div>` : ''}
-    </div>` : '';
-  const mismatchBadge = mismatch ? `<span class="mismatch-badge">hook miss</span>` : '';
-  const overrideBadge = r.human_title_override ? `<span class="override-badge">renamed</span>` : '';
+  // Boulevard AI rating, 1-10 — a blend of the factory's own analysis
+  // scores: hook strength, mainstream fit, replayability, uniqueness.
+  const num = (v) => (typeof v === 'number' && !Number.isNaN(v) ? v : 0);
+  const aiScore01 = 0.35 * num(r.hook_strength) + 0.30 * num(r.mainstream_fit)
+                  + 0.20 * num(r.replayability_score) + 0.15 * num(r.uniqueness_score_v2);
+  const aiRating = Math.max(1, Math.min(10, Math.round(aiScore01 * 10)));
+  el.dataset.aiRating = aiRating;
+  const aiClass = aiRating >= 7 ? 'ai-good' : aiRating >= 5 ? 'ai-warn' : 'ai-bad';
+
+  const hook = r.intended_hook_phrase || r.title || '(no hook)';
+  const lyrics = r.lyrics || '';
+  const lyricLines = lyrics.split('\n').filter(l => l.trim().length);
+  const lyricsFirst = lyricLines.slice(0, 16).join('\n');
+  const lyricsTruncated = lyricLines.length > 16;
+
   el.innerHTML = `
     <div class="head">
-      <div class="cover" ${cover}></div>
       <div class="title">
-        <h3 title="${escapeHtml(r.title)}">${escapeHtml(r.title)}${mismatchBadge}${overrideBadge}</h3>
-        <div class="meta">${escapeHtml(r.genre)} · ${escapeHtml(r.mood||'')} · ${r.bpm||'?'} BPM · ${fmtDur(r.duration_seconds)}</div>
+        <h3 title="${escapeHtml(r.title)}">${escapeHtml(r.title)}</h3>
+        <div class="meta">${escapeHtml(r.artist_name || 'Unknown artist')} · ${escapeHtml(r.genre || '')}</div>
       </div>
-      ${stageBadge}
+      <span class="ai-rating ${aiClass}" title="Boulevard AI rating — hook strength, mainstream fit, replayability, uniqueness">AI ${aiRating}/10</span>
     </div>
-    <div class="row">
-      ${pill(r.vocal_type)} ${pill(r.approval_status)} ${pill('rpl '+(Number(r.replayability_score||0).toFixed(2)))} ${pill('en '+(Number(r.energy_score||0).toFixed(2)))}
-    </div>
-    ${distRow}
-    ${microtagStrip}
-    ${intentBanner}
-    <div class="vocal-banner">
-      Expected vocal: <b>${escapeHtml(r.voice_gender || r.vocal_type || 'unknown')}</b>
-      <span class="vocal-banner-sub">→ if the audio doesn't match, reject with "vocal gender mismatch"</span>
-    </div>
+    <div class="hook-line">Hook: <b>"${escapeHtml(hook)}"</b></div>
     ${r.audio_url ? `<audio controls preload="metadata" src="${r.audio_url}"></audio>` : '<div class="meta">no audio yet</div>'}
-    ${r.lyrics ? `<div class="lyrics">${escapeHtml(r.lyrics).slice(0,500)}${r.lyrics.length>500?'…':''}</div>` : ''}
-    <div class="rate" data-id="${r.id}">${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button data-n="${n}" class="${n===rating?'on':''}">${n}</button>`).join('')}</div>
-    <div class="reasons">
-      <span class="label">if rejecting, tag why (feeds prompt regen):</span>
-      ${REJECT_REASON_OPTS.map(([id,label])=>`<button data-reason="${id}">${label}</button>`).join('')}
-    </div>
-    <div class="retitle-row">
-      <input class="retitle-input" placeholder="rename title (optional)" maxlength="80" value="${r.human_title_override ? escapeHtml(r.human_title_override) : ''}">
-      <button class="btn-retitle" data-act="retitle">Save title</button>
-    </div>
+    ${lyrics ? `<button class="lyrics-toggle" data-act="toggle-lyrics">▸ Lyrics</button>
+    <div class="lyrics" style="display:none">${escapeHtml(lyricsFirst)}${lyricsTruncated ? '\n…' : ''}</div>` : ''}
     <div class="actions">
       <button class="btn-approve" data-act="approve">Approve</button>
       <button class="btn-reject" data-act="reject">Reject</button>
       <button class="btn-regen" data-act="regenerate">Regenerate</button>
+    </div>
+    <div class="reasons">
+      <span class="label">why are you rejecting?</span>
+      ${REJECT_REASON_OPTS.map(([id,label])=>`<button data-reason="${id}">${label}</button>`).join('')}
+      <button class="confirm-reject" data-act="confirm-reject">Confirm reject</button>
     </div>`;
+
   el.addEventListener('click', async (ev) => {
     focusCard(el);
     const btn = ev.target.closest('button');
     if (!btn) return;
-    if (btn.dataset.act === 'retitle') {
-      const input = el.querySelector('.retitle-input');
-      const value = input ? input.value.trim() : '';
-      if (!value) { toast('enter a title first'); return; }
-      doRetitle(el, r, value);
-      return;
+    const act = btn.dataset.act;
+    if (act === 'toggle-lyrics') {
+      const lyr = el.querySelector('.lyrics');
+      const open = lyr.style.display !== 'none';
+      lyr.style.display = open ? 'none' : 'block';
+      btn.textContent = open ? '▸ Lyrics' : '▾ Lyrics';
+      ev.stopPropagation(); return;
     }
-    if (btn.dataset.act) doAction(el, r, btn.dataset.act);
-    else if (btn.dataset.n) doRate(el, r, Number(btn.dataset.n));
-    else if (btn.dataset.reason) { btn.classList.toggle('on'); ev.stopPropagation(); }
+    if (act === 'reject') {
+      // First Reject click only reveals the reason picker — the actual
+      // reject fires on "Confirm reject".
+      el.querySelector('.reasons').classList.add('show');
+      ev.stopPropagation(); return;
+    }
+    if (act === 'confirm-reject') { doAction(el, r, 'reject'); return; }
+    if (act) { doAction(el, r, act); return; }
+    if (btn.dataset.reason) { btn.classList.toggle('on'); ev.stopPropagation(); }
   });
   return el;
 }
 function getReasons(el){ return $$('.reasons button.on', el).map(b => b.dataset.reason); }
 async function doAction(el, r, act) {
   try {
-    const payload = act === 'approve' ? { rating: getRating(el) }
+    const payload = act === 'approve' ? { rating: Number(el.dataset.aiRating) || null }
       : act === 'reject' ? { reasons: getReasons(el) }
       : {};
     await api(`/api/songs/${r.id}/${act}`, { method: 'POST', body: JSON.stringify(payload) });
@@ -621,22 +595,6 @@ async function doAction(el, r, act) {
       loadStats();
     }, 200);
   } catch (e) { toast('error: ' + e.message); }
-}
-async function doRate(el, r, n) {
-  try {
-    await api(`/api/songs/${r.id}/rate`, { method: 'POST', body: JSON.stringify({ rating: n }) });
-    $$('button', el.querySelector('.rate')).forEach(b => b.classList.toggle('on', Number(b.dataset.n) === n));
-  } catch (e) { toast('rate failed: ' + e.message); }
-}
-async function doRetitle(el, r, newTitle) {
-  try {
-    await api(`/api/songs/${r.id}/retitle`, { method: 'POST', body: JSON.stringify({ title: newTitle }) });
-    r.title = newTitle;
-    r.human_title_override = newTitle;
-    const h3 = el.querySelector('.title h3');
-    if (h3) h3.textContent = newTitle;
-    toast('renamed: ' + newTitle);
-  } catch (e) { toast('rename failed: ' + e.message); }
 }
 function focusCard(el) {
   $$('.card', $('#grid')).forEach(c => c.classList.remove('focus'));
@@ -658,7 +616,13 @@ function handleKey(e) {
   const r = { id: songId, title: el.querySelector('h3')?.textContent || songId };
   const k = e.key.toLowerCase();
   if (k === 'a') { doAction(el, r, 'approve'); e.preventDefault(); }
-  else if (k === 'r') { doAction(el, r, 'reject'); e.preventDefault(); }
+  else if (k === 'r') {
+    // First R reveals the reason picker; second R confirms the reject.
+    const reasons = el.querySelector('.reasons');
+    if (reasons && !reasons.classList.contains('show')) reasons.classList.add('show');
+    else doAction(el, r, 'reject');
+    e.preventDefault();
+  }
   else if (k === 'g') { doAction(el, r, 'regenerate'); e.preventDefault(); }
   else if (k === 'j') { moveFocus(1); e.preventDefault(); }
   else if (k === 'k') { moveFocus(-1); e.preventDefault(); }
@@ -667,14 +631,7 @@ function handleKey(e) {
     if (a.paused) a.play(); else a.pause();
     e.preventDefault();
   }
-  else if (/^[0-9]$/.test(e.key)) {
-    const n = e.key === '0' ? 10 : Number(e.key);
-    doRate(el, r, n);
-    e.preventDefault();
-  }
 }
-function getRating(el){ const on = el.querySelector('.rate button.on'); return on ? Number(on.dataset.n) : null; }
-function pill(t){ return `<span class="pill">${escapeHtml(String(t||''))}</span>`; }
 function escapeHtml(s){ return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
 // ---------------------------------------------------------------------------

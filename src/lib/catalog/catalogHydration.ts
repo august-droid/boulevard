@@ -1,5 +1,6 @@
 import { Song } from '@/types';
 import { supabase, HAS_SUPABASE } from '@/lib/supabase';
+import { cleanSongTitle } from '@/lib/catalog/loadCatalog';
 
 // Background catalog hydration.
 //
@@ -61,7 +62,8 @@ class CatalogHydrator {
 
         const next = (data as (Song & { artists?: unknown })[]).map((row) => {
           const { artists: _omit, ...rest } = row;
-          return rest as Song;
+          const song = rest as Song;
+          return { ...song, title: cleanSongTitle(song.title, song.genre) };
         });
         const nextIds = new Set(next.map((s) => s.id));
 
