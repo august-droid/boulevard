@@ -7,6 +7,7 @@ import {
   decayWeight,
   SESSION_WORLDS,
   worldToAnchor,
+  buildWorldPlaylist,
 } from './SessionContext';
 
 // ============================================================
@@ -157,8 +158,41 @@ function main() {
   check('a >12h-old session is dropped (next day feels fresh)',
     !okStale && stale.current(T0 + 14 * HOUR).mode === 'default');
 
-  // ---- 8. Performance ----
-  console.log('\n8) PERFORMANCE');
+  // ---- 8. Explore worlds ----
+  console.log('\n8) EXPLORE WORLDS (dynamic, distinct, emotionally consistent)');
+  // A catalog where every song carries one world's microtags + energy + mood.
+  const worldCatalog: Song[] = [];
+  SESSION_WORLDS.forEach((w, wi) => {
+    for (let i = 0; i < 14; i++) {
+      worldCatalog.push(makeSong(`${w.id}_${i}`, {
+        artist_id: `art_${wi}_${i % 5}`,
+        microtags: w.microtags,
+        mood: w.moodWords[i % w.moodWords.length],
+        energy_score: Math.min(1, Math.max(0, w.energy + (rng() - 0.5) * 0.1)),
+        similarity_cluster: wi,
+      }));
+    }
+  });
+  const nightDrive = buildWorldPlaylist(worldCatalog, SESSION_WORLDS[0], 24);
+  const euphoricEdm = buildWorldPlaylist(worldCatalog, SESSION_WORLDS[3], 24);
+  console.log(`   "${SESSION_WORLDS[0].label}" → ${nightDrive.length} songs  |  ` +
+    `"${SESSION_WORLDS[3].label}" → ${euphoricEdm.length} songs`);
+  check('a world generates a non-empty playlist', nightDrive.length > 0 && euphoricEdm.length > 0);
+  const overlap = nightDrive.filter((s) => euphoricEdm.some((e) => e.id === s.id)).length;
+  check('two worlds feel distinct (low song overlap)', overlap <= 2, `${overlap} shared`);
+  const ndTags = new Set(SESSION_WORLDS[0].microtags);
+  const consistent = nightDrive.every((s) =>
+    (s.microtags ?? []).some((t) => ndTags.has(t)) ||
+    SESSION_WORLDS[0].moodWords.includes(s.mood) ||
+    Math.abs(s.energy_score - SESSION_WORLDS[0].energy) <= 0.34);
+  check('every world song is emotionally consistent with the world', consistent);
+  const wArtists = new Map<string, number>();
+  for (const s of nightDrive) wArtists.set(s.artist_id ?? '?', (wArtists.get(s.artist_id ?? '?') ?? 0) + 1);
+  check('world playlist keeps artist diversity (<=2 per artist)',
+    [...wArtists.values()].every((n) => n <= 2));
+
+  // ---- 9. Performance ----
+  console.log('\n9) PERFORMANCE');
   const songs = Array.from({ length: 150 }, (_, i) => makeSong('perf' + i, { artist_id: 'a' + (i % 12) }));
   const perfEng = new SessionContextEngine();
   perfEng.activate('mood_focus', worldToAnchor(SESSION_WORLDS[2]), T0);

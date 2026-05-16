@@ -148,6 +148,55 @@ export function worldToAnchor(world: SessionWorld): ContextAnchor {
   };
 }
 
+/**
+ * Build an Explore "world" playlist from the live catalog. Dynamically
+ * generated from the world's microtags / mood words / energy — emotionally
+ * consistent, with artist diversity (max 2 per artist) and room for adjacent
+ * sonic exploration. A small random term rotates the list so reopening a
+ * world feels fresh. Pure: no network, no model, no mutation.
+ */
+export function buildWorldPlaylist(catalog: Song[], world: SessionWorld, limit = 28): Song[] {
+  const tagSet = new Set(world.microtags);
+  const moodSet = new Set(world.moodWords);
+  const scored: { song: Song; score: number }[] = [];
+
+  for (const s of catalog) {
+    if (!s.audio_url) continue;
+    if ((s.distribution_stage ?? 'new_test') === 'suppressed') continue;
+
+    // Emotional fit — the world's identity axes.
+    let emotional = 0;
+    let tagHits = 0;
+    for (const t of s.microtags ?? []) if (tagSet.has(t)) tagHits++;
+    emotional += tagHits * 2;
+    if (s.mood && moodSet.has(s.mood)) emotional += 3;
+    const dE = Math.abs(s.energy_score - world.energy);
+    if (dE <= 0.18) emotional += 2;
+    else if (dE <= 0.34) emotional += 0.5;
+
+    // Emotional-consistency gate: a song with no connection at all is out.
+    if (emotional <= 0) continue;
+
+    const quality = (s.hook_strength ?? 0) * 1.5 + (s.mainstream_fit ?? 0) * 0.5;
+    // Random term → freshness / adjacent exploration on every open.
+    scored.push({ song: s, score: emotional + quality + Math.random() * 1.4 });
+  }
+
+  scored.sort((a, b) => b.score - a.score);
+
+  // Artist diversity — max 2 per artist (mirrors the catalog-wide rule).
+  const perArtist = new Map<string, number>();
+  const out: Song[] = [];
+  for (const { song } of scored) {
+    const aid = song.artist_id ?? '__none__';
+    if ((perArtist.get(aid) ?? 0) >= 2) continue;
+    perArtist.set(aid, (perArtist.get(aid) ?? 0) + 1);
+    out.push(song);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
 // ---- small pure helpers ------------------------------------------------
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));

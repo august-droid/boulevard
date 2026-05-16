@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Modal, View, Text, TextInput, FlatList, Pressable, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, metals, radii, spacing } from '@/theme';
-import { usePlayer } from '@/contexts/PlayerContext';
+import { usePlayer, PlayContext } from '@/contexts/PlayerContext';
 import { Song } from '@/types';
 import { SongRow } from '@/components/SongRow';
 import { SearchIcon } from '@/components/Icon';
@@ -36,7 +36,30 @@ export function SearchSheet({ visible, onClose }: Props) {
   }, [query, player.catalog]);
 
   const playAndClose = (s: Song) => {
-    void player.playSpecific(s);
+    const q = query.trim();
+    // A query that exactly names a catalog genre is genre intent ("enter a
+    // genre lane" → genre_focus); anything else is a manual search whose
+    // results should feel intentional (→ search_focus: high relevance, low
+    // novelty). Either way the contextual-session engine activates before
+    // playback so the queue tail follows the intent.
+    const isGenreQuery =
+      q.length > 0 && player.catalog.some((c) => c.genre.toLowerCase() === q.toLowerCase());
+    const context: PlayContext = isGenreQuery
+      ? {
+          sessionMode: 'genre_focus',
+          sessionAnchor: { genre: s.genre, label: q, refSongs: [s] },
+        }
+      : {
+          sessionMode: 'search_focus',
+          sessionAnchor: {
+            genre: s.genre,
+            artistId: s.artist_id ?? null,
+            anchorMicrotags: s.microtags,
+            label: q || s.title,
+            refSongs: [s],
+          },
+        };
+    void player.playSpecific(s, context);
     setQuery('');
     onClose();
   };

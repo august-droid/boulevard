@@ -65,6 +65,12 @@ export interface PlayContext {
   moodId?: ChipMoodId | null;
   /** True for explicit artist sessions (artist page Play Top Songs, radio). */
   artistFocused?: boolean;
+  /** Explicit Contextual-Session override — set by surfaces the moodId /
+   *  artistFocused shorthands don't cover (Explore "worlds", genre lanes,
+   *  search). When present it takes priority over moodId / artistFocused for
+   *  session-mode activation. */
+  sessionMode?: SessionMode;
+  sessionAnchor?: ContextAnchor;
 }
 
 interface PlayerActions {
@@ -908,6 +914,12 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   /** Map a play action's PlayContext onto a session mode + anchor. */
   const syncSessionFromPlay = useCallback((songs: Song[], context?: PlayContext) => {
     if (songs.length === 0) return;
+    // Explicit override wins — Explore worlds / genre lanes / search pass the
+    // mode + anchor directly rather than relying on the moodId shorthand.
+    if (context?.sessionMode) {
+      activateSessionContext(context.sessionMode, context.sessionAnchor ?? {});
+      return;
+    }
     if (context?.moodId) {
       const m = moodById(context.moodId);
       const energyRange = m?.energyRange;
@@ -1305,8 +1317,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     };
     queueRef.current.setArtistFocused(playContextRef.current.artistFocused);
     // An intentional artist-page play opens the "artist universe" session
-    // mode; other direct taps leave the existing context to decay naturally.
-    if (context?.artistFocused) syncSessionFromPlay([song], context);
+    // mode; a search / genre tap passes an explicit sessionMode. Other direct
+    // taps leave the existing context to decay naturally.
+    if (context?.artistFocused || context?.sessionMode) syncSessionFromPlay([song], context);
     // Pull the preloaded sound BEFORE queue.playSpecific() clears the cache,
     // so a song Explore already warmed starts instantly, not cold-loaded.
     const preloaded = (await preloaderRef.current?.take(song.id)) ?? null;

@@ -18,6 +18,12 @@ import { useExplore } from '@/contexts/ExploreContext';
 import { buildExplore, ExploreSection, RankedSong, PlayMetrics } from '@/lib/ranking/Trending';
 import { buildForYou } from '@/lib/recommendation/ForYouEngine';
 import { moodById } from '@/lib/mood/moodCatalog';
+import {
+  SESSION_WORLDS,
+  worldToAnchor,
+  buildWorldPlaylist,
+  type SessionWorld,
+} from '@/lib/recommendation/SessionContext';
 import { fetchTodayStats } from '@/lib/stats/SongStats';
 import { Song, SongStats } from '@/types';
 import { PlayIcon, PauseIcon, SparkleIcon, ShuffleIcon } from '@/components/Icon';
@@ -74,6 +80,19 @@ export function ExploreScreen() {
   const playList = useCallback((songs: Song[], context?: PlayContext) => {
     if (songs.length === 0) return;
     void player.playPlaylist(songs, context);
+  }, [player]);
+
+  // Explore "worlds" — tapping a world builds an emotionally-consistent
+  // playlist from the live catalog (microtags / mood / energy) and opens a
+  // mood_focus session so the queue tail stays inside that emotional world.
+  const playWorld = useCallback((world: SessionWorld) => {
+    if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
+    const songs = buildWorldPlaylist(player.catalog, world, 28);
+    if (songs.length === 0) return;
+    void player.playPlaylist(songs, {
+      sessionMode: 'mood_focus',
+      sessionAnchor: worldToAnchor(world),
+    });
   }, [player]);
 
   // Today's per-song stats — drives play counts + Breakouts momentum.
@@ -235,6 +254,7 @@ export function ExploreScreen() {
               }}
             />
             <MoodChipsRow />
+            <WorldsRow onPlay={playWorld} />
           </View>
         }
         renderItem={({ item }) => {
@@ -335,6 +355,65 @@ function HeroCard({ onPlayNow, onSurprise }: { onPlayNow: () => void; onSurprise
           </Pressable>
         </View>
       </View>
+    </View>
+  );
+}
+
+// ---- Explore worlds --------------------------------------------------
+//
+// Dynamic emotional "worlds" — Night Drive, Heartbreak Spiral, Euphoric EDM,
+// etc. Tapping one drops the user into that world: an emotionally-consistent
+// playlist built live from the catalog (microtags / mood / energy) plus a
+// mood_focus contextual session so the queue tail stays inside the world.
+// The world set lives in SessionContext.SESSION_WORLDS.
+
+// A distinct gradient per world so the row reads as eight different places.
+const WORLD_GRADIENTS: Record<string, [string, string]> = {
+  night_drive: ['#2b3a67', '#10131f'],
+  main_character: ['#c8ae7a', '#6b4f1f'],
+  heartbreak_spiral: ['#4a2740', '#181018'],
+  euphoric_edm: ['#7b3df0', '#1c1140'],
+  sad_gym: ['#37506b', '#141a22'],
+  floating_indie: ['#3f6f6a', '#15201f'],
+  rage_trap: ['#7a1f1f', '#1a0e0e'],
+  sunset_afrobeats: ['#e0843a', '#5a2a14'],
+};
+
+function WorldsRow({ onPlay }: { onPlay: (w: SessionWorld) => void }) {
+  return (
+    <View style={styles.section}>
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionTitle}>Worlds</Text>
+        <Text style={styles.sectionSubtitle}>Step into an emotional world</Text>
+      </View>
+      <FlatList
+        data={SESSION_WORLDS}
+        keyExtractor={(w) => w.id}
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.worldRow}
+        renderItem={({ item }) => {
+          const grad = WORLD_GRADIENTS[item.id] ?? ['#3a3a44', '#16161c'];
+          return (
+            <Pressable
+              onPress={() => onPlay(item)}
+              style={({ pressed }) => [
+                styles.worldTile,
+                pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
+              ]}
+              accessibilityLabel={`Enter ${item.label}`}
+            >
+              <LinearGradient
+                colors={grad}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={StyleSheet.absoluteFill}
+              />
+              <Text style={styles.worldLabel}>{item.label}</Text>
+            </Pressable>
+          );
+        }}
+      />
     </View>
   );
 }
@@ -709,6 +788,28 @@ const styles = StyleSheet.create({
     letterSpacing: 0.1,
   },
   row: { paddingHorizontal: spacing.lg },
+
+  // ---- Explore worlds ----
+  worldRow: { paddingHorizontal: spacing.lg, gap: spacing.sm },
+  worldTile: {
+    width: 132,
+    height: 84,
+    borderRadius: radii.lg,
+    overflow: 'hidden',
+    justifyContent: 'flex-end',
+    padding: spacing.sm + 2,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.12)',
+  },
+  worldLabel: {
+    color: '#ffffff',
+    fontSize: fonts.size.sm,
+    fontWeight: fonts.weight.bold,
+    letterSpacing: -0.2,
+    textShadowColor: 'rgba(0,0,0,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
 
   // ---- Top Artists tile ----
   artistTile: { width: CARD_W, alignItems: 'center' },

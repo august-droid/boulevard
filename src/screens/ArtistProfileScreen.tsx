@@ -149,7 +149,9 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
     tap();
     const radio = buildArtistRadio(player.catalog, artistId, serverStats, 30);
     if (radio.length === 0) return;
-    void player.playPlaylist(radio);
+    // Artist radio is an artist-rooted session — open artist_focus so the
+    // queue tail stays inside this artist's universe.
+    void player.playPlaylist(radio, { artistFocused: true });
     nav.openPlayer();
   }, [tap, player, artistId, serverStats, nav]);
 
