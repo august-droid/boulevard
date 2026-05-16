@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import Purchases, {
   CustomerInfo,
   PurchasesOffering,
+  PurchasesOfferings,
   PurchasesPackage,
   LOG_LEVEL,
 } from 'react-native-purchases';
@@ -131,4 +132,66 @@ export async function restorePurchases(): Promise<CustomerInfo | null> {
   } catch {
     return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// RevenueCat service surface.
+//
+// This file IS the RevenueCat service helper for Boulevard — there is exactly
+// one wrapper, not two. The functions above are the implementation; the
+// exports below give callers the canonical method names. They are deliberately
+// thin so there is a single, predictable surface and no duplicated SDK logic.
+// ---------------------------------------------------------------------------
+
+/** Initialize the RevenueCat SDK. Alias of configureBilling(). */
+export const configureRevenueCat = configureBilling;
+
+/**
+ * Fetch ALL RevenueCat offerings (current + every named offering). Returns
+ * null when billing is unconfigured or the network call fails, so callers
+ * treat null as "no offerings available" instead of crashing.
+ */
+export async function getOfferings(): Promise<PurchasesOfferings | null> {
+  if (!HAS_BILLING || !configured) return null;
+  try {
+    return await Purchases.getOfferings();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Resolve the user's live premium state in one call. Safe everywhere: returns
+ * false when billing is off, unconfigured, or the lookup fails — premium
+ * features simply stay locked rather than the app crashing.
+ */
+export async function hasPremiumEntitlement(): Promise<boolean> {
+  const info = await getCustomerInfo();
+  return isPremium(info);
+}
+
+export type PurchaseErrorKind =
+  | 'cancelled'
+  | 'network'
+  | 'billing_unavailable'
+  | 'unknown';
+
+/**
+ * Classify a thrown RevenueCat purchase error so the UI can show the right
+ * message. RevenueCat tags user cancellation with `userCancelled`; the
+ * numeric `code` distinguishes the remaining cases ('1' cancel, '10'
+ * network, '2'/'3'/'7' store/billing). Anything else → 'unknown'.
+ */
+export function classifyPurchaseError(e: unknown): PurchaseErrorKind {
+  if (!e || typeof e !== 'object') return 'unknown';
+  const err = e as { userCancelled?: boolean; code?: string | number; message?: string };
+  if (err.userCancelled === true) return 'cancelled';
+  const code = String(err.code ?? '');
+  const message = String(err.message ?? '');
+  if (code === '1') return 'cancelled';
+  if (code === '10' || /network|offline|connection/i.test(message)) return 'network';
+  if (code === '2' || code === '3' || code === '7' || /billing|store|unavailable/i.test(message)) {
+    return 'billing_unavailable';
+  }
+  return 'unknown';
 }
