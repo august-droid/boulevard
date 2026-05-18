@@ -31,7 +31,7 @@ import { useFollows } from '@/contexts/FollowsContext';
 import { usePlaylists } from '@/contexts/PlaylistsContext';
 import { useComments, topPositiveComments, fallbackHandle, avatarColor } from '@/contexts/CommentsContext';
 import { useAuth } from '@/contexts/AuthContext';
-import { useAppNav } from '@/contexts/NavigationContext';
+import { useAppNav, SignupReason } from '@/contexts/NavigationContext';
 import type { SongComment } from '@/types';
 import { PlaylistPicker } from '@/components/PlaylistPicker';
 import { PlatinumProgressBar } from '@/components/PlatinumProgressBar';
@@ -51,9 +51,10 @@ import {
   HeartIcon,
 } from '@/components/Icon';
 import { CreateVibeSheet } from '@/screens/CreateVibeSheet';
+import { HeartBurst, HeartBurstHandle } from '@/components/HeartBurst';
 import { PlayerSheet, PlayerSheetHandle, PLAYER_SHEET_PEEK } from '@/components/PlayerSheet';
 import { ScrollingTitle } from '@/components/ScrollingTitle';
-import { resolveArtistImage } from '@/lib/artists/artistData';
+import { resolveArtistImage, formatCount } from '@/lib/artists/artistData';
 
 const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
@@ -74,6 +75,7 @@ export function PlayerFeedScreen({ onDismiss }: { onDismiss?: () => void } = {})
   const [vibeOpen, setVibeOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const playerSheetRef = React.useRef<PlayerSheetHandle>(null);
+  const heartBurstRef = React.useRef<HeartBurstHandle>(null);
   // Docked BottomNav height (mirrors RootNavigator's NAV_HEIGHT). The
   // comments / lyrics sheet docks just above it.
   const navHeight = 56 + Math.max(insets.bottom, 8);
@@ -83,9 +85,9 @@ export function PlayerFeedScreen({ onDismiss }: { onDismiss?: () => void } = {})
   // Tapping any of these bounces them to the SignupSheet. Reading +
   // playing is intentionally unblocked so the discovery loop stays
   // friction-free.
-  const requireSignup = useCallback((): boolean => {
+  const requireSignup = useCallback((reason?: SignupReason): boolean => {
     if (auth.isAnonymous) {
-      nav.openSignup();
+      nav.openSignup(reason);
       return true;
     }
     return false;
@@ -98,16 +100,20 @@ export function PlayerFeedScreen({ onDismiss }: { onDismiss?: () => void } = {})
   // Like state + action live on the PlayerContext now. Persists to
   // user_song_likes and feeds a 'like' signal into the taste profile.
   const liked = player.liked;
+  // The heart is a "send love" button, not a strict toggle: every tap
+  // releases a flying heart, and a tap only ever LIKES (never unlikes), so
+  // the user can tap it as many times as they like for the animation.
   const toggleLike = useCallback(() => {
     if (!currentSongId) return;
-    if (requireSignup()) return;
+    if (requireSignup('like')) return;
     if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
-    void player.like();
+    heartBurstRef.current?.spawn();
+    if (!player.liked) void player.like();
   }, [currentSongId, player, requireSignup]);
 
   const openPicker = useCallback(() => {
     if (!currentSongId) return;
-    if (requireSignup()) return;
+    if (requireSignup('playlist')) return;
     setPickerOpen(true);
   }, [currentSongId, requireSignup]);
 
@@ -261,8 +267,8 @@ export function PlayerFeedScreen({ onDismiss }: { onDismiss?: () => void } = {})
       </View>
 
       {/* Drift comments — top-5 positive/neutral comments float in one
-          at a time over the artwork while the song plays. Tap to open
-          the comments sheet. Hidden when there's nothing to show. */}
+          at a time over the artwork, starting 30s into the song. Tap to
+          open the comments sheet. Hidden when there's nothing to show. */}
       {currentSongId && comments.loadedSongId === currentSongId ? (
         <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
           <DriftComments
@@ -270,6 +276,7 @@ export function PlayerFeedScreen({ onDismiss }: { onDismiss?: () => void } = {})
             comments={comments.topLevel}
             currentUserId={auth.userId}
             profilesByUserId={comments.profiles}
+            elapsedMs={progress.position}
             bottomOffset={insets.bottom + 280}
             onTapOpen={() => playerSheetRef.current?.expand()}
           />
@@ -407,14 +414,20 @@ export function PlayerFeedScreen({ onDismiss }: { onDismiss?: () => void } = {})
         ]}
         pointerEvents="box-none"
       >
-        <Pressable hitSlop={10} onPressIn={tapFeedback} onPress={toggleLike} style={({ pressed }) => [styles.actionBtn, pressed && styles.transportPressed]} accessibilityLabel={liked ? 'Unlike' : 'Like'}>
-          <HeartIcon size={28} color={liked ? colors.like : colors.text} filled={liked} />
-        </Pressable>
+        <View style={styles.likeSlot}>
+          <Pressable hitSlop={10} onPressIn={tapFeedback} onPress={toggleLike} style={({ pressed }) => [styles.actionBtn, pressed && styles.transportPressed]} accessibilityLabel={liked ? 'Liked' : 'Like'}>
+            <HeartIcon size={28} color={liked ? colors.like : colors.text} filled={liked} />
+            {(song?.like_count ?? 0) > 100 ? <Text style={styles.actionCount}>{formatCount(song?.like_count ?? 0)}</Text> : null}
+          </Pressable>
+          <HeartBurst ref={heartBurstRef} />
+        </View>
         <Pressable hitSlop={10} onPressIn={tapFeedback} onPress={openPicker} style={({ pressed }) => [styles.actionBtn, pressed && styles.transportPressed]} accessibilityLabel={inAnyPlaylist ? 'Edit playlists' : 'Save to playlist'}>
           <BookmarkIcon size={26} color={inAnyPlaylist ? metals.goldSolidHi : colors.text} filled={inAnyPlaylist} />
+          {(song?.save_count ?? 0) > 100 ? <Text style={styles.actionCount}>{formatCount(song?.save_count ?? 0)}</Text> : null}
         </Pressable>
         <Pressable hitSlop={10} onPressIn={tapFeedback} onPress={onShare} style={({ pressed }) => [styles.actionBtn, pressed && styles.transportPressed]} accessibilityLabel="Share">
           <ShareIcon size={25} color={colors.text} />
+          {(song?.share_count ?? 0) > 100 ? <Text style={styles.actionCount}>{formatCount(song?.share_count ?? 0)}</Text> : null}
         </Pressable>
       </View>
 
@@ -609,7 +622,7 @@ function FollowPill({ artistId }: { artistId: string }) {
       onPress={() => {
         // Following an artist writes to user_followed_artists and is a
         // social action — gated the same way as save / like / comment.
-        if (auth.isAnonymous) { nav.openSignup(); return; }
+        if (auth.isAnonymous) { nav.openSignup('follow'); return; }
         void follows.toggleFollow(artistId);
       }}
       hitSlop={8}
@@ -660,18 +673,26 @@ function BreathingBrandMark() {
 // ---- Drift comments ---------------------------------------------------
 //
 // Floating TikTok-style comment that appears over the artwork while the
-// song plays. Cycles the top-5 most-liked positive/neutral comments at
-// random intervals: one fades in, sits for ~5s, fades out, the next one
-// fades in. Tap opens the full comments sheet.
+// song plays. Cycles the top-5 most-liked positive/neutral comments:
+// one fades in, sits for ~5s, fades out, the next one fades in. Tap
+// opens the full comments sheet.
 //
-// We deliberately don't crossfade two at once — single-track keeps the
-// surface calm and doesn't compete with the lyric / title overlays.
+// The overlay stays hidden until the listener is 30s into the song — a
+// positive comment lands once they've settled into the track, never the
+// moment it starts. We deliberately don't crossfade two at once —
+// single-track keeps the surface calm and doesn't compete with the
+// lyric / title overlays.
+
+/** Playback elapsed time before the first positive comment may drift in. */
+const DRIFT_START_MS = 30_000;
 
 interface DriftCommentsProps {
   songId: string;
   comments: SongComment[];
   currentUserId: string | null;
   profilesByUserId: Record<string, { user_id: string; username: string | null; display_name: string | null; avatar_seed: string | null }>;
+  /** Current playback position (ms) — gates the overlay until DRIFT_START_MS. */
+  elapsedMs: number;
   /** Distance from the bottom of the screen where the pill sits. */
   bottomOffset: number;
   /** Tap handler — opens the full comments sheet. */
@@ -683,6 +704,7 @@ function DriftComments({
   comments,
   currentUserId,
   profilesByUserId,
+  elapsedMs,
   bottomOffset,
   onTapOpen,
 }: DriftCommentsProps) {
@@ -699,24 +721,37 @@ function DriftComments({
   const [idx, setIdx] = useState(0);
   useEffect(() => { setIdx(0); }, [songId]);
 
+  // The overlay is gated until the listener is 30s into the song. `reached`
+  // latches true once the mark is crossed and resets with each new song.
+  const [reached, setReached] = useState(false);
+  useEffect(() => { setReached(false); }, [songId]);
+  useEffect(() => {
+    if (!reached && elapsedMs >= DRIFT_START_MS) setReached(true);
+  }, [reached, elapsedMs]);
+
   // Animated opacity for the current pill. -1 means "not yet started."
   const opacity = useSharedValue(0);
 
-  // Run the loop only when there's something to show. Each cycle:
-  //   delay 4-9s → fade in 350ms → hold 5s → fade out 350ms → next.
+  // Run the loop only when there's something to show AND the 30s mark has
+  // been reached. The first comment fades in immediately at that mark; each
+  // later cycle is: delay 4-9s → fade in 350ms → hold 5s → fade out 350ms.
   useEffect(() => {
-    if (pool.length === 0) return;
+    if (pool.length === 0 || !reached) return;
     let cancelled = false;
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
     const tick = async () => {
+      let first = true;
       while (!cancelled) {
-        const delayMs = 4000 + Math.floor(Math.random() * 5000);
-        await new Promise((r) => setTimeout(r, delayMs));
-        if (cancelled) return;
+        if (!first) {
+          await sleep(4000 + Math.floor(Math.random() * 5000));
+          if (cancelled) return;
+        }
+        first = false;
         opacity.value = withTiming(1, { duration: 350, easing: Easing.out(Easing.cubic) });
-        await new Promise((r) => setTimeout(r, 5000));
+        await sleep(5000);
         if (cancelled) return;
         opacity.value = withTiming(0, { duration: 350, easing: Easing.in(Easing.cubic) });
-        await new Promise((r) => setTimeout(r, 360));
+        await sleep(360);
         if (cancelled) return;
         setIdx((i) => (i + 1) % pool.length);
       }
@@ -727,7 +762,7 @@ function DriftComments({
       opacity.value = 0;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pool.length, songId]);
+  }, [pool.length, songId, reached]);
 
   const animatedStyle = useAnimatedStyle(() => ({ opacity: opacity.value }));
 
@@ -1001,6 +1036,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     minHeight: 44,
     paddingVertical: 2,
+  },
+  // Wraps the like button so the flying-heart overlay can be anchored to it;
+  // shrink-wraps the Pressable, so the action rail's layout is unchanged.
+  likeSlot: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionCount: {
     color: colors.text,

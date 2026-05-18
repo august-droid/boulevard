@@ -13,5 +13,6 @@
     "resolveJsonModule": true,
     "skipLibCheck": true
   },
-  "include": ["**/*.ts", "**/*.tsx"]
+  "include": ["**/*.ts", "**/*.tsx"],
+  "exclude": ["node_modules", "boulevard-music-factory", "boulevard-ace-music-factory", "boulevard-desktop", "dist"]
 }

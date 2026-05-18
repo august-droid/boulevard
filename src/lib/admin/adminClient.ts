@@ -18,6 +18,43 @@ export interface PendingSong extends Song {
   subgenre?: string | null;
 }
 
+/**
+ * The "most viral" timestamp of a song (in seconds) — where a reviewer
+ * should start listening to judge a track fastest. Boulevard's intros are
+ * dead weight for review: the hook is what decides approval.
+ *
+ * Priority:
+ *   1. First drop (drop_timestamps) — the moment the song's hook lands.
+ *   2. End of the intro (intro_length) — straight into the first vocal/hook.
+ *   3. A fixed skip-the-intro offset as a last resort.
+ *
+ * Returns 0 (play from the top) for short songs or when the computed start
+ * would be trivially close to the beginning — so nothing ever feels broken.
+ */
+export function viralStartSeconds(song: Song): number {
+  const duration = song.duration_seconds ?? 0;
+  // Short song — there's no intro worth skipping; just play it whole.
+  if (duration <= 30) return 0;
+  // Never start so late the reviewer can't hear the song land + finish.
+  const maxStart = Math.max(0, duration - 20);
+
+  const drops = (song.drop_timestamps ?? []).filter(
+    (t) => Number.isFinite(t) && t > 2 && t < duration,
+  );
+
+  let start: number;
+  if (drops.length > 0) {
+    start = Math.min(...drops); // earliest drop = the hook first hits
+  } else if (typeof song.intro_length === 'number' && song.intro_length > 2) {
+    start = song.intro_length;
+  } else {
+    start = Math.min(24, duration * 0.22); // sensible "skip the intro" default
+  }
+
+  start = Math.min(start, maxStart);
+  return start < 3 ? 0 : Math.round(start);
+}
+
 /** Returns true if the given user_id is in public.admin_users. */
 export async function isAdmin(userId: string): Promise<boolean> {
   if (!HAS_SUPABASE || !supabase || !userId) return false;

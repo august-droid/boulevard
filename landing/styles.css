@@ -334,6 +334,48 @@ a { text-decoration: none; color: inherit; transition: color .18s var(--ease), o
  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
 }
 
+/* Store badges, not shipped yet — dimmed with a "Coming soon" pill. */
+.badge-soon {
+ position: relative;
+ cursor: default;
+}
+.badge-soon svg {
+ opacity: 0.4;
+ filter: grayscale(1);
+}
+.badge-soon:hover {
+ transform: none;
+ filter: none;
+ box-shadow: none;
+}
+.soon-tag {
+ position: absolute;
+ top: 50%;
+ left: 50%;
+ transform: translate(-50%, -50%);
+ padding: 4px 11px;
+ border-radius: 999px;
+ background: rgba(18, 18, 22, 0.94);
+ border: 1px solid var(--border-strong);
+ color: var(--text);
+ font-size: 11px;
+ font-weight: 600;
+ letter-spacing: 0.3px;
+ white-space: nowrap;
+ pointer-events: none;
+}
+
+/* Web player is the live CTA — gold ring to make it the focal point. */
+.badge-primary {
+ border-radius: 10px;
+ box-shadow: 0 0 0 2px var(--gold), 0 10px 30px rgba(200, 174, 122, 0.3);
+}
+.badge-primary:hover {
+ transform: translateY(-2px);
+ filter: brightness(1.06);
+ box-shadow: 0 0 0 2px var(--gold-hi), 0 14px 36px rgba(200, 174, 122, 0.42);
+}
+
 .hero-strip {
  list-style: none;
  margin: 0;
@@ -1461,6 +1503,18 @@ a { text-decoration: none; color: inherit; transition: color .18s var(--ease), o
  transition: filter .15s var(--ease), transform .15s var(--ease);
 }
 .np-btn:hover { filter: brightness(1.08); transform: scale(1.04); }
+.np-next {
+ width: 34px;
+ height: 34px;
+ border-radius: 999px;
+ background: transparent;
+ display: flex;
+ align-items: center;
+ justify-content: center;
+ flex-shrink: 0;
+ transition: filter .15s var(--ease), transform .15s var(--ease);
+}
+.np-next:hover { filter: brightness(1.4); transform: scale(1.08); }
 
 /* =====================================================================
  LEGAL DOC PAGES (privacy / terms / delete-account)

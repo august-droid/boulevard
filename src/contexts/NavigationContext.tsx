@@ -4,6 +4,10 @@ import React, { createContext, useContext, useMemo } from 'react';
 // it renders. RootNavigator owns the tab state; screens consume callbacks
 // here so we don't prop-drill through Section / Tile / Hero / Mini-Player.
 
+/** The gated action that triggered the SignupSheet — drives the contextual
+ *  "you need an account to …" line. `null` for a generic / nudge open. */
+export type SignupReason = 'like' | 'save' | 'comment' | 'share' | 'playlist' | 'follow';
+
 interface NavValue {
   /** Switch to the full-screen player (the "home" tab). Used by Explore
    *  and Library after the user taps a song so playback opens in
@@ -12,11 +16,12 @@ interface NavValue {
   /**
    * Open the SignupSheet from anywhere in the tree. Gated surfaces like
    * the comments composer call this when an anonymous user taps a
-   * social action (compose / react / reply / like). The host
+   * social action (compose / react / reply / like). Pass the `reason` so
+   * the sheet can name the exact thing they tried to do. The host
    * (RootNavigator) provides the real implementation; outside the
    * navigator it no-ops so storybook / unit tests don't crash.
    */
-  openSignup: () => void;
+  openSignup: (reason?: SignupReason) => void;
   /**
    * Push an Artist Profile onto the navigation stack. Stacks correctly:
    * tapping a similar artist from inside an artist page opens that artist
@@ -38,7 +43,7 @@ export function NavigationProvider({
   children,
 }: {
   openPlayer: () => void;
-  openSignup: () => void;
+  openSignup: (reason?: SignupReason) => void;
   openArtistProfile: (artistId: string) => void;
   closeArtistProfile: () => void;
   children: React.ReactNode;

@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Image } from 'expo-image';
 import * as Haptics from 'expo-haptics';
 import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import Animated, {
@@ -20,6 +21,7 @@ import { useAppNav } from '@/contexts/NavigationContext';
 import type { Song, SongComment, UserProfile } from '@/types';
 import { HeartIcon, ArrowRightIcon } from '@/components/Icon';
 import { usePlayerProgress } from '@/contexts/PlayerContext';
+import { buildLyricView, activeLineIndex, type LyricView } from '@/lib/lyrics/syncedLyrics';
 
 // Spotify-style player bottom sheet.
 //
@@ -36,7 +38,6 @@ export const PLAYER_SHEET_PEEK = HEADER_H;
 const EXPANDED_H = Math.round(SCREEN_H * 0.62);
 const DRAG_RANGE = EXPANDED_H - HEADER_H;
 const SPRING = { damping: 24, stiffness: 240, mass: 0.9 };
-const SECTION_HEADER = /^\s*\[.*\]\s*$/;           // [Verse], [Chorus] scaffolding
 // One-tap emoji reactions shown above the comment composer.
 const QUICK_REACTIONS = ['🔥', '❤️', '😂', '🙌', '💯', '🎶'];
 
@@ -59,14 +60,6 @@ interface Props {
 }
 
 type TabKey = 'comments' | 'lyrics';
-
-function splitLyricLines(raw: string | null | undefined): string[] {
-  if (!raw) return [];
-  return raw
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0 && !SECTION_HEADER.test(l));
-}
 
 export const PlayerSheet = forwardRef<PlayerSheetHandle, Props>(function PlayerSheet(
   { song, songId, navHeight, onSeek }, ref,
@@ -169,10 +162,13 @@ export const PlayerSheet = forwardRef<PlayerSheetHandle, Props>(function PlayerS
     return out;
   }, [comments.topLevel, comments.profiles]);
 
-  const lyricLines = useMemo(() => splitLyricLines(song?.lyrics), [song?.lyrics]);
+  const lyricView = useMemo(
+    () => buildLyricView(song?.synced_lyrics, song?.lyrics),
+    [song?.synced_lyrics, song?.lyrics],
+  );
 
   const handleReply = useCallback((c: SongComment) => {
-    if (auth.isAnonymous) { nav.openSignup(); return; }
+    if (auth.isAnonymous) { nav.openSignup('comment'); return; }
     setReplyTo(c);
     const handle = comments.profiles[c.user_id]?.username ?? fallbackHandle(c.user_id);
     setDraft(`@${handle} `);
@@ -180,13 +176,13 @@ export const PlayerSheet = forwardRef<PlayerSheetHandle, Props>(function PlayerS
   }, [auth.isAnonymous, nav, comments.profiles]);
 
   const handleToggleLike = useCallback((id: string) => {
-    if (auth.isAnonymous) { nav.openSignup(); return; }
+    if (auth.isAnonymous) { nav.openSignup('comment'); return; }
     void comments.toggleLike(id);
   }, [auth.isAnonymous, nav, comments]);
 
   const handleSend = useCallback(async () => {
     if (!songId) return;
-    if (auth.isAnonymous) { nav.openSignup(); return; }
+    if (auth.isAnonymous) { nav.openSignup('comment'); return; }
     const body = draft.trim();
     if (!body || posting) return;
     setPosting(true);
@@ -202,7 +198,7 @@ export const PlayerSheet = forwardRef<PlayerSheetHandle, Props>(function PlayerS
   // user can respond without opening the keyboard. Gated like the composer.
   const handleQuickReaction = useCallback((emoji: string) => {
     if (!songId) return;
-    if (auth.isAnonymous) { nav.openSignup(); return; }
+    if (auth.isAnonymous) { nav.openSignup('comment'); return; }
     if (Platform.OS !== 'web') Haptics.selectionAsync().catch(() => {});
     void comments.post({ songId, body: emoji, timestampSeconds: null, parentId: null });
   }, [songId, auth.isAnonymous, nav, comments]);
@@ -249,9 +245,6 @@ export const PlayerSheet = forwardRef<PlayerSheetHandle, Props>(function PlayerS
                 <View style={styles.teaserText}>
                   <Text style={styles.teaserMain} numberOfLines={1}>
                     {COMMENTS_ENABLED ? (count > 0 ? `${count} comments` : 'Comments') : 'Lyrics'}
-                  </Text>
-                  <Text style={styles.teaserSub} numberOfLines={1}>
-                    {COMMENTS_ENABLED ? 'Comments first • Lyrics second' : 'Tap to read along'}
                   </Text>
                 </View>
               </Pressable>
@@ -338,9 +331,9 @@ export const PlayerSheet = forwardRef<PlayerSheetHandle, Props>(function PlayerS
 
               {/* Composer. Anonymous users get bounced to signup on tap. */}
               <View style={styles.composer}>
-                <AvatarOrb seed={auth.userId ?? 'me'} size={32} />
+                <AvatarOrb seed={auth.userId ?? 'me'} size={32} uri={auth.avatarUrl} />
                 {auth.isAnonymous ? (
-                  <Pressable style={styles.inputWrap} onPress={() => nav.openSignup()}>
+                  <Pressable style={styles.inputWrap} onPress={() => nav.openSignup('comment')}>
                     <Text style={styles.inputPlaceholder}>Sign in to add a comment</Text>
                   </Pressable>
                 ) : (
@@ -375,7 +368,7 @@ export const PlayerSheet = forwardRef<PlayerSheetHandle, Props>(function PlayerS
             </>
           ) : (
             <LyricsTab
-              lines={lyricLines}
+              view={lyricView}
               songId={songId}
               visible={expanded}
               onSeek={onSeek}
@@ -389,23 +382,25 @@ export const PlayerSheet = forwardRef<PlayerSheetHandle, Props>(function PlayerS
 
 // ---- Lyrics tab ------------------------------------------------------
 //
-// Read-along lyrics. As the song plays, the current line is highlighted
-// and the list auto-scrolls to keep it centered; tapping a line seeks
-// there. `songs.lyrics` has no per-line timestamps, so the active line is
-// derived pseudo-synchronously — lines are distributed linearly across the
-// song's duration. Replace with real timestamps when the data carries them.
+// Read-along lyrics. As the song plays the current line is highlighted and
+// the list auto-scrolls to keep it centered; tapping a line seeks there.
+//
+// When the song carries synced (LRC) lyrics — view.times is populated — the
+// active line is the exact line being sung, looked up from real per-line
+// timestamps so the listener can sing along. When it doesn't, the active line
+// is estimated by spreading the plain-text lines evenly across the duration.
 //
 // usePlayerProgress() re-renders this component on every position tick, so
 // it lives in its own component (not the PlayerSheet body) — the heavy
 // sheet, the comment list and the composer never re-render on a tick.
 
 function LyricsTab({
-  lines,
+  view,
   songId,
   visible,
   onSeek,
 }: {
-  lines: string[];
+  view: LyricView;
   songId: string | null;
   visible: boolean;
   onSeek: (ms: number) => void;
@@ -413,25 +408,34 @@ function LyricsTab({
   const { position, duration } = usePlayerProgress();
   const scrollRef = useRef<ScrollView>(null);
   const lineYs = useRef<number[]>([]);
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [activeIndex, setActiveIndex] = useState(-1);
 
-  // Derive the active line from playback progress. Only while the sheet is
-  // open — no work when it's collapsed (the dominant state).
+  const lines = view.lines;
+
+  // The line being sung at a given playback position. Accurate when the song
+  // has synced (LRC) timestamps; an even-spaced estimate otherwise.
+  const indexAt = useCallback((pos: number): number => {
+    if (view.times) return activeLineIndex(view.times, pos);
+    if (lines.length === 0 || duration <= 0) return 0;
+    const ratio = Math.min(0.999, Math.max(0, pos / duration));
+    return Math.min(lines.length - 1, Math.floor(ratio * lines.length));
+  }, [view.times, lines.length, duration]);
+
+  // Track the active line as playback advances. Only while the sheet is open
+  // — no work when it's collapsed (the dominant state).
   useEffect(() => {
-    if (!visible || lines.length === 0 || duration <= 0) return;
-    const ratio = Math.min(0.999, Math.max(0, position / duration));
-    const idx = Math.min(lines.length - 1, Math.floor(ratio * lines.length));
+    if (!visible || lines.length === 0) return;
+    const idx = indexAt(position);
     setActiveIndex((prev) => (prev === idx ? prev : idx));
-  }, [visible, position, duration, lines.length]);
+  }, [visible, position, lines.length, indexAt]);
 
   // When the lyrics tab opens, jump straight to the line the song has
   // reached — the listener should land where the track is, not at the top.
   // The lines aren't measured on the first frame, so retry the jump on a
   // short delay until the active line's offset is known.
   useEffect(() => {
-    if (!visible || lines.length === 0 || duration <= 0) return;
-    const ratio = Math.min(0.999, Math.max(0, position / duration));
-    const target = Math.min(lines.length - 1, Math.floor(ratio * lines.length));
+    if (!visible || lines.length === 0) return;
+    const target = Math.max(0, indexAt(position));
     let tries = 0;
     let timer: ReturnType<typeof setTimeout>;
     const jump = () => {
@@ -450,7 +454,7 @@ function LyricsTab({
 
   // Keep the active line roughly centered. Runs only when activeIndex flips.
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || activeIndex < 0) return;
     const y = lineYs.current[activeIndex];
     if (typeof y === 'number') {
       scrollRef.current?.scrollTo({ y: Math.max(0, y - 140), animated: true });
@@ -459,7 +463,7 @@ function LyricsTab({
 
   // Reset scroll + active line whenever the song changes.
   useEffect(() => {
-    setActiveIndex(0);
+    setActiveIndex(-1);
     lineYs.current = [];
     scrollRef.current?.scrollTo({ y: 0, animated: false });
   }, [songId]);
@@ -485,7 +489,10 @@ function LyricsTab({
           <Pressable
             key={i}
             onPress={() => {
-              if (duration > 0) onSeek(Math.floor((i / lines.length) * duration));
+              // Synced lyrics seek to the line's real timestamp; estimated
+              // lyrics seek to its proportional position in the song.
+              if (view.times) onSeek(view.times[i]);
+              else if (duration > 0) onSeek(Math.floor((i / lines.length) * duration));
             }}
             onLayout={(e) => { lineYs.current[i] = e.nativeEvent.layout.y; }}
             style={styles.lyricLinePressable}
@@ -519,11 +526,11 @@ interface RowProps {
 
 function CommentRow({ comment, author, replies, profiles, onReply, onToggleLike }: RowProps) {
   const [showReplies, setShowReplies] = useState(false);
-  const handle = author?.username ?? fallbackHandle(comment.user_id);
+  const handle = author?.display_name ?? author?.username ?? fallbackHandle(comment.user_id);
 
   return (
     <View style={styles.row}>
-      <AvatarOrb seed={author?.avatar_seed || comment.user_id} size={38} />
+      <AvatarOrb seed={author?.avatar_seed || comment.user_id} size={38} uri={author?.avatar_url} />
       <View style={styles.rowBody}>
         <View style={styles.rowHead}>
           <Text style={styles.rowHandle} numberOfLines={1}>{handle}</Text>
@@ -543,10 +550,11 @@ function CommentRow({ comment, author, replies, profiles, onReply, onToggleLike 
           ) : null}
         </View>
         {showReplies ? replies.map((r) => {
-          const rHandle = profiles[r.user_id]?.username ?? fallbackHandle(r.user_id);
+          const rProfile = profiles[r.user_id];
+          const rHandle = rProfile?.display_name ?? rProfile?.username ?? fallbackHandle(r.user_id);
           return (
             <View key={r.id} style={styles.replyRow}>
-              <AvatarOrb seed={profiles[r.user_id]?.avatar_seed || r.user_id} size={26} />
+              <AvatarOrb seed={rProfile?.avatar_seed || r.user_id} size={26} uri={rProfile?.avatar_url} />
               <View style={styles.rowBody}>
                 <View style={styles.rowHead}>
                   <Text style={[styles.rowHandle, styles.replyHandle]} numberOfLines={1}>{rHandle}</Text>
@@ -566,15 +574,20 @@ function CommentRow({ comment, author, replies, profiles, onReply, onToggleLike 
   );
 }
 
-// Procedural gradient avatar — no upload needed for v1.
-function AvatarOrb({ seed, size, style }: { seed: string; size: number; style?: object }) {
+// Avatar: the user's real social photo when we have one, otherwise a
+// procedural gradient orb keyed off a seed (no upload needed).
+function AvatarOrb({ seed, size, style, uri }: { seed: string; size: number; style?: object; uri?: string | null }) {
+  const dims = { width: size, height: size, borderRadius: size / 2 };
+  if (uri) {
+    return <Image source={{ uri }} style={[dims, style]} contentFit="cover" transition={150} />;
+  }
   const c = avatarColor(seed);
   return (
     <LinearGradient
       colors={[c.from, c.to]}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
-      style={[{ width: size, height: size, borderRadius: size / 2 }, style]}
+      style={[dims, style]}
     />
   );
 }
@@ -654,12 +667,6 @@ const styles = StyleSheet.create({
     color: colors.text,
     fontSize: fonts.size.md,
     fontWeight: fonts.weight.bold,
-  },
-  teaserSub: {
-    color: metals.goldHi,
-    fontSize: fonts.size.xs,
-    marginTop: 3,
-    letterSpacing: 0.2,
   },
 
   tabStrip: {

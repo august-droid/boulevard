@@ -107,7 +107,7 @@ export function PlaylistPicker({ visible, songId, onClose }: Props) {
                 so the rule is consistent across surfaces. */}
             {!canCreate ? (
               <Pressable
-                onPress={() => { onClose(); nav.openSignup(); }}
+                onPress={() => { onClose(); nav.openSignup('playlist'); }}
                 style={({ pressed }) => [styles.newRow, pressed && { opacity: 0.7 }]}
               >
                 <Text style={styles.gatedRowText}>Sign in to create your own playlist</Text>

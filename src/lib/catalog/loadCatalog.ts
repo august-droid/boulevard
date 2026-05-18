@@ -18,20 +18,67 @@ interface LoadResult {
   source: 'supabase' | 'local' | 'empty';
 }
 
+// Suno hands back "[instrumental]" — or a bare "Instrumental" — as the title
+// for no-lyrics tracks. Collapsing all of those to one literal "Instrumental"
+// turns an artist's page into a wall of identical rows, so instead we
+// synthesize a stable, evocative name from the song's identity. The same seed
+// always yields the same name, so titles never shuffle between catalog loads.
+const INSTRUMENTAL_ADJECTIVES = [
+  'Velvet', 'Midnight', 'Golden', 'Coastal', 'Paper', 'Hollow', 'Glass',
+  'Northern', 'Quiet', 'Amber', 'Distant', 'Faded', 'Crimson', 'Silver',
+  'Slow', 'Electric', 'Marble', 'Wandering', 'Frozen', 'Endless',
+  'Restless', 'Silent', 'Neon', 'Pale', 'Lonely',
+];
+const INSTRUMENTAL_NOUNS = [
+  'Drift', 'Mornings', 'Lantern', 'Tide', 'Tower', 'Engine', 'Air',
+  'Garden', 'Hours', 'Echo', 'Horizon', 'Current', 'Bloom', 'Signal',
+  'Pulse', 'Haze', 'Orbit', 'Vista', 'Mirage', 'Glow',
+  'Static', 'Reverie', 'Window', 'Passage', 'Hymn',
+];
+
+/** FNV-1a — small, stable string hash with no dependencies. */
+function hashSeed(s: string): number {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return h >>> 0;
+}
+
+/** Deterministic two-word name for a no-lyrics track. */
+function generateInstrumentalTitle(seed: string): string {
+  const h = hashSeed(seed || 'instrumental');
+  const adj = INSTRUMENTAL_ADJECTIVES[h % INSTRUMENTAL_ADJECTIVES.length];
+  const noun = INSTRUMENTAL_NOUNS[(h >>> 9) % INSTRUMENTAL_NOUNS.length];
+  return `${adj} ${noun}`;
+}
+
 /**
  * Suno returns scaffolding tokens like "[instrumental]" or "[Verse]" as the
  * title when a track has no real name — common for songs with no lyrics.
- * Turn those into something human so the UI never shows raw brackets.
+ * Turn those into something human so the UI never shows raw brackets, and
+ * give instrumentals a distinct synthesized name (seeded by `seed`, normally
+ * the song id) so they don't all collapse to an identical "Instrumental".
  */
 export function cleanSongTitle(
   raw: string | null | undefined,
   fallbackGenre?: string | null,
+  seed?: string | null,
 ): string {
   const title = (raw ?? '').trim();
+  const bracketed = /^\[.*\]$/.test(title);
+  const inner = bracketed ? title.replace(/^\[+|\]+$/g, '').trim() : title;
+
+  // Whole title is just the instrumental token ("[instrumental]" or a bare
+  // "Instrumental") — synthesize a distinct name instead.
+  if (/^instrument\w*$/i.test(inner)) {
+    return generateInstrumentalTitle(seed || title || fallbackGenre || '');
+  }
+
   // A real title never reduces to a single bracketed token.
-  if (title && !/^\[.*\]$/.test(title)) return title;
-  const inner = title.replace(/^\[+|\]+$/g, '').trim();
-  if (/instrument/i.test(inner)) return 'Instrumental';
+  if (title && !bracketed) return title;
+  // Other bracket scaffolding ([Verse], [Hook], …) — fall back gently.
   if (inner) return inner.charAt(0).toUpperCase() + inner.slice(1);
   const genre = (fallbackGenre ?? '').trim();
   return genre || 'Untitled';
@@ -40,7 +87,7 @@ export function cleanSongTitle(
 function normalize(row: Song): Song {
   return {
     ...row,
-    title: cleanSongTitle(row.title, row.genre),
+    title: cleanSongTitle(row.title, row.genre, row.id),
     genres: row.genres && row.genres.length > 0 ? row.genres : [row.genre],
     moods: row.moods && row.moods.length > 0 ? row.moods : [row.mood],
     drop_timestamps: row.drop_timestamps ?? [],

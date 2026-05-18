@@ -298,3 +298,24 @@ create policy "daily_listens: own rows" on public.user_daily_listens
 drop policy if exists "song_stats are readable" on public.song_daily_stats;
 create policy "song_stats are readable" on public.song_daily_stats
   for select using (true);
+
+-- ============================================================
+-- tiktok_registration_events
+-- One row per user, ever. Written ONLY by the tiktok-event Netlify
+-- function (service-role key). Its sole purpose is idempotency: the
+-- primary key on user_id guarantees the server-side TikTok
+-- CompleteRegistration conversion is sent at most once per user, so a
+-- returning login can never re-fire it.
+-- ============================================================
+create table if not exists public.tiktok_registration_events (
+  user_id uuid primary key,
+  event_id text not null,
+  signup_method text,
+  tiktok_status text,
+  created_at timestamptz not null default now()
+);
+
+-- Service-role only: RLS on with NO policies, so the anon and authenticated
+-- roles can never read or write it. The Netlify function uses the
+-- service-role key, which bypasses RLS.
+alter table public.tiktok_registration_events enable row level security;

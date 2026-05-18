@@ -11,10 +11,10 @@ export interface Artist {
   primary_genre: string | null;
   /** Total catalog songs for this artist. */
   song_count: number;
-  /** Estimated unique listeners over the trailing month. Derived from each
-   *  song's play count divided by a per-song plays-per-listener ratio, so it
-   *  always reads lower than raw plays and is never zero when songs exist. */
-  monthly_listeners: number;
+  /** Lifetime qualified streams summed across every one of this artist's
+   *  songs. Real, server-maintained counter (songs.stream_count) — never a
+   *  synthetic or estimated number. */
+  total_streams: number;
   /** Followers — populated from supabase when available, null otherwise. */
   follower_count: number | null;
 }
@@ -57,8 +57,19 @@ export interface Song {
   cover_url: string;
   // Primary genre/mood — first element of genres/moods arrays. Kept for
   // O(1) display and back-compat with single-value rows.
+  // After the canonical-genre migration `genre` is a back-compat alias of
+  // `canonical_genre` — so every existing reader is automatically canonical.
   genre: string;
   genres?: string[];
+  /** Immutable original genre label, before canonicalisation. */
+  raw_genre?: string | null;
+  /** Controlled canonical genre (taxonomy value). Equal to `genre`. */
+  canonical_genre?: string | null;
+  /** Broad genre family the canonical genre belongs to (e.g. "Electronic"). */
+  genre_family?: string | null;
+  /** Nuanced sub-descriptor — original label / crossover recipe name.
+   *  Identity-preserving; never flattened. */
+  subgenre?: string | null;
   bpm: number | null;
   mood: string;
   moods?: string[];
@@ -74,6 +85,11 @@ export interface Song {
   /** Lifetime qualified-stream count (>=30s or >=70% plays). Maintained
    *  server-side by the record_stream RPC; read-only on the client. */
   stream_count?: number;
+  /** Lifetime like / save / share counts. Maintained server-side by triggers
+   *  (sql/2026-05-17_engagement_counts.sql); read-only on the client. */
+  like_count?: number;
+  save_count?: number;
+  share_count?: number;
   /** 0..1 — editorial "this should land for new users" score. */
   launch_score?: number;
   /** 0..1 — derived from generation QA. Higher = better. */
@@ -86,10 +102,16 @@ export interface Song {
   artist_id?: string | null;
   artist_name?: string | null;
   artist_image_url?: string | null;
-  /** Plain-text lyrics returned by the generator. No per-line timestamps yet —
-   *  LyricsSheet pseudo-syncs via linear interpolation across duration_seconds.
-   *  Null/undefined → sheet shows a "lyrics not available" fallback. */
+  /** Plain-text lyrics returned by the generator. Used as the display source
+   *  when `synced_lyrics` is absent — the player then estimates the active
+   *  line by spreading lines evenly across the duration.
+   *  Null/undefined → the lyrics tab shows a "not available" fallback. */
   lyrics?: string | null;
+  /** Optional time-synced lyrics in LRC format — each line prefixed with one
+   *  or more [mm:ss.xx] timestamps. When present the player highlights the
+   *  exact line being sung; when absent it falls back to estimating from
+   *  `lyrics`. */
+  synced_lyrics?: string | null;
   /** Where the song came from. */
   source?: SongSource;
   /** Only `live` songs are served to clients. */
@@ -214,6 +236,8 @@ export interface UserProfile {
   username: string | null;
   display_name: string | null;
   avatar_seed: string;
+  /** Social-provider (e.g. Google) profile photo URL; null when none. */
+  avatar_url?: string | null;
   created_at?: string;
 }
 

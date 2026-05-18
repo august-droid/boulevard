@@ -1,6 +1,8 @@
 import { Song, TasteProfile, SessionProfile, SongStats } from '@/types';
 import { ChipMoodId, ChipMood, moodById } from '@/lib/mood/moodCatalog';
 import { adjacentMoods, genresRelated } from '@/lib/recommendation/Adjacency';
+import { scoreHabitFit, type HabitContext } from '@/lib/habit/HabitProfile';
+import { scoreIdentityFit, type TasteIdentityProfile } from '@/lib/recommendation/TasteIdentityProfile';
 
 // For You recommendation pool (spec PART 3 + PART 4).
 //
@@ -37,6 +39,14 @@ export interface ForYouInput {
   stats?: Map<string, SongStats>;
   /** Lifetime interaction count — drives cold-start handling. */
   interactionCount: number;
+  /** Habit personalization — a soft, time-aware boost (HabitProfile.ts).
+   *  Optional: a brand-new user has habit confidence 0, so this self-gates
+   *  to a no-op until a genuine time-of-day pattern has formed. */
+  habit?: HabitContext | null;
+  /** Behavioural taste-identity profile (TasteIdentityProfile.ts). Optional:
+   *  keeps the pool from drifting into identity mismatches even when genre /
+   *  mood technically match. Self-gates on behavioural confidence. */
+  identity?: TasteIdentityProfile | null;
   /** Target pool size. Clamped to 12-30; defaults to 28. */
   limit?: number;
   now?: number;
@@ -194,6 +204,16 @@ export function buildForYou(input: ForYouInput): ForYouResult {
       skipPenalty = Math.min(6, shared * 0.8);
     }
 
+    // Habit boost — "what this user usually plays at this time". Soft +
+    // capped (HabitProfile self-caps); a new user's confidence is 0 so it
+    // contributes nothing until a real pattern forms.
+    const habitFit = scoreHabitFit(song, input.habit);
+
+    // Identity boost — "does this song feel like this user?". Capped additive
+    // modifier; self-gates on behavioural confidence. Keeps the pool from
+    // recommending technically-matching-but-identity-wrong songs.
+    const identityFit = scoreIdentityFit(song, input.identity);
+
     const score =
       tasteMatch +
       moodMatch +
@@ -202,7 +222,9 @@ export function buildForYou(input: ForYouInput): ForYouResult {
       savePred * 2.0 +
       freshness +
       globalQuality +
-      hook * 1.5 -
+      hook * 1.5 +
+      habitFit +
+      identityFit -
       skipPenalty;
 
     // ---- lane classification ----
@@ -306,4 +328,22 @@ export function buildForYou(input: ForYouInput): ForYouResult {
   for (const r of result) buckets[r.lane]++;
 
   return { songs: result.map((r) => r.song), buckets, relaxed };
+}
+
+/** Songs-heard past which the For You pool is genuinely personalised — below
+ *  this it leans on editorial quality / freshness, so the UI copy must say so. */
+export const FOR_YOU_PERSONALIZED_THRESHOLD = 12;
+
+/**
+ * Honest subtitle for the Explore "For You" shelf (Fix 4). Before the user has
+ * enough listening history the pool is editorial (quality / freshness / hook),
+ * NOT personalised — so claiming "Based on your listening" overpromises. This
+ * surfaces a truthful cold-start label and only switches to the personalised
+ * copy once behavioural confidence can back it.
+ */
+export function forYouSubtitle(songsHeard: number, moodActive: boolean): string {
+  if (songsHeard >= FOR_YOU_PERSONALIZED_THRESHOLD) return 'Based on your listening';
+  if (moodActive) return 'Trending for your mood';
+  if (songsHeard < 5) return 'Starting with our best';
+  return 'Popular on Boulevard right now';
 }

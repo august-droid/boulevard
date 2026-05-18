@@ -14,7 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, metals, radii, spacing } from '@/theme';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePlayer } from '@/contexts/PlayerContext';
-import { fetchPendingSongs, reviewSong, PendingSong } from '@/lib/admin/adminClient';
+import { fetchPendingSongs, reviewSong, viralStartSeconds, PendingSong } from '@/lib/admin/adminClient';
 import {
   CloseIcon,
   PlayIcon,
@@ -106,20 +106,28 @@ export function ReviewScreen({ visible, onClose }: Props) {
             contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xxl }}
             showsVerticalScrollIndicator={false}
           >
-            {pending.map((song) => (
-              <ReviewCard
-                key={song.id}
-                song={song}
-                isCurrent={player.current?.id === song.id}
-                isPlaying={player.current?.id === song.id && player.isPlaying}
-                busy={acting === song.id}
-                onPlay={() => player.playSpecific(song)}
-                onPause={() => player.togglePlay()}
-                onApprove={(rating) => handle(song, 'approve', rating)}
-                onReject={() => handle(song, 'reject')}
-                onRegenerate={() => handle(song, 'regenerate')}
-              />
-            ))}
+            {pending.map((song) => {
+              // Reviewers approve on the hook, not the intro — start every
+              // song at its most viral moment for a faster verdict.
+              const viralStart = viralStartSeconds(song);
+              return (
+                <ReviewCard
+                  key={song.id}
+                  song={song}
+                  viralStartSec={viralStart}
+                  isCurrent={player.current?.id === song.id}
+                  isPlaying={player.current?.id === song.id && player.isPlaying}
+                  busy={acting === song.id}
+                  onPlay={() =>
+                    player.playSpecific(song, { startPositionMillis: viralStart * 1000 })
+                  }
+                  onPause={() => player.togglePlay()}
+                  onApprove={(rating) => handle(song, 'approve', rating)}
+                  onReject={() => handle(song, 'reject')}
+                  onRegenerate={() => handle(song, 'regenerate')}
+                />
+              );
+            })}
           </ScrollView>
         )}
       </View>
@@ -131,6 +139,8 @@ export function ReviewScreen({ visible, onClose }: Props) {
 
 interface CardProps {
   song: PendingSong;
+  /** Seconds into the song playback jumps to (its most viral moment). */
+  viralStartSec: number;
   isCurrent: boolean;
   isPlaying: boolean;
   busy: boolean;
@@ -141,7 +151,14 @@ interface CardProps {
   onRegenerate: () => void;
 }
 
-function ReviewCard({ song, isCurrent, isPlaying, busy, onPlay, onPause, onApprove, onReject, onRegenerate }: CardProps) {
+/** Seconds → m:ss. */
+function fmtTime(s: number): string {
+  const m = Math.floor(s / 60);
+  const sec = Math.floor(s % 60);
+  return `${m}:${sec.toString().padStart(2, '0')}`;
+}
+
+function ReviewCard({ song, viralStartSec, isCurrent, isPlaying, busy, onPlay, onPause, onApprove, onReject, onRegenerate }: CardProps) {
   const [rating, setRating] = useState<number | null>(null);
 
   const dim = (n: number | null | undefined) =>
@@ -176,6 +193,13 @@ function ReviewCard({ song, isCurrent, isPlaying, busy, onPlay, onPause, onAppro
           <Text style={styles.songSub} numberOfLines={1}>
             {song.subgenre || song.genre} · {song.mood ?? '–'} · {song.bpm ?? '–'} BPM
           </Text>
+          {viralStartSec > 0 && (
+            <View style={styles.hookPill}>
+              <Text style={styles.hookPillText}>
+                ▶ Starts at hook · {fmtTime(viralStartSec)}
+              </Text>
+            </View>
+          )}
           {song.suno_prompt ? (
             <Text style={styles.songPrompt} numberOfLines={2}>
               {song.suno_prompt}
@@ -314,6 +338,22 @@ const styles = StyleSheet.create({
   songTitle: { color: colors.text, fontSize: fonts.size.md, fontWeight: fonts.weight.bold, letterSpacing: -0.2 },
   songSub: { color: colors.textMuted, fontSize: fonts.size.sm, marginTop: 2, textTransform: 'capitalize' },
   songPrompt: { color: colors.textDim, fontSize: fonts.size.xs, marginTop: 6, lineHeight: 16 },
+  hookPill: {
+    alignSelf: 'flex-start',
+    marginTop: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radii.pill,
+    backgroundColor: 'rgba(200,174,122,0.12)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: metals.gold,
+  },
+  hookPillText: {
+    color: metals.goldSolidHi,
+    fontSize: 10,
+    fontWeight: fonts.weight.semibold,
+    letterSpacing: 0.3,
+  },
 
   qualityRow: { flexDirection: 'row', marginTop: spacing.md, justifyContent: 'space-between' },
   quality: { alignItems: 'center', flex: 1 },

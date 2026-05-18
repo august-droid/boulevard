@@ -1,4 +1,6 @@
 import type { Song } from '@/types';
+import type { ColdStartCohort } from './ColdStartCohortPrior';
+import type { TasteIdentityProfile } from './TasteIdentityProfile';
 
 // ============================================================
 // First-session onboarding slate (cold-start personalization).
@@ -113,6 +115,15 @@ export interface BuildOptions {
   /** A song already staged / chosen by the user (cold-start staged track or a
    *  mood-pick). Used as an initial trust anchor so slot 2+ feels coherent. */
   seedSong?: Song | null;
+  /** Cold-start demographic/cohort prior — a SMALL, decaying onboarding-only
+   *  boost (see ColdStartCohortPrior.ts). Optional: when absent the slate
+   *  behaves exactly as it did before this layer existed. */
+  cohort?: ColdStartCohort | null;
+  /** Behavioural taste-identity profile (see TasteIdentityProfile.ts). The
+   *  slate READS it for an identity-fit boost; it is updated by PlayerContext
+   *  on every signal, so during onboarding it learns and tightens live.
+   *  Optional: when absent the slate is unchanged. */
+  identity?: TasteIdentityProfile | null;
 }
 
 export type ConfidenceBucket = 'low' | 'medium' | 'high';
@@ -187,8 +198,22 @@ export class OnboardingSlate {
   private positiveMass = 0;
   private negativeMass = 0;
 
+  /** Cold-start cohort prior — a small, decaying onboarding-only boost. Null
+   *  when no signup signals were available. */
+  private cohort: ColdStartCohort | null;
+  /** Behavioural taste-identity profile (read-only here — PlayerContext owns
+   *  updates). Adds a capped identity-fit boost once behaviour has appeared. */
+  private identity: TasteIdentityProfile | null;
+  /** Instant-skip recovery (PART 3C): microtags of a just-hard-skipped song,
+   *  temporarily down-weighted so recovery moves away from that exact sound.
+   *  Decays toward zero over the next few interactions. */
+  private recentlySkippedMicrotags = new Map<string, number>();
+
   constructor(catalog: Song[], opts: BuildOptions = {}) {
-    this.safetyMode = opts.safetyMode ?? true;
+    // Age-unknown / under-18 cohorts force strict gating; safetyMode defaults on.
+    this.safetyMode = opts.safetyMode ?? opts.cohort?.safetyMode ?? true;
+    this.cohort = opts.cohort ?? null;
+    this.identity = opts.identity ?? null;
     this.pool = this.buildPool(catalog);
     if (opts.seedSong) {
       // A user-chosen seed is the strongest possible trust anchor.
@@ -311,10 +336,29 @@ export class OnboardingSlate {
     if (hardSkip) {
       this.recoveryPending = true;
       this.lastHardSkip = song;
+      // Instant skip recovery (PART 3C): temporarily down-weight the rejected
+      // song's strongest microtags so the recovery slot steps away from that
+      // exact sound, not just its cluster.
+      for (const t of (song.microtags ?? []).slice(0, 6)) {
+        this.recentlySkippedMicrotags.set(t, (this.recentlySkippedMicrotags.get(t) ?? 0) + 3);
+      }
       log('hard skip on', JSON.stringify(song.title), '→ recovery armed');
     }
 
-    if (ended) this.playedCount += 1;
+    // Behaviour-override feed for the cold-start cohort prior: every signal
+    // decays the cohort, and a contradicting skip collapses/suppresses it.
+    this.cohort?.registerOutcome(song, kinds, ended);
+
+    if (ended) {
+      this.playedCount += 1;
+      // Decay the temporary skip-microtag suppression so it only shapes the
+      // next ~2-3 slots, then fades.
+      for (const [t, v] of this.recentlySkippedMicrotags) {
+        const next = v * 0.5;
+        if (next < 0.4) this.recentlySkippedMicrotags.delete(t);
+        else this.recentlySkippedMicrotags.set(t, next);
+      }
+    }
 
     // Re-rank: on a finished song we may also re-target the immediate next
     // slot (recovery needs that); on a mid-song signal we keep the next slot
@@ -397,12 +441,17 @@ export class OnboardingSlate {
       // retention closers (slots 9-10) are exempt so they can revisit a
       // cluster the user has clearly committed to.
       if (slotIndex < 8 && (clusterCounts.get(clusterKey(cand)) ?? 0) >= 2) continue;
-      // No 3-in-a-row of the exact same mood.
-      if (prev && prev2 && cand.mood && cand.mood === prev.mood && cand.mood === prev2.mood) {
+      // No 3-in-a-row of the exact same mood — scoped to the first 8 slots,
+      // exactly like the fatigue cap above. The exploit + retention closers
+      // (slots 9-10) are exempt: a user who has clearly committed to one
+      // mood lane should get closers IN that lane. Without this exemption the
+      // guard bans the user's whole lane from the exploit slot whenever slots
+      // 7-8 already landed in it — which defeats the exploit slot's purpose.
+      if (slotIndex < 8 && prev && prev2 && cand.mood && cand.mood === prev.mood && cand.mood === prev2.mood) {
         continue;
       }
 
-      const { score, reason } = this.scoreForRole(cand, role, prev, clusterCounts);
+      const { score, reason } = this.scoreForRole(cand, role, slotIndex, prev, prev2, clusterCounts);
       if (score > bestScore) {
         bestScore = score;
         best = cand;
@@ -420,7 +469,9 @@ export class OnboardingSlate {
   private scoreForRole(
     cand: Song,
     role: SlotRole,
+    slotIndex: number,
     prev: Song | null,
+    prev2: Song | null,
     clusterCounts: Map<string, number>,
   ): { score: number; reason: string } {
     const conf = this.confidence();
@@ -435,6 +486,46 @@ export class OnboardingSlate {
     // Soft penalty for any genre the user has already skipped — move on
     // rather than re-serving a rejected lane (the hard suppress needs 2).
     score -= (this.clusterSkips.get(ck) ?? 0) * 5;
+
+    // Cold-start cohort prior (PART 1). A SMALL additive boost that sits
+    // below real behaviour (learned, above) and above editorial quality.
+    // The cohort module caps it and decays it to ~0 by song 10.
+    if (this.cohort) {
+      score += this.cohort.scoreCohortFit(cand, { playedCount: this.playedCount });
+    }
+
+    // Taste-identity boost. Learns live during onboarding (PlayerContext
+    // updates the shared profile after every signal); evaluate() self-gates on
+    // behavioural confidence, so it stays ~0 for the first songs and tightens
+    // as the user reveals their identity. Rewards identity-compatible songs,
+    // penalises strong identity mismatches (e.g. childish/bubblegum tracks for
+    // a mature listener) — capped additive, never overrides safety/behaviour.
+    if (this.identity) {
+      score += this.identity.evaluate(cand).boost;
+    }
+
+    // Instant skip recovery (PART 3C): step away from the exact sound of a
+    // just-hard-skipped song for the next couple of slots.
+    if (this.recentlySkippedMicrotags.size > 0) {
+      let skipTagPenalty = 0;
+      for (const t of cand.microtags ?? []) {
+        skipTagPenalty += this.recentlySkippedMicrotags.get(t) ?? 0;
+      }
+      score -= Math.min(12, skipTagPenalty);
+    }
+
+    // PART 3D: across all 10 onboarding songs, lean on the catalog-wide
+    // "this lands for new users" priors — a strong hook plus rising/trending
+    // momentum. Additive emphasis on top of the quality() base.
+    score += (cand.hook_strength ?? 0) * 1.0;
+    const stage = cand.distribution_stage ?? 'new_test';
+    if (stage === 'trending') score += 1.5;
+    else if (stage === 'rising') score += 1.0;
+
+    // Visual diversity (PART 3G): a same-artist portrait two slots back reads
+    // as repetition even though it is not back-to-back (that is hard-blocked
+    // in pickForSlot). Soft-penalise so artists/faces stay spaced.
+    if (prev2 && cand.artist_id && cand.artist_id === prev2.artist_id) score -= 8;
 
     // "Searching" — no positive signal has landed yet. The trust anchors may
     // be the wrong lane entirely, so the novelty compass (measured against
@@ -454,6 +545,24 @@ export class OnboardingSlate {
     }
 
     const novelty = this.noveltyOf(cand); // 0 = familiar, 1 = far from positives
+
+    // PART 3B: the first 3 songs are pure trust-building. Heavily overweight
+    // an immediate hook + broad appeal, force novelty very low, and reject
+    // extremes / abrasive energy jumps regardless of confidence. Applies on
+    // top of the per-role scoring below so trust roles get an extra anchor
+    // and the slot-3 'adjacent' song still stays safe.
+    if (slotIndex < 3) {
+      score += (cand.hook_strength ?? 0) * 3.5;
+      score += (cand.mainstream_fit ?? 0) * 2.5;
+      score -= novelty * 5;
+      score -= (cand.weirdness_score ?? 0) * 5;
+      // skip_risks is the analyzer's "reasons this might get skipped" list —
+      // a flagged song is a poor first impression.
+      score -= (cand.skip_risks?.length ?? 0) * 2;
+      if (extreme) score -= 6;
+      if (prev && Math.abs(cand.energy_score - prev.energy_score) > 0.4) score -= 4;
+    }
+
     let reason: string = role;
 
     switch (role) {
@@ -652,6 +761,8 @@ export class OnboardingSlate {
       suppressedClusters: [...this.suppressedClusters],
       leanClusters: [...this.leanClusters],
       recoveryPending: this.recoveryPending,
+      cohort: this.cohort?.debugSnapshot() ?? null,
+      identity: this.identity?.debug() ?? null,
       slate: this.entries.map((e, i) => ({
         slot: i + 1,
         role: e.role,
@@ -666,4 +777,22 @@ export class OnboardingSlate {
 /** Factory — keeps construction call-sites readable. */
 export function buildOnboardingSlate(catalog: Song[], opts: BuildOptions = {}): OnboardingSlate {
   return new OnboardingSlate(catalog, opts);
+}
+
+/**
+ * Non-creepy, user-facing reason label for a slot's role (PART 3F lightweight
+ * explanation chips). Deliberately speaks to the MUSIC, never to inferred
+ * demographics — there is no "because you are 24" copy path here. The UI may
+ * surface this as a subtle chip on first-session recommendations.
+ */
+export function friendlyReason(role: SlotRole, hasMoodContext: boolean): string {
+  switch (role) {
+    case 'trust':     return hasMoodContext ? 'Based on your mood' : 'Popular on Boulevard';
+    case 'adjacent':  return 'More like your last song';
+    case 'probe':     return 'A new sound to try';
+    case 'recovery':  return 'Back to your vibe';
+    case 'surprise':  return 'New sound, same vibe';
+    case 'exploit':   return 'Made for your taste';
+    case 'retention': return 'You might love this';
+  }
 }

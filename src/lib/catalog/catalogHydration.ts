@@ -63,7 +63,7 @@ class CatalogHydrator {
         const next = (data as (Song & { artists?: unknown })[]).map((row) => {
           const { artists: _omit, ...rest } = row;
           const song = rest as Song;
-          return { ...song, title: cleanSongTitle(song.title, song.genre) };
+          return { ...song, title: cleanSongTitle(song.title, song.genre, song.id) };
         });
         const nextIds = new Set(next.map((s) => s.id));
 

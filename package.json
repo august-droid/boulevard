@@ -8,7 +8,7 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "build:webapp": "expo export -p web && rm -rf landing/app && cp -R dist landing/app",
+    "build:webapp": "expo export -p web && rm -rf landing/listen && cp -R dist landing/listen",
     "typecheck": "tsc --noEmit",
     "import:songs": "node scripts/import-songs.mjs",
     "generate:songs": "node scripts/generate-songs.mjs"

@@ -9,39 +9,11 @@ import { Song, Artist, SongStats } from '@/types';
 // Pure functions: no network. Stats / followers come in as arguments so the
 // caller decides where they're sourced from.
 
-/** Stable per-id hash, used to seed the deterministic baselines below. */
-function hashId(songId: string): number {
-  let h = 0;
-  for (let i = 0; i < songId.length; i++) {
-    h = ((h << 5) - h) + songId.charCodeAt(i);
-    h |= 0;
-  }
-  return Math.abs(h);
-}
-
-/** Stable per-id baseline so play counts have variety on cold start. Same
- *  shape as ExploreScreen.baselinePlays so the two surfaces agree. */
-function baselinePlays(songId: string): number {
-  return 1200 + (hashId(songId) % 90000);
-}
-
-/** Combined per-song play count (server stats + deterministic baseline). */
-export function songPlays(song: Song, stats: Map<string, SongStats>): number {
-  const live = stats.get(song.id)?.plays ?? 0;
-  return baselinePlays(song.id) + live;
-}
-
-/** Deterministic plays-per-listener ratio (4..10) for a song. Real listeners
- *  replay tracks, so dividing plays by this yields a believable unique-
- *  listener estimate that always reads lower than the raw play count. */
-function playsPerListener(songId: string): number {
-  return 4 + (hashId(songId) % 7); // 4..10
-}
-
-/** Estimated monthly listeners for one song: its play count converted to a
- *  unique-listener count. Always >= 1 when the song has any plays. */
-function songMonthlyListeners(song: Song, stats: Map<string, SongStats>): number {
-  return Math.max(1, Math.round(songPlays(song, stats) / playsPerListener(song.id)));
+/** Real lifetime play count for a song — the server-maintained qualified-
+ *  stream counter (songs.stream_count). Never synthetic: this is exactly the
+ *  number shown on every song row, so chart order and displayed counts agree. */
+export function songPlays(song: Song): number {
+  return song.stream_count ?? 0;
 }
 
 /** Pull every song associated with this artist out of the catalog. */
@@ -72,7 +44,7 @@ export function resolveArtistImage(
 }
 
 /** Top N songs for an artist, sorted by:
- *    1) server play count + baseline (best signal we have),
+ *    1) real lifetime stream count (matches the count shown on each row),
  *    2) launch_score (editorial),
  *    3) created_at desc (recency tiebreak).
  *  Mirrors the spec: play_count → save_count → created_at. We don't track
@@ -86,8 +58,8 @@ export function getTopSongs(
   const songs = getArtistSongs(catalog, artistId);
   return [...songs]
     .sort((a, b) => {
-      const ap = songPlays(a, stats);
-      const bp = songPlays(b, stats);
+      const ap = songPlays(a);
+      const bp = songPlays(b);
       if (bp !== ap) return bp - ap;
       const al = a.launch_score ?? 0;
       const bl = b.launch_score ?? 0;
@@ -153,10 +125,9 @@ export function getArtistById(
 
   const primary = mode(songs.map((s) => s.genre).filter(Boolean) as string[]);
 
-  const monthlyListeners = songs.reduce(
-    (sum, s) => sum + songMonthlyListeners(s, stats),
-    0,
-  );
+  // Real lifetime streams across the artist's whole catalog — sum of each
+  // song's server-maintained stream_count. No synthetic baseline.
+  const totalStreams = songs.reduce((sum, s) => sum + songPlays(s), 0);
 
   return {
     id: artistId,
@@ -164,7 +135,7 @@ export function getArtistById(
     image_url: image,
     primary_genre: primary,
     song_count: songs.length,
-    monthly_listeners: monthlyListeners,
+    total_streams: totalStreams,
     follower_count: followerCount,
   };
 }
@@ -289,7 +260,7 @@ export function buildArtistRadio(
         for (const t of (s.microtags ?? [])) {
           if (targetTags.has(t.toLowerCase())) score += 0.5;
         }
-        score += songPlays(s, stats) / 50000;
+        score += songPlays(s) / 50000;
         return { song: s, score };
       })
       .filter((x) => x.score > 0)

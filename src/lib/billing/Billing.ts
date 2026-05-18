@@ -1,11 +1,32 @@
-import { Platform } from 'react-native';
-import Purchases, {
+import { NativeModules, Platform } from 'react-native';
+import type {
   CustomerInfo,
   PurchasesOffering,
   PurchasesOfferings,
   PurchasesPackage,
-  LOG_LEVEL,
 } from 'react-native-purchases';
+
+// react-native-purchases (RevenueCat) is a NATIVE module — absent in Expo Go,
+// where importing it throws at launch. So we load it lazily and ONLY when the
+// native module is actually linked (i.e. a dev/prod build). In Expo Go
+// `Purchases` is an inert stub and billing cleanly no-ops via the HAS_BILLING
+// guard — the app runs, premium features just stay locked (identical to the
+// documented no-key behaviour).
+const PURCHASES_NATIVE = !!NativeModules.RNPurchases;
+
+type PurchasesSdk = typeof import('react-native-purchases').default;
+type LogLevelEnum = typeof import('react-native-purchases').LOG_LEVEL;
+let Purchases: PurchasesSdk = {} as unknown as PurchasesSdk;
+let LOG_LEVEL: LogLevelEnum = {} as unknown as LogLevelEnum;
+if (PURCHASES_NATIVE) {
+  try {
+    const rnp = require('react-native-purchases');
+    Purchases = rnp.default;
+    LOG_LEVEL = rnp.LOG_LEVEL;
+  } catch {
+    // native module reported present but require failed — keep the inert stubs
+  }
+}
 
 // Boulevard billing — wraps RevenueCat. We never talk to Google Play Billing
 // directly; RevenueCat handles receipts, restore, entitlement state, and
@@ -35,8 +56,10 @@ export const ENTITLEMENT_KEY = 'premium';
 const ANDROID_KEY = (process.env.EXPO_PUBLIC_REVENUECAT_ANDROID_KEY ?? '').trim();
 const IOS_KEY = (process.env.EXPO_PUBLIC_REVENUECAT_IOS_KEY ?? '').trim();
 
-export const HAS_BILLING = (Platform.OS === 'android' && ANDROID_KEY.length > 0)
-  || (Platform.OS === 'ios' && IOS_KEY.length > 0);
+export const HAS_BILLING = PURCHASES_NATIVE && (
+  (Platform.OS === 'android' && ANDROID_KEY.length > 0)
+  || (Platform.OS === 'ios' && IOS_KEY.length > 0)
+);
 
 let configured = false;
 let listenerRegistered = false;

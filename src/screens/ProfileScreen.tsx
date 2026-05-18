@@ -8,13 +8,12 @@ import { colors, fonts, metals, radii, spacing } from '@/theme';
 import { usePlayer } from '@/contexts/PlayerContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppNav } from '@/contexts/NavigationContext';
-import { SparkleIcon, CheckIcon } from '@/components/Icon';
+import { SparkleIcon, CheckIcon, BoltIcon } from '@/components/Icon';
 import { BrandHeader } from '@/components/BrandHeader';
 import { PaywallScreen } from '@/screens/PaywallScreen';
-import { ReviewScreen } from '@/screens/ReviewScreen';
+import { AdminScreen } from '@/screens/AdminScreen';
 import { SignupSheet } from '@/screens/SignupSheet';
 import { isAdmin } from '@/lib/admin/adminClient';
-import { supabase, HAS_SUPABASE } from '@/lib/supabase';
 import { pickSoundIdentity, pickCurrentPhase, topMicrotags, prettyMicrotag } from '@/lib/identity/SoundIdentity';
 import type { Song } from '@/types';
 
@@ -32,28 +31,18 @@ export function ProfileScreen() {
   const { openArtistProfile } = useAppNav();
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [signupOpen, setSignupOpen] = useState(false);
-  const [reviewOpen, setReviewOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [admin, setAdmin] = useState(false);
-  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       if (!auth.userId) return;
       const isA = await isAdmin(auth.userId);
-      if (cancelled) return;
-      setAdmin(isA);
-      if (isA && HAS_SUPABASE && supabase) {
-        const { count } = await supabase
-          .from('songs')
-          .select('id', { count: 'exact', head: true })
-          .eq('approved_by_human', false)
-          .eq('approval_status', 'pending');
-        if (!cancelled) setPendingCount(count ?? 0);
-      }
+      if (!cancelled) setAdmin(isA);
     })();
     return () => { cancelled = true; };
-  }, [auth.userId, reviewOpen]);
+  }, [auth.userId]);
 
   const copyUserId = async () => {
     if (!auth.userId) return;
@@ -122,9 +111,10 @@ export function ProfileScreen() {
               <CheckIcon size={15} color={metals.goldSolidHi} />
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={styles.accountSignedInTitle}>You're signed in</Text>
-              <Text style={styles.accountSignedInSub}>
-                Your library, likes and follows are saved to your account.
+              <Text style={styles.accountSignedInTitle} numberOfLines={1}>
+                {auth.displayName
+                  ? `Signed in as ${auth.displayName}`
+                  : auth.email ?? "You're signed in"}
               </Text>
             </View>
             <Pressable
@@ -216,7 +206,6 @@ export function ProfileScreen() {
           <View style={styles.phaseCard}>
             <Text style={styles.cardEyebrow}>CURRENT PHASE</Text>
             <Text style={styles.phaseName}>{phaseLabel(phase.identity.name)}</Text>
-            <Text style={styles.phaseHint}>Listening spike</Text>
             {phaseTags.length > 0 && (
               <View style={styles.phaseTagRow}>
                 {phaseTags.map((t) => (
@@ -229,7 +218,6 @@ export function ProfileScreen() {
           <View style={styles.phaseCard}>
             <Text style={styles.cardEyebrow}>CURRENT PHASE</Text>
             <Text style={styles.phaseName}>Reading the room…</Text>
-            <Text style={styles.phaseHint}>Play a few songs to lock in your current vibe</Text>
           </View>
         )}
 
@@ -261,25 +249,18 @@ export function ProfileScreen() {
           </View>
         )}
 
-        {/* ===== Admin + dev (deprioritized) ===== */}
+        {/* ===== Admin (deprioritized) — a single entry into the Admin
+            Panel. Review queue, split tests and analytics all live inside
+            the panel, NOT loose on this identity surface. ===== */}
         {admin && (
-          <Pressable onPress={() => setReviewOpen(true)} style={styles.reviewEntry}>
+          <Pressable onPress={() => setAdminOpen(true)} style={styles.reviewEntry}>
             <View style={styles.reviewEntryIcon}>
-              <CheckIcon size={18} color={metals.goldSolidHi} />
+              <BoltIcon size={18} color={metals.goldSolidHi} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.reviewEntryTitle}>Review Queue</Text>
-              <Text style={styles.reviewEntrySub}>
-                {pendingCount > 0
-                  ? `${pendingCount} song${pendingCount === 1 ? '' : 's'} awaiting your approval`
-                  : 'No songs awaiting review right now'}
-              </Text>
+              <Text style={styles.reviewEntryTitle}>Admin Panel</Text>
             </View>
-            {pendingCount > 0 && (
-              <View style={styles.reviewBadge}>
-                <Text style={styles.reviewBadgeText}>{pendingCount}</Text>
-              </View>
-            )}
+            <Text style={styles.reviewEntryArrow}>→</Text>
           </Pressable>
         )}
 
@@ -306,7 +287,6 @@ export function ProfileScreen() {
           <View style={styles.legalDivider} />
           <LegalRow
             label="Delete Account"
-            sub="Request deletion of your account and associated data"
             onPress={() => Linking.openURL('https://boulevardai.app/delete-account')}
           />
         </View>
@@ -320,7 +300,7 @@ export function ProfileScreen() {
           setSignupOpen(true);
         }}
       />
-      <ReviewScreen visible={reviewOpen} onClose={() => setReviewOpen(false)} />
+      <AdminScreen visible={adminOpen} onClose={() => setAdminOpen(false)} />
       <SignupSheet visible={signupOpen} onClose={() => setSignupOpen(false)} />
     </View>
   );
@@ -361,7 +341,7 @@ function AnimatedAura({ colors: palette }: { colors: [string, string, string] })
 // A single tappable row in the Legal section. Opens a hosted page in the
 // device browser via Linking — no in-app navigation, no destructive logic.
 
-function LegalRow({ label, sub, onPress }: { label: string; sub?: string; onPress: () => void }) {
+function LegalRow({ label, onPress }: { label: string; onPress: () => void }) {
   return (
     <Pressable
       onPress={onPress}
@@ -369,10 +349,7 @@ function LegalRow({ label, sub, onPress }: { label: string; sub?: string; onPres
       accessibilityRole="link"
       accessibilityLabel={label}
     >
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text style={styles.legalLabel}>{label}</Text>
-        {sub ? <Text style={styles.legalSub}>{sub}</Text> : null}
-      </View>
+      <Text style={styles.legalLabel}>{label}</Text>
       <Text style={styles.legalArrow}>→</Text>
     </Pressable>
   );
@@ -553,7 +530,6 @@ const styles = StyleSheet.create({
     borderColor: metals.gold,
   },
   accountSignedInTitle: { color: colors.text, fontSize: fonts.size.md, fontWeight: fonts.weight.bold },
-  accountSignedInSub: { color: colors.textMuted, fontSize: 11, marginTop: 2, lineHeight: 15 },
   signOutText: { color: metals.goldSolidHi, fontSize: fonts.size.sm, fontWeight: fonts.weight.bold },
   heroName: {
     color: colors.text,
@@ -615,7 +591,6 @@ const styles = StyleSheet.create({
     fontWeight: fonts.weight.bold,
     letterSpacing: -0.3,
   },
-  phaseHint: { color: colors.textMuted, fontSize: fonts.size.sm, marginTop: 4 },
   phaseTagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm, marginTop: spacing.sm },
   phaseTagText: {
     color: metals.goldSolidHi,
@@ -687,13 +662,7 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth, borderColor: metals.gold,
   },
   reviewEntryTitle: { color: colors.text, fontSize: fonts.size.md, fontWeight: fonts.weight.bold, letterSpacing: -0.2 },
-  reviewEntrySub: { color: colors.textMuted, fontSize: fonts.size.sm, marginTop: 2 },
-  reviewBadge: {
-    minWidth: 26, height: 26, paddingHorizontal: 8, borderRadius: 13,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#c8ae7a',
-  },
-  reviewBadgeText: { color: colors.bg, fontWeight: fonts.weight.bold, fontSize: fonts.size.sm, fontVariant: ['tabular-nums'] },
+  reviewEntryArrow: { color: metals.goldSolidHi, fontSize: 20, fontWeight: fonts.weight.bold },
 
   devCard: {
     marginTop: spacing.xl,
@@ -729,7 +698,6 @@ const styles = StyleSheet.create({
     backgroundColor: colors.border,
     marginLeft: spacing.md,
   },
-  legalLabel: { color: colors.text, fontSize: fonts.size.md, fontWeight: fonts.weight.semibold },
-  legalSub: { color: colors.textMuted, fontSize: 12, marginTop: 2 },
+  legalLabel: { color: colors.text, fontSize: fonts.size.md, fontWeight: fonts.weight.semibold, flex: 1 },
   legalArrow: { color: colors.textMuted, fontSize: 20, fontWeight: fonts.weight.bold },
 });

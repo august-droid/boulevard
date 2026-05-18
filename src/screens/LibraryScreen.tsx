@@ -241,7 +241,7 @@ export function LibraryScreen() {
               // open SignupSheet instead of letting them type a name they
               // can't save. Once signed up they can come back and tap again.
               if (auth.isAnonymous) {
-                openSignup();
+                openSignup('playlist');
                 return;
               }
               setNewName('');

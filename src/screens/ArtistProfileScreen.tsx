@@ -63,7 +63,8 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
   // the actions row and the first few Top Songs are all on screen the moment
   // the page opens — no scrolling past a full screen of image.
   const { width: winWidth } = useWindowDimensions();
-  const heroHeight = Platform.OS === 'web' && winWidth >= 1024
+  const isDesktop = Platform.OS === 'web' && winWidth >= 1024;
+  const heroHeight = isDesktop
     ? DESKTOP_HERO_H
     : Math.round(winWidth * 0.72);
 
@@ -115,7 +116,7 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
   // PlayerFeedScreen so the flow feels consistent.
   const requireSignup = useCallback((): boolean => {
     if (auth.isAnonymous) {
-      nav.openSignup();
+      nav.openSignup('follow');
       return true;
     }
     return false;
@@ -157,9 +158,16 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
 
   const onPlaySong = useCallback((s: Song) => {
     tap();
-    void player.playSpecific(s, { artistFocused: true });
+    // Tapping a song on the artist page starts an artist-focused session that
+    // walks this artist's whole catalog before the recommender takes over —
+    // same "keep playing this artist" behavior as the Play Top CTA. We seed
+    // the queue with the tapped song followed by the rest of the artist's
+    // songs (popularity order); `playSpecific` would only queue this one
+    // song and let the producer pull in a similar artist on the next track.
+    const queue = [s, ...allSongs.filter((x) => x.id !== s.id)];
+    void player.playPlaylist(queue, { artistFocused: true });
     nav.openPlayer();
-  }, [tap, player, nav]);
+  }, [tap, allSongs, player, nav]);
 
   const onOpenSimilar = useCallback((id: string) => {
     tap();
@@ -233,7 +241,7 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
                 count is intentionally omitted — it's not a signal listeners
                 care about. */}
             <View style={styles.statsRow}>
-              <Stat label="Monthly Listeners" value={formatCount(artist.monthly_listeners)} />
+              <Stat label="Streams" value={formatCount(artist.total_streams)} />
               <View style={styles.statDivider} />
               <Stat
                 label="Followers"
@@ -265,7 +273,7 @@ export function ArtistProfileScreen({ artistId, onBack }: Props) {
             disabled={topSongs.length === 0}
             style={({ pressed }) => [
               styles.primaryBtn,
-              styles.primaryBtnWide,
+              isDesktop ? styles.primaryBtnDesktop : styles.primaryBtnWide,
               topSongs.length === 0 && { opacity: 0.4 },
               pressed && { opacity: 0.85 },
             ]}
@@ -628,6 +636,13 @@ const styles = StyleSheet.create({
   // the two actions read as a balanced pair.
   primaryBtnWide: {
     flex: 1,
+    justifyContent: 'center',
+  },
+  // Desktop web: the actions row spans the full window width, so a flex:1
+  // button stretches into an absurdly wide pill. Cap it to a fixed CTA width
+  // so it reads as a deliberate button next to Follow.
+  primaryBtnDesktop: {
+    width: 240,
     justifyContent: 'center',
   },
 

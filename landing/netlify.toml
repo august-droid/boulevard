@@ -60,6 +60,18 @@
   to = "/articles/:slug.html"
   status = 200
 
+# About pages — clean URLs without .html (e.g. /about/team).
+[[redirects]]
+  from = "/about/team.html"
+  to = "/about/team"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/about/:slug"
+  to = "/about/:slug.html"
+  status = 200
+
 # Admin dashboard — single-page tool at /admin (rewrite, not redirect).
 [[redirects]]
   from = "/admin"
@@ -72,15 +84,31 @@
   status = 200
 
 # ---------------------------------------------------------------------------
-# Web app (Expo build) — served at /app on the same domain. SPA fallback:
-# any /app/* path that is not a real file serves the app's index.html. Real
-# assets (/app/_expo/*, /app/assets/*) are served directly because Netlify
-# serves existing files before applying a non-forced 200 rewrite.
+# Web app (Expo build) — served at /listen on the same domain. SPA fallback:
+# any /listen/* path that is not a real file serves the app's index.html. Real
+# assets (/listen/_expo/*, /listen/assets/*) are served directly because
+# Netlify serves existing files before applying a non-forced 200 rewrite.
 # ---------------------------------------------------------------------------
 [[redirects]]
-  from = "/app/*"
-  to = "/app/index.html"
+  from = "/listen/*"
+  to = "/listen/index.html"
   status = 200
+
+# Legacy /app URL — the web app used to live at /app. Permanently redirect
+# old links, bookmarks and the desktop shell to /listen so nothing 404s.
+# `/app` (exact) is listed before `/app/*` because the splat does not match
+# the bare path; :splat carries the rest of the path through.
+[[redirects]]
+  from = "/app"
+  to = "/listen"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/app/*"
+  to = "/listen/:splat"
+  status = 301
+  force = true
 
 # ---------------------------------------------------------------------------
 # API → Netlify Functions
@@ -130,6 +158,14 @@
 [[redirects]]
   from = "/api/admin/team/:id"
   to = "/.netlify/functions/admin-team"
+  status = 200
+
+# Server-side TikTok CompleteRegistration conversion. The web app POSTs here
+# right after a sign-up succeeds; the function relays it to TikTok's Events
+# API. Same-origin with /listen, so no CORS preflight.
+[[redirects]]
+  from = "/api/tiktok-event"
+  to = "/.netlify/functions/tiktok-event"
   status = 200
 
 # ---------------------------------------------------------------------------

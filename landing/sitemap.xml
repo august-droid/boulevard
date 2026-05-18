@@ -9,14 +9,14 @@
 
   <url>
     <loc>https://boulevardai.app/articles</loc>
-    <lastmod>2026-05-15</lastmod>
+    <lastmod>2026-05-17</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.9</priority>
   </url>
 
   <!-- Pillar pages (hub-and-spoke topology) -->
-  <url><loc>https://boulevardai.app/articles/ai-music</loc><lastmod>2026-05-15</lastmod><changefreq>weekly</changefreq><priority>0.95</priority></url>
-  <url><loc>https://boulevardai.app/articles/spotify-alternative</loc><lastmod>2026-05-15</lastmod><changefreq>weekly</changefreq><priority>0.95</priority></url>
+  <url><loc>https://boulevardai.app/articles/ai-music</loc><lastmod>2026-05-17</lastmod><changefreq>weekly</changefreq><priority>0.95</priority></url>
+  <url><loc>https://boulevardai.app/articles/spotify-alternative</loc><lastmod>2026-05-17</lastmod><changefreq>weekly</changefreq><priority>0.95</priority></url>
 
   <!-- Articles, oldest first -->
   <url><loc>https://boulevardai.app/articles/spotify-alternatives-2026</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
@@ -37,6 +37,37 @@
   <url><loc>https://boulevardai.app/articles/riaa-lawsuits-ai-music</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
   <url><loc>https://boulevardai.app/articles/will-ai-replace-drake-taylor</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
   <url><loc>https://boulevardai.app/articles/ai-music-royalties-creators</loc><lastmod>2026-05-15</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
+
+  <!-- Comparison + AEO articles (2026-05-17) -->
+  <url><loc>https://boulevardai.app/articles/boulevard-vs-spotify</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://boulevardai.app/articles/boulevard-vs-suno-vs-spotify</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://boulevardai.app/articles/suno-alternative</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://boulevardai.app/articles/udio-alternative</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://boulevardai.app/articles/is-suno-legal</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://boulevardai.app/articles/how-to-cancel-spotify</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://boulevardai.app/articles/spotify-price-increase-2026</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://boulevardai.app/articles/music-app-without-ads</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://boulevardai.app/articles/ai-music-app-for-iphone</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://boulevardai.app/articles/is-ai-music-real-music</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+
+  <!-- Use-case + genre landing pages (2026-05-17) -->
+  <url><loc>https://boulevardai.app/articles/ai-music-for-studying</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://boulevardai.app/articles/ai-sleep-music</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://boulevardai.app/articles/ai-focus-music</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://boulevardai.app/articles/ai-workout-music</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://boulevardai.app/articles/ai-music-for-coding</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://boulevardai.app/articles/ai-music-for-reading</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://boulevardai.app/articles/ai-music-for-relaxing</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://boulevardai.app/articles/ai-music-for-anxiety</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://boulevardai.app/articles/ai-music-for-gaming</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://boulevardai.app/articles/ai-music-for-meditation</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
+  <url><loc>https://boulevardai.app/articles/lofi-ai-music</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.9</priority></url>
+  <url><loc>https://boulevardai.app/articles/ai-synthwave</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://boulevardai.app/articles/ai-ambient-music</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://boulevardai.app/articles/ai-chillhop</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.8</priority></url>
+  <url><loc>https://boulevardai.app/articles/ai-instrumental-music</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.85</priority></url>
+
+  <url><loc>https://boulevardai.app/about/team</loc><lastmod>2026-05-17</lastmod><changefreq>monthly</changefreq><priority>0.5</priority></url>
 
   <url><loc>https://boulevardai.app/privacy-policy</loc><lastmod>2026-05-15</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>
   <url><loc>https://boulevardai.app/terms</loc><lastmod>2026-05-15</lastmod><changefreq>yearly</changefreq><priority>0.3</priority></url>

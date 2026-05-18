@@ -199,5 +199,6 @@ module.exports = {
   corsHeaders,
   handleOptions,
   requireAdmin,
+  verifyUser,
   SUPABASE_URL,
 };

@@ -12,15 +12,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Haptics from 'expo-haptics';
 import { colors, fonts, metals, radii, spacing } from '@/theme';
 import { usePlayer } from '@/contexts/PlayerContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { MOODS, Mood, buildMoodPlaylist } from '@/lib/mood/MoodPlaylist';
 import { CloseIcon } from '@/components/Icon';
 
-// First-launch greeter. Opens once on cold start, prompts the user to
-// pick a mood so we can start them with a song that matches.
+// Post-signup mood greeter. Appears once — the first time the user has a
+// real account (signed in / created one). An anonymous first-launch visitor
+// never sees it: they get the signup sheet first, so the two welcome sheets
+// can never stack on top of each other.
 //
 // Dismissible: top-right X and a "Skip for now" link at the bottom both
-// hide the sheet for good. After dismissal we never show it again — we
-// don't want this to become friction on every cold start.
+// hide the sheet for good. After dismissal we never show it again.
 //
 // Storage key: boulevard.mood_picker_shown. Resetting it shows the sheet
 // again (useful for testing).
@@ -29,6 +31,7 @@ const STORAGE_KEY = 'boulevard.mood_picker_shown';
 
 export function MoodPickerSheet() {
   const player = usePlayer();
+  const { isAnonymous } = useAuth();
   const [visible, setVisible] = useState(false);
   const [ready, setReady] = useState(false);
   // One-shot guard: a fast double-tap on a mood tile must only ever start
@@ -71,10 +74,14 @@ export function MoodPickerSheet() {
     void dismiss(true);
   };
 
-  // Hold the sheet back until the catalog has actually loaded — tapping a
-  // mood against an empty catalog builds an empty playlist and silently
-  // plays nothing, stranding the user on a dismissed sheet with no music.
-  if (!ready || !visible || player.catalog.length === 0) return null;
+  // Gates:
+  //  • isAnonymous — the greeter only appears once the user has a real
+  //    account. An anonymous visitor sees the signup sheet first; gating
+  //    here means the two welcome sheets never stack. When the user signs
+  //    in, isAnonymous flips and the greeter surfaces on its own.
+  //  • catalog loaded — tapping a mood against an empty catalog builds an
+  //    empty playlist and silently plays nothing, stranding the user.
+  if (!ready || !visible || isAnonymous || player.catalog.length === 0) return null;
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={() => dismiss(true)}>

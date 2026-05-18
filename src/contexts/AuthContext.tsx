@@ -3,8 +3,10 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import uuid from 'react-native-uuid';
 import { supabase, HAS_SUPABASE } from '@/lib/supabase';
+import { SIGNED_IN_CELEBRATE_KEY } from '@/lib/auth/socialAuth';
 import { registerPushTokenForUser } from '@/lib/push/registerPushToken';
 import { setAppsFlyerCustomerUserId } from '@/lib/attribution/AppsFlyer';
+import { trackSignUp } from '@/lib/attribution/TikTokPixel';
 import {
   configureBilling,
   onCustomerInfo,
@@ -52,6 +54,19 @@ export interface AuthValue {
    * a refresh.
    */
   hasSignedUp: boolean;
+  /** Signed-in user's email address; null while anonymous. */
+  email: string | null;
+  /** Display name from the social provider (e.g. Google full name); null if unknown. */
+  displayName: string | null;
+  /** Social-provider profile photo URL (e.g. Google); null if none. */
+  avatarUrl: string | null;
+  /**
+   * Briefly true right after the user attaches a real identity (social or
+   * email). Drives the one-time "you're signed in" confirmation animation.
+   */
+  justSignedIn: boolean;
+  /** Clear `justSignedIn` once the confirmation animation has played. */
+  acknowledgeSignIn: () => void;
   isPremium: boolean;
   trialStartedAt: string | null;
   engagementCount: number;
@@ -154,9 +169,35 @@ async function confirmHasSignedUp(uid: string): Promise<boolean> {
   return false;
 }
 
+// Pull the human-facing identity (email + display name) off a Supabase auth
+// user. Anonymous users have neither, so this yields nulls for them.
+function identityFromUser(
+  user: { email?: string | null; user_metadata?: Record<string, unknown> | null } | null | undefined,
+): { email: string | null; displayName: string | null; avatarUrl: string | null } {
+  if (!user) return { email: null, displayName: null, avatarUrl: null };
+  const meta = user.user_metadata ?? {};
+  const rawName = meta.full_name ?? meta.name;
+  const displayName =
+    typeof rawName === 'string' && rawName.trim().length > 0 ? rawName.trim() : null;
+  // Anonymous users carry `email: ''` (an empty string, not null), so it must
+  // be normalized to null — otherwise `email ?? fallback` keeps the blank.
+  const rawEmail = user.email;
+  const email =
+    typeof rawEmail === 'string' && rawEmail.trim().length > 0 ? rawEmail : null;
+  // Google returns the profile photo as `avatar_url`; some providers use `picture`.
+  const rawAvatar = meta.avatar_url ?? meta.picture;
+  const avatarUrl =
+    typeof rawAvatar === 'string' && rawAvatar.trim().length > 0 ? rawAvatar.trim() : null;
+  return { email, displayName, avatarUrl };
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userId, setUserId] = useState<string | null>(null);
   const [isAnonymous, setIsAnonymous] = useState(true);
+  const [email, setEmail] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [justSignedIn, setJustSignedIn] = useState(false);
   const [engagementCount, setEngagementCount] = useState(0);
   const [songsHeard, setSongsHeard] = useState(0);
   const [skipCount, setSkipCount] = useState(0);
@@ -176,6 +217,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // so we don't re-run the verify loop on every token refresh / USER_UPDATED
   // event. A ref instead of state so this lookup never causes a render.
   const confirmedRef = useRef<Set<string>>(new Set());
+  // Previous anonymity state — lets onAuthStateChange spot the anonymous→real
+  // transition (an in-place sign-in) and fire the justSignedIn confirmation.
+  const prevAnonRef = useRef<boolean | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -189,6 +233,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const anon = data.session.user.is_anonymous === true;
             setUserId(uid);
             setIsAnonymous(anon);
+            const ident = identityFromUser(data.session.user);
+            setEmail(ident.email);
+            setDisplayName(ident.displayName);
+            setAvatarUrl(ident.avatarUrl);
+            // Web OAuth is a full-page redirect — the sign-in lands as a
+            // fresh load. socialAuth.web.ts drops a flag before redirecting;
+            // if it survived to here and the session is real, the user just
+            // signed in, so fire the confirmation. Read-once.
+            if (Platform.OS === 'web') {
+              try {
+                if (window.localStorage.getItem(SIGNED_IN_CELEBRATE_KEY)) {
+                  window.localStorage.removeItem(SIGNED_IN_CELEBRATE_KEY);
+                  if (!anon) {
+                    setJustSignedIn(true);
+                    // The celebrate flag is only ever set right before an
+                    // OAuth redirect kicked off from the SignupSheet (web =
+                    // Google). Landing back here non-anonymous means that
+                    // sign-up completed — fire the TikTok conversion event.
+                    trackSignUp('google');
+                  }
+                }
+              } catch {
+                // storage unavailable — skip the confirmation
+              }
+            }
             // Cold-start verify: a non-anonymous session whose has_signed_up
             // flag never got written (crash mid-upgrade, anon-link that
             // didn't reach the upsert) would otherwise leave the user
@@ -284,6 +353,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUserId(u.id);
         const nowAnon = u.is_anonymous === true;
         setIsAnonymous(nowAnon);
+        const ident = identityFromUser(u);
+        setEmail(ident.email);
+        setDisplayName(ident.displayName);
+        setAvatarUrl(ident.avatarUrl);
+        // Anonymous→real inside a live session is an in-place sign-in (email
+        // upgrade, or native OAuth) — fire the confirmation. Web OAuth comes
+        // back as a fresh load instead and is handled by the flag above.
+        if (prevAnonRef.current === true && !nowAnon) {
+          setJustSignedIn(true);
+        }
+        prevAnonRef.current = nowAnon;
         if (!nowAnon && !confirmedRef.current.has(u.id)) {
           confirmedRef.current.add(u.id);
           setSignupConfirming(true);
@@ -335,6 +415,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, [userId]);
 
+  // Mirror premium status into user_profiles for the admin analytics
+  // dashboard. Premium lives in RevenueCat (and the legacy local trial flag),
+  // so the database has no other way to read free→premium conversion.
+  // Fire-and-forget, best-effort — exactly like the personalization-unlock
+  // and signup-prompt mirrors above; it never blocks or breaks anything.
+  useEffect(() => {
+    if (!HAS_SUPABASE || !supabase || !userId) return;
+    const trialActive = trialStartedAt
+      ? (Date.now() - new Date(trialStartedAt).getTime()) / (1000 * 60 * 60 * 24) <= 3
+      : false;
+    if (!(billingPremium || trialActive)) return;
+    void (async () => {
+      try {
+        await supabase!
+          .from('user_profiles')
+          .upsert({ user_id: userId, is_premium: true }, { onConflict: 'user_id' });
+        // Stamp the conversion moment once — only when not already set.
+        await supabase!
+          .from('user_profiles')
+          .update({ premium_since: new Date().toISOString() })
+          .eq('user_id', userId)
+          .is('premium_since', null);
+      } catch {
+        // Best-effort — analytics tolerate a missed mirror.
+      }
+    })();
+  }, [userId, billingPremium, trialStartedAt]);
+
+  // Mirror the signed-in user's social identity (display name + photo) into
+  // user_profiles so it shows on their comments instead of a generated
+  // handle. Fire-and-forget, best-effort; the upsert is idempotent.
+  useEffect(() => {
+    if (!HAS_SUPABASE || !supabase || !userId) return;
+    if (isAnonymous) return;
+    if (!displayName && !avatarUrl) return;
+    void (async () => {
+      try {
+        const patch: Record<string, unknown> = { user_id: userId };
+        if (displayName) patch.display_name = displayName;
+        if (avatarUrl) patch.avatar_url = avatarUrl;
+        await supabase!.from('user_profiles').upsert(patch, { onConflict: 'user_id' });
+      } catch {
+        // Best-effort — comments tolerate a missed mirror.
+      }
+    })();
+  }, [userId, isAnonymous, displayName, avatarUrl]);
+
   const value = useMemo<AuthValue>(() => {
     const trialActive = (() => {
       if (!trialStartedAt) return false;
@@ -349,6 +476,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // local marker. Once supabase reports !is_anonymous the user is
       // permanently signed up regardless of the local flag.
       hasSignedUp: !isAnonymous || Boolean(signedUpAt),
+      email,
+      displayName,
+      avatarUrl,
+      justSignedIn,
+      acknowledgeSignIn: () => setJustSignedIn(false),
       // Premium is whichever signal says so:
       //   • billingPremium: live RevenueCat entitlement (the real source of truth)
       //   • trialActive:    legacy 3-day local flag, used until billing lands
@@ -497,6 +629,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         setUserId(newAnonId);
         setIsAnonymous(true);
+        setEmail(null);
+        setDisplayName(null);
+        setAvatarUrl(null);
+        setJustSignedIn(false);
         setEngagementCount(0);
         setSongsHeard(0);
         setSkipCount(0);
@@ -510,7 +646,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     };
   }, [
-    userId, isAnonymous, engagementCount, songsHeard, skipCount,
+    userId, isAnonymous, email, displayName, avatarUrl, justSignedIn, engagementCount, songsHeard, skipCount,
     trialStartedAt, paywallShownAt, signupPromptShownAt, signedUpAt,
     personalizationUnlockedAt, billingPremium,
     completedCount, completedLimitHit, blockedAttempts, signupConfirming,

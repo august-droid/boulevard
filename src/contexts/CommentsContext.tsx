@@ -49,7 +49,7 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
     if (missing.length === 0) return;
     const { data } = await supabase
       .from('user_profiles')
-      .select('user_id, username, display_name, avatar_seed, created_at')
+      .select('user_id, username, display_name, avatar_seed, avatar_url, created_at')
       .in('user_id', missing);
     const merged: Record<string, UserProfile> = { ...profiles };
     const seen = new Set<string>();
@@ -60,7 +60,7 @@ export function CommentsProvider({ children }: { children: React.ReactNode }) {
     // Synthesize profiles for any users without rows yet.
     for (const id of missing) {
       if (!seen.has(id)) {
-        merged[id] = { user_id: id, username: null, display_name: null, avatar_seed: id };
+        merged[id] = { user_id: id, username: null, display_name: null, avatar_seed: id, avatar_url: null };
       }
     }
     setProfiles(merged);

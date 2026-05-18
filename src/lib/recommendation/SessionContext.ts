@@ -1,4 +1,5 @@
 import type { Song } from '@/types';
+import type { TasteIdentityProfile } from './TasteIdentityProfile';
 
 // ============================================================
 // Contextual Session Engine — a COMPLEMENTARY intent layer.
@@ -64,6 +65,11 @@ export interface ContextAnchor {
   refSongs?: Song[];
   /** Human-readable label, for debug + Explore "worlds". */
   label?: string;
+  /** Genre-name keyword lists for a GENRE-anchored world. When set, the
+   *  autoplay tail of a mood_focus session stays genre-coherent (Explore
+   *  genre worlds). Left undefined for mood worlds — they stay cross-genre. */
+  primaryGenres?: string[];
+  adjacentGenres?: string[];
 }
 
 /** A live, decayed context snapshot — the only thing the ranker consumes.
@@ -113,31 +119,71 @@ const ANTI_FATIGUE_WINDOW = 7;        // rolling window length
 export interface SessionWorld {
   id: string;
   label: string;
+  /** 'genre' worlds stay anchored to their genre family; 'mood' worlds are
+   *  intentionally cross-genre (a feeling, not a sound). */
+  kind: 'genre' | 'mood';
   moodWords: string[];
   microtags: string[];
   energy: number;
+  /** Genre-name keyword lists, lowercased substring match. GENRE worlds set
+   *  these; MOOD worlds leave them undefined and stay cross-genre by design. */
+  primaryGenres?: string[];
+  adjacentGenres?: string[];
 }
 
+// moodWords + microtags below are matched against the LIVE catalog's actual
+// analyzer vocabulary (SongAnalyzer tags + the per-song `mood` / `moods`
+// fields). moodWords are matched as word tokens, so they catch the catalog's
+// frequent comma-joined moods ("aggressive, festival, electric") too.
 export const SESSION_WORLDS: SessionWorld[] = [
-  { id: 'night_drive', label: 'Night Drive', moodWords: ['longing', 'confident'],
-    microtags: ['reverb_wash', 'synth_lead', 'mid_energy'], energy: 0.5 },
-  { id: 'main_character', label: 'Main Character Energy', moodWords: ['confident', 'defiant'],
-    microtags: ['flex_lyrics', 'high_energy', 'gold_chain'], energy: 0.78 },
-  { id: 'heartbreak_spiral', label: 'Heartbreak Spiral', moodWords: ['vulnerable', 'longing', 'haunted'],
-    microtags: ['melancholic_lyrics', 'piano_loop', 'whispered_vocal'], energy: 0.32 },
-  { id: 'euphoric_edm', label: 'Euphoric EDM', moodWords: ['euphoric', 'reckless'],
-    microtags: ['four_on_the_floor', 'peak_energy', 'big_hook'], energy: 0.9 },
-  { id: 'sad_gym', label: 'Sad Gym', moodWords: ['defiant', 'reckless'],
-    microtags: ['hard_808_kick', 'aggressive_lyrics', 'high_energy'], energy: 0.82 },
-  { id: 'floating_indie', label: 'Floating Indie', moodWords: ['tender', 'longing'],
-    microtags: ['jangly_guitar', 'reverb_wash', 'dreamy_lyrics'], energy: 0.45 },
-  { id: 'rage_trap', label: 'Rage Trap', moodWords: ['reckless', 'defiant'],
-    microtags: ['hard_808_kick', 'gang_vocal', 'aggressive_lyrics'], energy: 0.88 },
-  { id: 'sunset_afrobeats', label: 'Sunset Afrobeats', moodWords: ['warm', 'euphoric'],
-    microtags: ['log_drum', 'shaker_groove', 'warm_vocal'], energy: 0.62 },
+  // ---- MOOD worlds — a feeling, intentionally cross-genre. ----
+  { id: 'night_drive', label: 'Night Drive', kind: 'mood',
+    moodWords: ['longing', 'wistful', 'introspective', 'nostalgic', 'yearning', 'detached', 'lonely'],
+    microtags: ['late_night_imagery', 'late_night_tempo', 'reverb_wash', 'synth_pad', 'mid_tempo', 'dreamy_lyrics'],
+    energy: 0.55 },
+  { id: 'main_character', label: 'Main Character Energy', kind: 'mood',
+    moodWords: ['confident', 'triumphant', 'defiant', 'luxurious', 'glamorous', 'reckless', 'arrogant'],
+    microtags: ['flex_lyrics', 'belted_vocal', 'vocal_harmony', 'peak_energy', 'high_energy', 'restrained_chorus'],
+    energy: 0.8 },
+  { id: 'heartbreak_spiral', label: 'Heartbreak Spiral', kind: 'mood',
+    moodWords: ['vulnerable', 'longing', 'haunted', 'grief', 'hurt', 'lonely', 'aching', 'regret', 'betrayed', 'bittersweet', 'wistful'],
+    microtags: ['melancholic_lyrics', 'piano_loop', 'intimate_vocal', 'close_mic_vocal', 'very_slow_tempo', 'reverb_wash'],
+    energy: 0.4 },
+  { id: 'sad_gym', label: 'Sad Gym', kind: 'mood',
+    moodWords: ['defiant', 'reckless', 'relentless', 'menacing', 'raw', 'cold', 'gritty', 'sweaty'],
+    microtags: ['aggressive_lyrics', 'flex_lyrics', 'trap_hihats', 'peak_energy', 'sub_bass'],
+    energy: 0.88 },
+
+  // ---- GENRE worlds — named after a genre, must stay genre-coherent. ----
+  { id: 'euphoric_edm', label: 'Euphoric EDM', kind: 'genre',
+    moodWords: ['euphoric', 'uplifting', 'ecstatic', 'hypnotic', 'rave', 'relentless'],
+    microtags: ['dance_tempo', 'club_lyrics', 'peak_energy', 'high_energy', 'four_on_the_floor', 'melodic_bass'],
+    energy: 0.9,
+    primaryGenres: ['edm', 'house', 'techno', 'electronic', 'dance', 'trance', 'dubstep', 'rave', 'garage'],
+    adjacentGenres: ['bass', 'electro', 'synthwave', 'dnb', 'drum and bass', 'breakbeat'] },
+  { id: 'floating_indie', label: 'Floating Indie', kind: 'genre',
+    moodWords: ['tender', 'longing', 'wistful', 'introspective', 'dreamy', 'content', 'nostalgic'],
+    microtags: ['reverb_wash', 'close_mic_vocal', 'conversational_vocal', 'dry_live_drums', 'bass_led_groove', 'dreamy_lyrics'],
+    energy: 0.58,
+    primaryGenres: ['indie', 'bedroom', 'dream pop', 'dream-pop', 'shoegaze'],
+    adjacentGenres: ['alt', 'folk', 'jangle', 'art pop', 'post-punk', 'lo-fi', 'lofi'] },
+  { id: 'rage_trap', label: 'Rage Trap', kind: 'genre',
+    moodWords: ['reckless', 'defiant', 'menacing', 'relentless', 'raw', 'cold', 'rage', 'focused', 'triumphant'],
+    microtags: ['aggressive_lyrics', 'flex_lyrics', 'trap_hihats', 'peak_energy', 'autotuned_vocal'],
+    energy: 0.9,
+    primaryGenres: ['trap', 'rage', 'drill', 'phonk'],
+    adjacentGenres: ['hip hop', 'hip-hop', 'hiphop', 'rap', 'hyperpop'] },
+  { id: 'sunset_afrobeats', label: 'Sunset Afrobeats', kind: 'genre',
+    moodWords: ['warm', 'euphoric', 'playful', 'sultry', 'groovy', 'carefree', 'joyful', 'hypnotic', 'spiritual'],
+    microtags: ['mid_tempo', 'romantic_lyrics', 'club_lyrics', 'high_energy', 'vocal_harmony'],
+    energy: 0.68,
+    primaryGenres: ['afro', 'afrobeat', 'afrobeats', 'amapiano', 'afropop', 'afroswing'],
+    adjacentGenres: ['dancehall', 'reggaeton', 'soca', 'highlife', 'r&b', 'rnb'] },
 ];
 
-/** Build a mood-focus anchor from a world definition. */
+/** Build a mood-focus anchor from a world definition. Genre worlds carry
+ *  their genre keyword lists into the anchor so the autoplay tail stays
+ *  genre-coherent; mood worlds leave them undefined and stay cross-genre. */
 export function worldToAnchor(world: SessionWorld): ContextAnchor {
   return {
     moodId: world.id,
@@ -145,8 +191,50 @@ export function worldToAnchor(world: SessionWorld): ContextAnchor {
     anchorMicrotags: world.microtags,
     anchorMoodWords: world.moodWords,
     anchorEnergy: world.energy,
+    primaryGenres: world.primaryGenres,
+    adjacentGenres: world.adjacentGenres,
   };
 }
+
+// ---- genre coherence helpers (Explore worlds) --------------------------
+
+/** Lowercased genre text for a song — joins multi-genre rows. */
+function songGenreText(s: Song): string {
+  return ((s.genres && s.genres.length > 0 ? s.genres.join(' ') : s.genre) || '').toLowerCase();
+}
+
+/** Word tokens of a song's mood. The catalog's `mood` field is frequently a
+ *  comma- or hyphen-joined phrase ("aggressive, festival, electric",
+ *  "introspective-with-quiet-rage"); splitting into tokens lets a world's
+ *  mood word match even when it is buried inside such a phrase. */
+function moodTokens(s: Song): string[] {
+  const raw = [s.mood ?? '', ...(s.moods ?? [])].join(' ').toLowerCase();
+  return raw.split(/[^a-z]+/).filter(Boolean);
+}
+
+/** True when any of `moodWords` appears as a token of the song's mood. */
+function matchesMoodWords(s: Song, moodWords: string[] | undefined): boolean {
+  if (!moodWords || moodWords.length === 0) return false;
+  const toks = moodTokens(s);
+  return moodWords.some((w) => toks.includes(w.toLowerCase()));
+}
+
+/** Genre tier of a song against a world's primary / adjacent keyword lists.
+ *  Keyword substring match — cheap, no embedding lookup. */
+function classifyGenre(
+  s: Song,
+  primary?: string[],
+  adjacent?: string[],
+): 'primary' | 'adjacent' | 'outside' {
+  const g = songGenreText(s);
+  if ((primary ?? []).some((k) => g.includes(k))) return 'primary';
+  if ((adjacent ?? []).some((k) => g.includes(k))) return 'adjacent';
+  return 'outside';
+}
+
+/** A world below this many strict-fit songs relaxes its gate so it is never
+ *  near-empty on a genre/theme-sparse catalog. */
+const MIN_WORLD_SIZE = 8;
 
 /**
  * Build an Explore "world" playlist from the live catalog. Dynamically
@@ -154,40 +242,98 @@ export function worldToAnchor(world: SessionWorld): ContextAnchor {
  * consistent, with artist diversity (max 2 per artist) and room for adjacent
  * sonic exploration. A small random term rotates the list so reopening a
  * world feels fresh. Pure: no network, no model, no mutation.
+ *
+ * `identity` (optional): once the behavioural identity profile has
+ * confidence, an identity-fit modifier skews each world AWAY from strong
+ * identity mismatches while keeping it emotionally distinct — e.g. the
+ * "Energy" worlds stay energetic but skew to the user's identity (gym rap /
+ * dark electronic for a mature listener, not childish party pop).
  */
-export function buildWorldPlaylist(catalog: Song[], world: SessionWorld, limit = 28): Song[] {
+export function buildWorldPlaylist(
+  catalog: Song[],
+  world: SessionWorld,
+  limit = 28,
+  identity?: TasteIdentityProfile | null,
+): Song[] {
   const tagSet = new Set(world.microtags);
-  const moodSet = new Set(world.moodWords);
-  const scored: { song: Song; score: number }[] = [];
+  const isGenreWorld = world.kind === 'genre';
+
+  interface Scored {
+    song: Song;
+    score: number;
+    /** Genre tier for a genre world ('primary' for every song in a mood world). */
+    tier: 'primary' | 'adjacent' | 'outside';
+    /** True when the song has a real emotional hit (microtag or mood word) —
+     *  energy proximity alone never sets this. */
+    themed: boolean;
+  }
+  const scored: Scored[] = [];
 
   for (const s of catalog) {
     if (!s.audio_url) continue;
     if ((s.distribution_stage ?? 'new_test') === 'suppressed') continue;
 
     // Emotional fit — the world's identity axes.
-    let emotional = 0;
     let tagHits = 0;
     for (const t of s.microtags ?? []) if (tagSet.has(t)) tagHits++;
-    emotional += tagHits * 2;
-    if (s.mood && moodSet.has(s.mood)) emotional += 3;
+    const moodHit = matchesMoodWords(s, world.moodWords);
+    // A real theme hit is a microtag OR a mood-word match. Energy proximity
+    // is a SOFT enhancer only — on its own it can never qualify a song into a
+    // world (Fix 2: emotional matching enhances coherence, never replaces it).
+    const themed = tagHits > 0 || moodHit;
+
+    let emotional = tagHits * 2;
+    if (moodHit) emotional += 3;
     const dE = Math.abs(s.energy_score - world.energy);
     if (dE <= 0.18) emotional += 2;
     else if (dE <= 0.34) emotional += 0.5;
 
-    // Emotional-consistency gate: a song with no connection at all is out.
-    if (emotional <= 0) continue;
+    // Genre coherence (Fix 1). Genre worlds strongly boost their own genre,
+    // lightly allow adjacent families (healthy discovery), and push outside
+    // genres far down — so e.g. Afrobeats never drifts into K-pop / Festival
+    // House. Mood worlds set no genres and treat every song as eligible.
+    const tier = isGenreWorld
+      ? classifyGenre(s, world.primaryGenres, world.adjacentGenres)
+      : 'primary';
+    let genreScore = 0;
+    if (isGenreWorld) {
+      genreScore = tier === 'primary' ? 6 : tier === 'adjacent' ? 2 : -1000;
+    }
 
     const quality = (s.hook_strength ?? 0) * 1.5 + (s.mainstream_fit ?? 0) * 0.5;
+    // Identity-fit modifier — skews the world away from identity mismatches
+    // while staying on-theme. Applied without explicit-softening (the user
+    // chose the WORLD, not the mismatched songs inside it).
+    const identityBoost = identity ? identity.evaluate(s, {}).boost : 0;
     // Random term → freshness / adjacent exploration on every open.
-    scored.push({ song: s, score: emotional + quality + Math.random() * 1.4 });
+    scored.push({
+      song: s,
+      score: emotional + quality + identityBoost + genreScore + Math.random() * 1.4,
+      tier,
+      themed,
+    });
   }
 
   scored.sort((a, b) => b.score - a.score);
 
+  // Strict pass. Genre worlds keep only primary/adjacent songs (no outside
+  // genres). Mood worlds keep only songs with a real theme hit (energy-only
+  // is excluded). The relax fallback only triggers when the catalog is too
+  // genre/theme-sparse to fill a usable world — strict songs still rank
+  // first, the rest are last-resort filler so a world is never near-empty.
+  const strict = scored.filter((x) => (isGenreWorld ? x.tier !== 'outside' : x.themed));
+  let ordered: Scored[];
+  if (strict.length >= Math.min(limit, MIN_WORLD_SIZE)) {
+    ordered = strict;
+  } else {
+    const strictIds = new Set(strict.map((x) => x.song.id));
+    ordered = [...strict, ...scored.filter((x) => !strictIds.has(x.song.id))];
+  }
+
   // Artist diversity — max 2 per artist (mirrors the catalog-wide rule).
   const perArtist = new Map<string, number>();
   const out: Song[] = [];
-  for (const { song } of scored) {
+  for (const { song } of ordered) {
     const aid = song.artist_id ?? '__none__';
     if ((perArtist.get(aid) ?? 0) >= 2) continue;
     perArtist.set(aid, (perArtist.get(aid) ?? 0) + 1);
@@ -467,13 +613,22 @@ function rawBoost(song: Song, ctx: ActiveSessionContext): number {
       let b = 0;
       const tagHits = sharedTagCount(song.microtags, a.anchorMicrotags);
       b += Math.min(4, tagHits * 1.6);
-      if (song.mood && a.anchorMoodWords && a.anchorMoodWords.includes(song.mood)) b += 2;
+      const moodWordHit = matchesMoodWords(song, a.anchorMoodWords);
+      if (moodWordHit) b += 2;
       if (a.anchorEnergy != null) {
         const dE = Math.abs(song.energy_score - a.anchorEnergy);
         b += dE <= 0.18 ? 2 : dE <= 0.32 ? 0.5 : -2;     // energy coherence
       }
-      const moodWordHit = !!(song.mood && a.anchorMoodWords?.includes(song.mood));
       if (tagHits === 0 && !moodWordHit) b -= 5;          // abrupt mood break
+      // Genre coherence for the autoplay tail (Fix 3). A GENRE world carries
+      // primaryGenres on its anchor — once the 28-song curated playlist runs
+      // out, the ranker must keep producing on-genre songs, not drift into
+      // generic high-engagement tracks. MOOD worlds set no primaryGenres, so
+      // this is a no-op for them and they stay cross-genre by design.
+      if (a.primaryGenres && a.primaryGenres.length > 0) {
+        const tier = classifyGenre(song, a.primaryGenres, a.adjacentGenres);
+        b += tier === 'primary' ? 5 : tier === 'adjacent' ? 1.5 : -8;
+      }
       return b;
     }
 

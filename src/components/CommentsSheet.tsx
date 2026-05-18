@@ -54,7 +54,7 @@ export function CommentsSheet({ visible, songId, currentPositionMs, onSeek, onCl
     // Only re-open SignupSheet when the user is actually anonymous.
     // During the confirmation window we just swallow the tap so they
     // can't accidentally re-enter the auth flow.
-    if (auth.isAnonymous) nav.openSignup();
+    if (auth.isAnonymous) nav.openSignup('comment');
     return true;
   }, [gated, auth.isAnonymous, nav]);
 
@@ -240,7 +240,7 @@ export function CommentsSheet({ visible, songId, currentPositionMs, onSeek, onCl
                     // During the post-signup confirmation window the
                     // tap is a no-op. Once isAnonymous is true again
                     // (or never flipped), the tap opens SignupSheet.
-                    if (auth.isAnonymous) nav.openSignup();
+                    if (auth.isAnonymous) nav.openSignup('comment');
                   }}
                   hitSlop={6}
                   disabled={finishingSignup}
@@ -287,7 +287,7 @@ export function CommentsSheet({ visible, songId, currentPositionMs, onSeek, onCl
               <Pressable
                 onPress={() => {
                   if (finishingSignup) return; // wait it out
-                  if (auth.isAnonymous) { nav.openSignup(); return; }
+                  if (auth.isAnonymous) { nav.openSignup('comment'); return; }
                   void handleSubmit();
                 }}
                 disabled={finishingSignup || (!gated && draft.trim().length === 0)}

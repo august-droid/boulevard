@@ -1,5 +1,23 @@
-import { Platform } from 'react-native';
-import appsFlyer from 'react-native-appsflyer';
+import { NativeModules, Platform } from 'react-native';
+
+// react-native-appsflyer is a NATIVE module. Its index.js touches the native
+// side at import time (`new NativeEventEmitter(RNAppsFlyer)`), which throws an
+// Invariant Violation in Expo Go, where no native modules are linked. So we
+// load it lazily and ONLY when the native module is actually present (i.e. a
+// dev/prod build). In Expo Go `appsFlyer` is an inert stub and every export
+// in this file cleanly no-ops via the HAS_APPSFLYER guard — the app runs, it
+// just collects no attribution (identical to the documented no-key behaviour).
+const APPSFLYER_NATIVE = !!NativeModules.RNAppsFlyer;
+
+type AppsFlyerSdk = typeof import('react-native-appsflyer').default;
+let appsFlyer: AppsFlyerSdk = {} as unknown as AppsFlyerSdk;
+if (APPSFLYER_NATIVE) {
+  try {
+    appsFlyer = require('react-native-appsflyer').default;
+  } catch {
+    // native module reported present but require failed — keep the inert stub
+  }
+}
 
 // Boulevard install attribution — wraps the AppsFlyer SDK.
 //
@@ -25,8 +43,9 @@ const DEV_KEY = (process.env.EXPO_PUBLIC_APPSFLYER_DEV_KEY ?? '').trim();
 // until the iOS listing exists.
 const IOS_APP_ID = (process.env.EXPO_PUBLIC_APPSFLYER_IOS_APP_ID ?? '').trim();
 
-/** True only when a dev key is present. Callers branch on this. */
-export const HAS_APPSFLYER = DEV_KEY.length > 0;
+/** True only when a dev key is present AND the native SDK is linked (a real
+ *  dev/prod build, never Expo Go). Callers branch on this. */
+export const HAS_APPSFLYER = DEV_KEY.length > 0 && APPSFLYER_NATIVE;
 
 let initialized = false;
 let initInFlight: Promise<void> | null = null;

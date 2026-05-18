@@ -67,6 +67,12 @@ export class QueueManager {
   // When true the queue is an explicit artist-focused session (artist page
   // Play Top Songs / radio) and the artist-variation spacing is skipped.
   private artistFocused = false;
+  // Monotonic token bumped by every queue-replacing operation. A background
+  // refill() captures this at its start and discards its producer results if
+  // a newer operation has since taken over the queue. This keeps the
+  // non-blocking refills (advance / playSpecific) race-free now that they no
+  // longer block the caller while the personalized ranker runs.
+  private generation = 0;
 
   constructor(producer: Producer, preloader: Preloader) {
     this.producer = producer;
@@ -110,6 +116,7 @@ export class QueueManager {
     // returns control instantly — the previous version awaited in-flight
     // CDN downloads which was the root cause of the 5–7s play-tap delay.
     this.preloader.clear();
+    this.generation++;
     this.queue = seed ? [seed] : [];
     this.curatedTail = [];
     await this.refill();
@@ -118,21 +125,41 @@ export class QueueManager {
 
   /** Skip to the next song. Returns the new current. */
   async advance(): Promise<Song | null> {
+    this.generation++;
     this.queue.shift();
-    await this.refill();
+    // The next song already sits in queue[0] (preloaded). Hand it back
+    // immediately and top the tail up in the BACKGROUND — a skip must never
+    // wait on the personalized ranker. The blocking branch is a safety net
+    // for the rare case the queue would otherwise be empty (a skip landing
+    // before a direct-play refill has produced anything).
+    if (this.queue.length === 0) {
+      await this.refill();
+    } else {
+      void this.refill();
+    }
     this.notify();
     return this.current();
   }
 
-  /** Insert a song at the front (used for direct play, e.g. Library tap). */
-  async playSpecific(song: Song) {
-    // Same latency fix — synchronous clear, async refill. Drops any curated
+  /**
+   * Insert a song at the front for direct play (Explore / player tap).
+   *
+   * The head swap is synchronous so playback can start on the very next
+   * frame; the tail refill — a personalized-ranker call that can take ~1s —
+   * runs in the BACKGROUND. Selecting a song must never wait on the ranker,
+   * and the tapped song is already in queue[0] ready to play. Returns the
+   * background refill promise so a caller *can* await a full queue, but the
+   * player deliberately does not.
+   */
+  playSpecific(song: Song): Promise<void> {
+    this.generation++;
+    // Synchronous clear (drops fire-and-forget downloads). Drops any curated
     // tail since the user just navigated away from the playlist context.
     this.preloader.clear();
     this.queue = [song];
     this.curatedTail = [];
-    await this.refill();
     this.notify();
+    return this.refill();
   }
 
   /**
@@ -147,6 +174,7 @@ export class QueueManager {
   async setQueue(songs: Song[]) {
     if (songs.length === 0) return;
     this.preloader.clear();
+    this.generation++;
     this.queue = songs.slice(0, TOTAL_DEPTH);
     this.curatedTail = songs.slice(TOTAL_DEPTH);
     await this.refill();
@@ -172,12 +200,17 @@ export class QueueManager {
       if (next.length >= TOTAL_DEPTH) break;
     }
     this.queue = next;
+    this.generation++;
     await this.refill();
     this.notify();
   }
 
   /** Ensure queue is full and the next PRELOAD_DEPTH songs are decoding. */
   private async refill() {
+    // Snapshot the generation. If a newer queue-replacing operation runs
+    // while we await the producer, our results belong to a queue that no
+    // longer exists — bail rather than push stale songs onto it.
+    const gen = this.generation;
     if (this.queue.length < TOTAL_DEPTH) {
       const have = new Set(this.queue.map((s) => s.id));
 
@@ -199,6 +232,7 @@ export class QueueManager {
         try {
           const avoid = [...have];
           const more = await this.producer(avoid, stillNeed);
+          if (gen !== this.generation) return;   // superseded — discard
           const fresh = more.filter((s) => !have.has(s.id));
           // Artist-variation rule (spec PART 5B): space the produced batch so
           // the same artist is not stacked. The curated queue prefix is never
@@ -232,6 +266,7 @@ export class QueueManager {
         try {
           const queueOnly = this.queue.map((s) => s.id);
           const recycled = await this.producer(queueOnly, TOTAL_DEPTH - this.queue.length);
+          if (gen !== this.generation) return;   // superseded — discard
           const freshRecycled = recycled.filter((s) => !have.has(s.id));
           const orderedRecycled = this.artistFocused
             ? freshRecycled

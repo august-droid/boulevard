@@ -7,7 +7,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ChipMoodId, DEFAULT_MOOD_ORDER } from '@/lib/mood/moodCatalog';
 import { MoodStore, moodStoreFor, MoodEventKind } from '@/lib/mood/MoodScoring';
 import { ExposureLog, exposureLogFor } from '@/lib/recommendation/ExposureLog';
-import { buildForYou } from '@/lib/recommendation/ForYouEngine';
+import { buildForYou, forYouSubtitle as computeForYouSubtitle } from '@/lib/recommendation/ForYouEngine';
+import { habitProfileFor } from '@/lib/habit/habitStore';
+import { identityProfileFor } from '@/lib/recommendation/identityStore';
 import { fetchTodayStats } from '@/lib/stats/SongStats';
 
 // ExploreContext owns the Explore-specific recommendation state: dynamic mood
@@ -28,6 +30,9 @@ interface ExploreValue {
   sessionMoodId: ChipMoodId | null;
   /** The current For You pool (20-30 songs). */
   forYou: Song[];
+  /** Honest subtitle for the For You shelf — editorial copy for cold-start
+   *  users, "Based on your listening" only once there is real history. */
+  forYouSubtitle: string;
   /** Record a mood interaction (also re-sorts the chip row). */
   recordMoodEvent: (moodId: ChipMoodId, kind: MoodEventKind) => void;
   /** Select / clear the active mood chip; rebuilds For You toward it. */
@@ -44,6 +49,7 @@ const FALLBACK: ExploreValue = {
   moodOrder: DEFAULT_MOOD_ORDER,
   sessionMoodId: null,
   forYou: [],
+  forYouSubtitle: 'Starting with our best',
   recordMoodEvent: () => {},
   selectMood: () => {},
   refreshForYou: () => {},
@@ -111,6 +117,15 @@ export function ExploreProvider({ children }: { children: React.ReactNode }) {
       recentSkippedIds: exposureLog.recentSkippedIds(),
       stats: serverStats,
       interactionCount: auth.songsHeard,
+      // Habit personalization — the same per-user model PlayerContext records
+      // into. getHabitContext() self-gates to a no-op (confidence 0) until a
+      // genuine time-of-day pattern exists, so this never destabilises a new
+      // user's For You pool.
+      habit: userId ? habitProfileFor(userId).getHabitContext() : null,
+      // Behavioural taste-identity — the same per-user profile PlayerContext
+      // records into. Self-gates on confidence, so it is inert for new users
+      // and keeps the pool identity-consistent once a taste has appeared.
+      identity: userId ? identityProfileFor(userId) : null,
       limit: FOR_YOU_LIMIT,
     });
     setForYou(result.songs);
@@ -120,7 +135,7 @@ export function ExploreProvider({ children }: { children: React.ReactNode }) {
     // Mark the pool as shown so the 24h anti-repeat starts its clock.
     exposureLog.recordShown(result.songs.map((s) => s.id));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [moodStore, exposureLog, player.catalog, player.taste, sessionMoodId, serverStats, auth.songsHeard]);
+  }, [moodStore, exposureLog, player.catalog, player.taste, sessionMoodId, serverStats, auth.songsHeard, userId]);
 
   const refreshForYou = useCallback(() => build(), [build]);
 
@@ -167,12 +182,15 @@ export function ExploreProvider({ children }: { children: React.ReactNode }) {
     moodOrder,
     sessionMoodId,
     forYou,
+    // Honest cold-start copy — "Based on your listening" only once the user
+    // has enough history for the pool to actually be personalised (Fix 4).
+    forYouSubtitle: computeForYouSubtitle(auth.songsHeard, sessionMoodId != null),
     recordMoodEvent,
     selectMood,
     refreshForYou,
     exposureLog,
     moodStore,
-  }), [ready, moodOrder, sessionMoodId, forYou, recordMoodEvent, selectMood, refreshForYou, exposureLog, moodStore]);
+  }), [ready, moodOrder, sessionMoodId, forYou, auth.songsHeard, recordMoodEvent, selectMood, refreshForYou, exposureLog, moodStore]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

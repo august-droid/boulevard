@@ -12,7 +12,7 @@ import { PaywallScreen } from '@/screens/PaywallScreen';
 import { SignupSheet } from '@/screens/SignupSheet';
 import { ArtistProfileScreen } from '@/screens/ArtistProfileScreen';
 import { useAuth } from '@/contexts/AuthContext';
-import { NavigationProvider } from '@/contexts/NavigationContext';
+import { NavigationProvider, SignupReason } from '@/contexts/NavigationContext';
 import { DesktopShell } from '@/components/desktop/DesktopShell';
 import { MediaSessionBridge } from '@/components/MediaSessionBridge';
 import { FirstListenerModal } from '@/components/FirstListenerModal';
@@ -61,6 +61,9 @@ export function RootNavigator() {
   const [userHasNavigated, setUserHasNavigated] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [signupOpen, setSignupOpen] = useState(false);
+  // The gated action that triggered the SignupSheet, so the sheet can name
+  // it ("you need an account to like songs"). Null for nudge / gate opens.
+  const [signupReason, setSignupReason] = useState<SignupReason | null>(null);
   // Artist profile stack. Push on openArtistProfile, pop on
   // closeArtistProfile. The top of the stack renders above the active
   // tab; MiniPlayer + BottomNav stay docked because they're rendered at
@@ -185,7 +188,10 @@ export function RootNavigator() {
   }, []);
   // Open-signup handler — the comments composer calls this when an
   // anonymous user taps a gated social action.
-  const openSignup = React.useCallback(() => setSignupOpen(true), []);
+  const openSignup = React.useCallback((reason?: SignupReason) => {
+    setSignupReason(reason ?? null);
+    setSignupOpen(true);
+  }, []);
   // Artist profile stack handlers. Push lets the user drill into similar
   // artists from inside an artist page; pop walks back through the stack.
   // No-op when the same artist is already on top so accidental double
@@ -304,8 +310,10 @@ export function RootNavigator() {
       />
       <SignupSheet
         visible={signupOpen}
+        reason={signupReason}
         onClose={() => {
           setSignupOpen(false);
+          setSignupReason(null);
           void auth.markSignupPromptShown();
         }}
         // On web, once the free limit is reached the sheet is a hard gate:

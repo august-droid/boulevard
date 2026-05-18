@@ -19,6 +19,11 @@ import {
   type SessionMode,
   type ContextAnchor,
 } from '@/lib/recommendation/SessionContext';
+import { buildColdStartCohort, type UserContext } from '@/lib/recommendation/ColdStartCohortPrior';
+import { HabitProfile } from '@/lib/habit/HabitProfile';
+import { habitProfileFor, hydrateHabitProfile } from '@/lib/habit/habitStore';
+import { TasteIdentityProfile } from '@/lib/recommendation/TasteIdentityProfile';
+import { identityProfileFor, hydrateIdentityProfile } from '@/lib/recommendation/identityStore';
 import { fetchTodayStats } from '@/lib/stats/SongStats';
 import { recordStream, qualifiesAsStream } from '@/lib/stats/recordStream';
 import { applySessionSignal, applySignal, emptyProfile, emptySession, signalsFromPlayback } from '@/lib/taste/TasteProfile';
@@ -71,6 +76,10 @@ export interface PlayContext {
    *  session-mode activation. */
   sessionMode?: SessionMode;
   sessionAnchor?: ContextAnchor;
+  /** Start playback at this offset (ms) instead of 0. Used by the admin
+   *  review queue to jump straight to a song's most viral moment so a
+   *  reviewer hears the hook immediately. */
+  startPositionMillis?: number;
 }
 
 interface PlayerActions {
@@ -139,6 +148,9 @@ interface PlayerActions {
   /** Debug snapshot of the live session context — active mode, confidence,
    *  decay phase, anti-fatigue window. Null before the engine is ready. */
   getSessionContextDebug: () => Record<string, unknown> | null;
+  /** The live behavioural taste-identity profile. Used by Explore worlds to
+   *  skew a world away from identity mismatches. Null before the stack is up. */
+  getIdentityProfile: () => TasteIdentityProfile | null;
 }
 
 type PlayerValue = PlayerState & PlayerActions;
@@ -162,6 +174,40 @@ const LAST_SONG_KEY = 'boulevard.last_song_id';
 // Persisted Contextual Session Engine snapshot. Lets a reopened app preserve
 // the user's session DIRECTION (with decay applied) instead of a stale feed.
 const SESSION_CONTEXT_KEY = 'boulevard.session_context';
+
+/**
+ * Collect the lightweight, non-sensitive signup signals the cold-start cohort
+ * prior uses (ColdStartCohortPrior.ts). Everything here is already on-device:
+ * no permission prompt, no network, no IP geolocation. Age and gender are
+ * deliberately NOT collected, so the cohort always runs in safety mode.
+ */
+function deriveUserContext(): UserContext {
+  let timezone: string | null = null;
+  let locale: string | null = null;
+  try {
+    const resolved = Intl.DateTimeFormat().resolvedOptions();
+    timezone = resolved.timeZone ?? null;
+    locale = (resolved as { locale?: string }).locale ?? null;
+  } catch {
+    // Intl unavailable on this runtime — the cohort simply has fewer signals.
+  }
+  const language = locale ? locale.split('-')[0] : null;
+  // Coarse country from the locale tag only (e.g. 'es-ES' → 'ES'). Never a
+  // precise location — region is the weakest cohort signal by design.
+  const country = locale && locale.includes('-')
+    ? (locale.split('-').pop() ?? '').toUpperCase() || null
+    : null;
+  return {
+    country,
+    locale,
+    language,
+    timezone,
+    deviceType: Platform.OS === 'web' ? 'web' : 'phone',
+    os: Platform.OS,
+    signupTime: Date.now(),
+    // ageRange / gender intentionally omitted — Boulevard never collects them.
+  };
+}
 
 export function PlayerProvider({ children }: { children: React.ReactNode }) {
   const auth = useAuth();
@@ -191,6 +237,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   // ExploreContext). Playback records outcomes into these.
   const moodStoreRef = useRef<MoodStore | null>(null);
   const exposureLogRef = useRef<ExposureLog | null>(null);
+  // Habit personalization model (per-user singleton, shared with
+  // ExploreContext). Playback records time-of-day outcomes here; the ranker
+  // reads getHabitContext() for a soft, current-time boost.
+  const habitRef = useRef<HabitProfile | null>(null);
+  // Behavioural taste-identity profile (per-user singleton, shared with the
+  // OnboardingSlate + ExploreContext). Playback records every signal here; the
+  // ranker reads it for a capped identity-fit modifier.
+  const identityRef = useRef<TasteIdentityProfile | null>(null);
   // The mood / artist context the current playback session started from.
   const playContextRef = useRef<{ moodId: ChipMoodId | null; artistFocused: boolean }>({
     moodId: null,
@@ -323,6 +377,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       exposureLogRef.current = exposureLogFor(userId);
       void moodStoreRef.current.hydrate();
       void exposureLogRef.current.hydrate();
+      // Habit profile — hydrate once; getHabitContext() returns confidence 0
+      // until a real time-of-day pattern forms, so this is inert for new users.
+      habitRef.current = habitProfileFor(userId);
+      void hydrateHabitProfile(userId);
+      // Taste-identity profile — hydrate once; identity scoring self-gates on
+      // behavioural confidence, so it is inert until the user reveals a taste.
+      identityRef.current = identityProfileFor(userId);
+      void hydrateIdentityProfile(userId);
 
       // Subscribe to library changes exactly once.
       const offLib = library.onChange(() => {
@@ -481,6 +543,16 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
             // the user's current intent. null when no mode is active, so the
             // ranker is unchanged from before this layer existed.
             context: sessionContextRef.current?.current() ?? null,
+            // Habit personalization — a soft, time-aware boost. Recomputed on
+            // every refill so it tracks the current hour/day. The ranker
+            // applies it only post-cold-start and damps it under an explicit
+            // intent, so current actions always win.
+            habit: habitRef.current?.getHabitContext() ?? null,
+            // Behavioural taste-identity — a capped identity-fit modifier so
+            // the queue avoids identity-wrong songs even when genre/energy
+            // technically match. Softened when the user explicitly chose a
+            // context (handled inside the ranker).
+            identity: identityRef.current,
           },
           avoid,
           n,
@@ -563,9 +635,19 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       // never collects age, and the strategy brief mandates strict gating for
       // age-unknown users. The last-heard song seeds the slate's trust anchor.
       if (interactionCountRef.current < ONBOARDING_SIZE) {
+        // Cold-start cohort prior — computed ONCE here from lightweight signup
+        // signals. It only nudges the onboarding slate's earliest songs and
+        // decays to ~0 by song 10; it is never persisted and never touches
+        // the long-term TasteProfile.
+        const cohort = buildColdStartCohort(deriveUserContext());
         onboardingRef.current = buildOnboardingSlate(catalog, {
           safetyMode: true,
           seedSong: lastSong,
+          cohort,
+          // The slate READS the identity profile for an identity-fit boost; it
+          // is updated by PlayerContext after every signal, so it learns and
+          // tightens live across the first 10 songs.
+          identity: identityRef.current,
         });
       }
 
@@ -647,7 +729,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   // Refs used so the long-lived useEffect above can reach into callbacks
   // defined further down without dependency-array gymnastics.
   const cleanupRef = useRef<(() => void) | null>(null);
-  const playInternalRef = useRef<((song: Song, presolved?: Audio.Sound | null) => Promise<void>) | null>(null);
+  const playInternalRef = useRef<((song: Song, presolved?: Audio.Sound | null, startPositionMillis?: number) => Promise<void>) | null>(null);
   const handleAdvanceRef = useRef<((skipped: boolean) => Promise<void>) | null>(null);
   // A song the user tapped before the player stack finished initializing.
   // playSpecific() stashes it here when the queue is not ready yet; setup
@@ -688,7 +770,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     return true;
   }, [bumpBlockedAttempts]);
 
-  const playInternal = useCallback(async (song: Song, presolved?: Audio.Sound | null) => {
+  const playInternal = useCallback(async (song: Song, presolved?: Audio.Sound | null, startPositionMillis?: number) => {
     if (!audioRef.current || !preloaderRef.current || !userId) return;
 
     // Web login gate. Backstops the auto-advance path (handleAdvance calls
@@ -758,6 +840,24 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     // takes it before the queue swap clears the cache — else pull one now.
     const preloaded = presolved ?? (await preloaderRef.current.take(song.id));
     await audioRef.current.play(song, preloaded ?? undefined);
+
+    // Optional jump-to-offset. The admin review queue passes the song's most
+    // viral timestamp so the reviewer hears the hook immediately. We seek
+    // AFTER play() resolves — the sound is loaded, so seekTo lands reliably.
+    // Absent / 0 → normal playback from the top, unchanged for every other
+    // caller.
+    if (startPositionMillis && startPositionMillis > 0) {
+      const durMs = song.duration_seconds * 1000;
+      const target = Math.max(0, Math.min(startPositionMillis, Math.max(0, durMs - 1000)));
+      try {
+        await audioRef.current?.seekTo(target);
+        songStartedAtRef.current = Date.now() - target;
+        setProgress({ position: target, duration: durMs });
+      } catch {
+        // seekTo already swallows; if it ever throws, playback simply
+        // continues from the top — no worse than the pre-feature behavior.
+      }
+    }
 
     trackerRef.current?.track({
       user_id: userId,
@@ -952,10 +1052,17 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     // Re-rank the onboarding slate BEFORE advance() so the producer's refill
     // serves the freshly re-ranked upcoming songs.
     if (endingSong) {
+      // Update the taste-identity profile FIRST — before feedOnboarding, so
+      // the onboarding slate's re-rank inside it scores against fresh identity.
+      identityRef.current?.update(endingSong, kinds, true);
       feedOnboarding(endingSong, kinds, true);
       // Feed the session engine: a skip streak collapses the active mode's
       // confidence (widening exploration), a completion reinforces it.
       registerSessionOutcome(endingSong, kinds, true);
+      // Feed the habit profile: records this play's outcome (completion /
+      // skip / listen depth) against the current hour-of-day + day-of-week
+      // so the ranker can learn the user's time-based listening habits.
+      habitRef.current?.record(endingSong, kinds, Date.now());
     }
     const next = await queueRef.current.advance();
     if (next) await playInternal(next);
@@ -1005,6 +1112,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     if (playContextRef.current.moodId) {
       moodStoreRef.current?.record(playContextRef.current.moodId, 'replay');
     }
+    identityRef.current?.update(cur, ['replay'], false);
     feedOnboarding(cur, ['replay'], false);
     // A replay is the strongest "I'm into this" confirmation — reinforce the
     // active session mode (spec #6: "replays artist repeatedly → strengthen").
@@ -1090,6 +1198,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     });
     sessionRef.current = applySessionSignal(sessionRef.current, cur, { kind: 'share' });
     setState((s) => s.taste ? { ...s, taste: applySignal(s.taste, cur, { kind: 'share' }) } : s);
+    identityRef.current?.update(cur, ['share'], false);
     feedOnboarding(cur, ['share'], false);
     registerSessionOutcome(cur, ['share'], false);
     await bumpEngagement();
@@ -1109,6 +1218,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     });
     sessionRef.current = applySessionSignal(sessionRef.current, cur, { kind: next ? 'save' : 'unsave' });
     setState((s) => s.taste ? { ...s, taste: applySignal(s.taste, cur, { kind: next ? 'save' : 'unsave' }) } : s);
+    identityRef.current?.update(cur, [next ? 'save' : 'unsave'], false);
     feedOnboarding(cur, [next ? 'save' : 'unsave'], false);
     if (next) registerSessionOutcome(cur, ['save'], false);
     if (next) {
@@ -1156,6 +1266,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         // cold start so the state self-heals.
       }
     }
+    identityRef.current?.update(cur, [next ? 'like' : 'unlike'], false);
     feedOnboarding(cur, [next ? 'like' : 'unlike'], false);
     if (next) registerSessionOutcome(cur, ['like'], false);
     if (next) {
@@ -1323,8 +1434,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     // Pull the preloaded sound BEFORE queue.playSpecific() clears the cache,
     // so a song Explore already warmed starts instantly, not cold-loaded.
     const preloaded = (await preloaderRef.current?.take(song.id)) ?? null;
-    await queueRef.current.playSpecific(song);
-    await playInternal(song, preloaded);
+    // Set the queue head synchronously, then start playback immediately. The
+    // tail refill (a personalized-ranker call that can take ~1s) runs in the
+    // background — selecting a song must never wait on the ranker.
+    void queueRef.current.playSpecific(song);
+    await playInternal(song, preloaded, context?.startPositionMillis);
   }, [playInternal, recordEndOfSong, checkDailyLimit, checkWebGate, syncSessionFromPlay]);
 
   const seek = useCallback(async (positionMillis: number) => {
@@ -1358,6 +1472,13 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   // Debug snapshot of the live contextual-session state (spec #11).
   const getSessionContextDebug = useCallback(
     (): Record<string, unknown> | null => sessionContextRef.current?.debugSnapshot() ?? null,
+    [],
+  );
+
+  // The live taste-identity profile — Explore worlds read it to skew a world
+  // away from identity mismatches once it has behavioural confidence.
+  const getIdentityProfile = useCallback(
+    (): TasteIdentityProfile | null => identityRef.current,
     [],
   );
 
@@ -1402,10 +1523,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     dismissFirstListen,
     setSessionContext: activateSessionContext,
     getSessionContextDebug,
+    getIdentityProfile,
   }), [
     state, togglePlay, skip, previous, toggleShuffle, replay, save, like, recordShare,
     seek, setVibe, playSpecific, playPlaylist, cuePlaylist, playPopular, warmSongs, getSession, buildMoodList,
-    dismissFirstListen, activateSessionContext, getSessionContextDebug,
+    dismissFirstListen, activateSessionContext, getSessionContextDebug, getIdentityProfile,
   ]);
 
   return (

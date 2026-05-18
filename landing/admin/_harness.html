@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Influencer module harness</title>
+<style>
+ :root {
+ --bg:#0a0a0c; --fg:#ffffff; --muted:rgba(255,255,255,0.66);
+ --card:#15151a; --card-2:#1c1c22;
+ --border:rgba(255,255,255,0.08); --border-strong:rgba(255,255,255,0.16);
+ --gold:#c8ae7a; --gold-hi:#e3cb98; --gold-deep:#a48a5c;
+ --accent:#c8ae7a; --good:#10b981; --bad:#ef4444; --warn:#f59e0b;
+ }
+ * { box-sizing:border-box; }
+ body { margin:0; font:14px/1.5 "Inter",-apple-system,sans-serif; background:var(--bg); color:var(--fg); }
+ .empty { padding:60px; text-align:center; color:var(--muted); font-size:18px; font-style:italic; }
+ .modal-backdrop { position:fixed; inset:0; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); display:flex; align-items:center; justify-content:center; z-index:100; padding:24px; }
+ .modal { background:var(--card); border:1px solid var(--border-strong); border-radius:16px; width:100%; max-width:560px; box-shadow:0 30px 60px rgba(0,0,0,0.5); max-height:90vh; display:flex; flex-direction:column; }
+ .modal .head { padding:18px 22px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:12px; }
+ .modal .head h2 { margin:0; font-size:20px; font-weight:600; }
+ .modal .head .close { margin-left:auto; background:transparent; border:none; color:var(--muted); cursor:pointer; font-size:22px; padding:4px 10px; }
+ .modal .body { padding:18px 22px; overflow:auto; }
+ .toast { position:fixed; bottom:18px; right:18px; background:var(--card); border:1px solid var(--border-strong); padding:11px 16px; border-radius:10px; z-index:200; }
+</style>
+</head>
+<body>
+<div id="view"><div class="empty">mounting…</div></div>
+<script type="module">
+import { mountInfluencers } from '/admin/influencers.js';
+
+const ratio = (v,f)=> f>0 ? Math.round(v/f*10000)/10000 : 0;
+const eng = (l,c,v)=> v>0 ? Math.round((l+c)/v*10000)/10000 : 0;
+
+const creators = [
+ { id:'c1', platform:'tiktok', creator_name:'Maya Rivers', username:'mayariverz', profile_url:'https://tiktok.com/@mayariverz',
+   followers:38000, avg_views:142000, avg_likes:11800, avg_comments:540, audience_fit:78, content_quality:80,
+   score:88, score_label:'priority', score_breakdown:{view_follower_ratio:35,engagement_rate:14,audience_fit:15.6,content_quality:12,cost_efficiency:10},
+   niche:'music', country:'US', language:'English', audience_age:'18-24', audience_gender:'62% F',
+   contact_method:'email', contact_info:'maya@mail.com', status:'discovered', can_use_as_ad:false },
+ { id:'c2', platform:'instagram', creator_name:'Leo Tran', username:'leotrancreates',
+   followers:95000, avg_views:88000, avg_likes:6100, avg_comments:290, audience_fit:60, content_quality:65,
+   score:64, score_label:'maybe', score_breakdown:{view_follower_ratio:16,engagement_rate:11,audience_fit:12,content_quality:9.75,cost_efficiency:9},
+   niche:'lifestyle', country:'UK', language:'English', status:'contacted', last_contacted_at:'2026-05-12T10:00:00Z' },
+ { id:'c3', platform:'tiktok', creator_name:'Jess B', username:'jessbvibes',
+   followers:12000, avg_views:60000, avg_likes:5400, avg_comments:410, audience_fit:74, content_quality:76,
+   score:79, score_label:'good_test', score_breakdown:{view_follower_ratio:35,engagement_rate:16,audience_fit:14.8,content_quality:11.4,cost_efficiency:10},
+   niche:'relationships', country:'US', status:'replied' },
+ { id:'c4', platform:'tiktok', creator_name:'Kai Moon', username:'kaimoonn',
+   followers:410000, avg_views:320000, avg_likes:21000, avg_comments:800, audience_fit:66, content_quality:70,
+   score:71, score_label:'good_test', score_breakdown:{view_follower_ratio:27,engagement_rate:11,audience_fit:13.2,content_quality:10.5,cost_efficiency:8.5},
+   niche:'comedy', country:'CA', status:'deal_agreed' },
+ { id:'c5', platform:'instagram', creator_name:'Nina Cole', username:'ninacole',
+   followers:6200, avg_views:21000, avg_likes:1900, avg_comments:150, audience_fit:70, content_quality:72,
+   score:73, score_label:'good_test', score_breakdown:{view_follower_ratio:35,engagement_rate:16,audience_fit:14,content_quality:10.8,cost_efficiency:10},
+   niche:'aesthetic', country:'AU', status:'posted', can_use_as_ad:true, can_edit_video:true },
+ { id:'c6', platform:'tiktok', creator_name:'Theo Park', username:'theopark',
+   followers:2200, avg_views:1500, avg_likes:90, avg_comments:6, audience_fit:50, content_quality:48,
+   score:41, score_label:'skip', score_breakdown:{view_follower_ratio:12,engagement_rate:5,audience_fit:10,content_quality:7.2,cost_efficiency:6.6},
+   niche:'tech', country:'US', status:'discovered' },
+];
+creators.forEach(c=>{ c.view_follower_ratio=ratio(c.avg_views,c.followers); c.engagement_rate=eng(c.avg_likes,c.avg_comments,c.avg_views); });
+
+const campaigns = [
+ { id:'k1', name:'Influencer Test 1', platform:'tiktok', goal:'app_signups', budget:5000, target_creators:10,
+   target_cost_per_signup:3, utm_source:'tiktok', utm_campaign:'influencer_test_1',
+   landing_page_url:'https://boulevardai.app/', status:'active', start_date:'2026-05-10', end_date:'2026-06-10', brief:'Raw native testing videos.' },
+ { id:'k2', name:'IG Mood Drop', platform:'instagram', goal:'viral_reach', budget:3000, target_creators:6,
+   utm_source:'instagram', utm_campaign:'ig_mood_drop', landing_page_url:'https://boulevardai.app/', status:'draft' },
+];
+
+const deals = [
+ { id:'d1', campaign_id:'k1', creator_id:'c5', agreed_fee:250, num_posts:1, usage_rights:'paid_ads_allowed', usage_period:'90_days',
+   payment_status:'paid', posted_url:'https://tiktok.com/x', final_views:84000, final_likes:9100, final_comments:420, final_shares:300, final_saves:1100,
+   signups:220, cost_per_signup:1.14, cost_per_1k_views:2.98, brief_angle:'This app makes songs that feel made for you',
+   tracking_link:'https://boulevardai.app/?utm_source=tiktok&utm_campaign=influencer_test_1&utm_creator=ninacole' },
+ { id:'d2', campaign_id:'k1', creator_id:'c4', agreed_fee:800, num_posts:1, usage_rights:'organic_only', usage_period:'30_days',
+   payment_status:'unpaid', final_views:0, signups:0,
+   tracking_link:'https://boulevardai.app/?utm_source=tiktok&utm_campaign=influencer_test_1&utm_creator=kaimoonn' },
+ { id:'d3', campaign_id:'k1', creator_id:'c3', agreed_fee:180, num_posts:1, usage_rights:'organic_only', usage_period:'30_days',
+   payment_status:'paid', posted_url:'https://tiktok.com/y', final_views:51000, final_likes:6200, final_comments:380, signups:140,
+   cost_per_signup:1.29, cost_per_1k_views:3.53, brief_angle:'I found a song that sounds like my exact mood',
+   tracking_link:'https://boulevardai.app/?utm_source=tiktok&utm_campaign=influencer_test_1&utm_creator=jessbvibes' },
+];
+
+const outreach = [
+ { id:'o1', creator_id:'c2', channel:'tiktok_dm', message:'Yo Leo, your videos fit exactly what we are looking for...', sent:true, sent_at:'2026-05-12T10:00:00Z', response_status:'none', created_at:'2026-05-12T10:00:00Z' },
+ { id:'o2', creator_id:'c3', channel:'tiktok_dm', message:'Hey Jess, raw collab on a music app...', sent:true, sent_at:'2026-05-11T09:00:00Z', response_status:'replied', created_at:'2026-05-11T09:00:00Z' },
+];
+
+const db = { influencer_creators:creators, influencer_campaigns:campaigns, influencer_deals:deals, influencer_outreach:outreach };
+const rid = ()=> 'id-'+Math.random().toString(36).slice(2,9);
+
+function makeClient() {
+  return {
+    from(table) {
+      let op='select', payload=null, filters=[];
+      const b = {
+        select(){ op='select'; return b; },
+        insert(p){ op='insert'; payload=p; return b; },
+        update(p){ op='update'; payload=p; return b; },
+        delete(){ op='delete'; return b; },
+        eq(c,v){ filters.push([c,v]); return b; },
+        order(){ return b; },
+        then(res){ res(exec()); },
+      };
+      function recompute(t,r){
+        if(t==='influencer_creators'){ r.view_follower_ratio=ratio(r.avg_views||0,r.followers||0); r.engagement_rate=eng(r.avg_likes||0,r.avg_comments||0,r.avg_views||0); }
+        if(t==='influencer_deals'){ r.cost_per_signup=r.signups>0?Math.round(r.agreed_fee/r.signups*100)/100:null; r.cost_per_1k_views=r.final_views>0?Math.round(r.agreed_fee/r.final_views*1000*100)/100:null; }
+      }
+      function exec(){
+        const rows = db[table] || (db[table]=[]);
+        if(op==='select') return { data:rows.slice(), error:null };
+        if(op==='insert'){ (Array.isArray(payload)?payload:[payload]).forEach(p=>{ const r={ id:rid(), created_at:new Date().toISOString(), ...p }; recompute(table,r); rows.push(r); }); return { data:null, error:null }; }
+        if(op==='update'){ rows.forEach(r=>{ if(filters.every(([c,v])=>r[c]===v)){ Object.assign(r,payload); recompute(table,r); } }); return { data:null, error:null }; }
+        if(op==='delete'){ db[table]=rows.filter(r=>!filters.every(([c,v])=>r[c]===v)); return { data:null, error:null }; }
+        return { data:null, error:null };
+      }
+      return b;
+    },
+    storage:{ from(){ return { upload:async()=>({error:null}), createSignedUrl:async()=>({data:{signedUrl:'#'},error:null}) }; } },
+  };
+}
+
+function toast(m){ const e=document.createElement('div'); e.className='toast'; e.textContent=m; document.body.appendChild(e); setTimeout(()=>e.remove(),2000); }
+
+mountInfluencers(document.getElementById('view'), { supabase: makeClient(), toast, me:{ user:{ email:'august@magnamarketing.io' } } });
+</script>
+</body>
+</html>

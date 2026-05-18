@@ -3,6 +3,7 @@ import { View, Text, Pressable, StyleSheet } from 'react-native';
 import { colors, fonts, metals, radii, spacing } from '@/theme';
 import { usePlayer, usePlayerProgress } from '@/contexts/PlayerContext';
 import { useAppNav } from '@/contexts/NavigationContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { PlayIcon, PauseIcon, SkipIcon, PrevIcon, ShuffleIcon, HeartIcon } from '@/components/Icon';
 import { Artwork } from '@/components/Artwork';
 import { ScrollingTitle } from '@/components/ScrollingTitle';
@@ -30,10 +31,18 @@ function formatTime(ms: number): string {
 export function DesktopPlayerBar({ onOpenPlayer }: Props) {
   const player = usePlayer();
   const nav = useAppNav();
+  const auth = useAuth();
   const { position, duration } = usePlayerProgress();
   const song = player.current;
 
   const onSeek = useCallback((ms: number) => { void player.seek(ms); }, [player]);
+
+  // Like is an engagement-write — anonymous listeners get bounced to the
+  // SignupSheet instead, matching the gate on every other social action.
+  const onToggleLike = useCallback(() => {
+    if (auth.isAnonymous) { nav.openSignup('like'); return; }
+    void player.like();
+  }, [auth.isAnonymous, nav, player]);
 
   // The artist name navigates to the artist page — never the full player.
   // Falls back to the full player only when the track has no artist id.
@@ -135,7 +144,7 @@ export function DesktopPlayerBar({ onOpenPlayer }: Props) {
         </Pressable>
         <Pressable
           hitSlop={10}
-          onPress={() => player.like()}
+          onPress={onToggleLike}
           style={({ pressed }) => pressed && styles.pressed}
           accessibilityLabel={player.liked ? 'Unlike' : 'Like'}
         >

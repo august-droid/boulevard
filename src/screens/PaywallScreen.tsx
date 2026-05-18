@@ -22,6 +22,7 @@ import {
   ArrowRightIcon,
 } from '@/components/Icon';
 import { useAuth } from '@/contexts/AuthContext';
+import { useExperiment } from '@/contexts/ExperimentContext';
 import { FREE_COMPLETED_LIMIT } from '@/lib/limits/CompletionLimiter';
 import {
   HAS_BILLING,
@@ -73,6 +74,10 @@ const PLAN_DETAILS: Record<Plan, { price: string; cadence: string; afterTrial: s
 export function PaywallScreen({ visible, onClose, onOpenSignIn }: Props) {
   const insets = useSafeAreaInsets();
   const auth = useAuth();
+  // Active premium_popup split test (if any). When no test runs this handle
+  // is inert: every value() call returns the hardcoded default below, so the
+  // paywall is byte-identical to its pre-experiment behavior.
+  const popup = useExperiment('premium_popup');
   // Yearly is selected by default — it's the better deal and the better LTV.
   const [plan, setPlan] = useState<Plan>('yearly');
   const [packages, setPackages] = useState<Record<Plan, PurchasesPackage | null>>(
@@ -100,16 +105,30 @@ export function PaywallScreen({ visible, onClose, onOpenSignIn }: Props) {
     return () => { cancelled = true; };
   }, [visible]);
 
+  // Log a paywall view for the active premium_popup split test. Fires once
+  // each time the sheet opens; a no-op when no test is running.
+  useEffect(() => {
+    if (!visible) return;
+    popup.track('premium_popup_view');
+    popup.track('impression');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visible]);
+
   const displayPrice = (p: Plan): string => {
     return packages[p]?.product.priceString ?? PLAN_DETAILS[p].price;
   };
 
   const startTrial = async () => {
     setError(null);
+    // Split-test telemetry: the CTA tap, then the trial-start intent.
+    popup.track('click', { metadata: { plan } });
+    popup.track('premium_start', { metadata: { plan } });
     // Without billing configured (dev / TestFlight), fall through to the legacy
     // local 3-day flag so the team can iterate without a working SDK key.
     if (!HAS_BILLING) {
       await auth.startTrial();
+      popup.track('premium_purchase', { metadata: { plan, mode: 'trial' } });
+      popup.track('conversion', { metadata: { plan } });
       onClose();
       return;
     }
@@ -123,6 +142,8 @@ export function PaywallScreen({ visible, onClose, onOpenSignIn }: Props) {
       await purchasePackage(pkg);
       // The RevenueCat customer-info listener in AuthContext flips
       // `isPremium` automatically — we just close the sheet.
+      popup.track('premium_purchase', { metadata: { plan } });
+      popup.track('conversion', { metadata: { plan } });
       onClose();
     } catch (e: any) {
       // User-cancel is the most common error and shouldn't show a banner.
@@ -175,7 +196,7 @@ export function PaywallScreen({ visible, onClose, onOpenSignIn }: Props) {
           </View>
           <Text style={styles.headlineItalic}>completed</Text>
           <Text style={styles.subhead}>
-            Go Premium to keep listening{'\n'}with no limits.
+            {popup.value('subheadline', 'Go Premium to keep listening\nwith no limits.')}
           </Text>
         </View>
 
@@ -192,7 +213,9 @@ export function PaywallScreen({ visible, onClose, onOpenSignIn }: Props) {
                 <SparkleIcon size={12} color={GOLD.textHi} />
                 <Text style={styles.brandLabel}>BOULEVARD PREMIUM</Text>
               </View>
-              <Text style={styles.cardTitle}>Unlimited music.{'\n'}No limits.</Text>
+              <Text style={styles.cardTitle}>
+                {popup.value('headline', 'Unlimited music.\nNo limits.')}
+              </Text>
 
               <View style={styles.features}>
                 {FEATURES.map(({ Icon, label }, i) => (
@@ -243,7 +266,7 @@ export function PaywallScreen({ visible, onClose, onOpenSignIn }: Props) {
                     <ActivityIndicator color="#0a0a0c" />
                   ) : (
                     <>
-                      <Text style={styles.ctaText}>Start Free Trial</Text>
+                      <Text style={styles.ctaText}>{popup.value('cta', 'Start Free Trial')}</Text>
                       <View style={styles.ctaArrow}>
                         <ArrowRightIcon size={20} color="#0a0a0c" />
                       </View>

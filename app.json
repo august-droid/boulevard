@@ -18,7 +18,7 @@
     ],
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "io.boulevard.app",
+      "bundleIdentifier": "com.boulevard.app",
       "infoPlist": {
         "UIBackgroundModes": [
           "audio"
@@ -48,7 +48,7 @@
       "output": "single"
     },
     "experiments": {
-      "baseUrl": "/app"
+      "baseUrl": "/listen"
     },
     "plugins": [
       [

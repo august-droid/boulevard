@@ -31,6 +31,12 @@ export interface SocialAuthResult {
 
 const REDIRECT_PATH = 'auth/callback';
 
+// Mirrors socialAuth.web.ts. The web build sets this localStorage flag before
+// an OAuth redirect so AuthContext can fire a one-time sign-in confirmation.
+// Native OAuth has no full-page redirect, so this is exported only so
+// AuthContext can import the key unconditionally on both platforms.
+export const SIGNED_IN_CELEBRATE_KEY = 'boulevard.signin_celebrate';
+
 export async function signInWithProvider(provider: Provider): Promise<SocialAuthResult> {
   // Compute a redirect URI that works in dev (Expo Go's exp:// scheme) and
   // production (our custom `boulevard://` scheme).
@@ -88,6 +94,17 @@ export async function signInWithProvider(provider: Provider): Promise<SocialAuth
   } catch (e) {
     return { ok: false, demo: false, error: friendlyOAuthError((e as Error).message, provider) };
   }
+}
+
+/**
+ * Web builds recover from a post-redirect OAuth failure on app load (see
+ * socialAuth.web.ts). Native OAuth runs in an in-app browser and surfaces
+ * every failure inline from signInWithProvider, so there is nothing to
+ * recover here — this no-op exists only so App.tsx can import the function
+ * unconditionally for both platforms.
+ */
+export async function recoverFromOAuthRedirect(): Promise<boolean> {
+  return false;
 }
 
 function friendlyOAuthError(raw: string | undefined, provider: Provider): string {

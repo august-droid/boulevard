@@ -27,6 +27,20 @@
  header h1 small { font-size:10.5px; color:var(--gold); letter-spacing:2.4px; text-transform:uppercase; font-family:"Inter", sans-serif; margin-left:10px; font-weight:600; }
  header .stats { color:var(--muted); font-size:13px; }
  header .who { color:var(--muted); font-size:12px; margin-right:6px; }
+ /* Section shell — sidebar nav + content view. */
+ .layout { display:flex; align-items:flex-start; }
+ .sidenav { width:212px; flex:none; padding:16px 12px; background:#0d0d10; border-right:1px solid var(--border); min-height:calc(100vh - 67px); }
+ .nav-item { display:flex; align-items:center; gap:10px; padding:10px 12px; border-radius:10px; color:var(--muted); cursor:pointer; font-weight:600; font-size:13.5px; margin-bottom:3px; transition:background .12s, color .12s; }
+ .nav-item:hover { color:var(--fg); background:var(--card-2); }
+ .nav-item.active { background:rgba(200,174,122,0.12); color:var(--gold-hi); }
+ .nav-dot { width:7px; height:7px; border-radius:50%; background:currentColor; flex:none; opacity:.7; }
+ .view { flex:1; min-width:0; }
+ .section-head { padding:13px 24px; border-bottom:1px solid var(--border); background:#0d0d10; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+ @media (max-width:760px) {
+   .layout { flex-direction:column; }
+   .sidenav { width:auto; min-height:0; border-right:none; border-bottom:1px solid var(--border); display:flex; gap:6px; }
+   .nav-item { margin-bottom:0; }
+ }
  .controls { display:flex; gap:8px; flex-wrap:wrap; padding:14px 24px; border-bottom:1px solid var(--border); align-items:center; background:#0d0d10; }
  .controls input, .controls select { background:var(--card); border:1px solid var(--border); color:var(--fg); padding:8px 12px; border-radius:8px; font:inherit; transition:border-color .15s; }
  .controls input:focus, .controls select:focus { outline:none; border-color:var(--gold); }
@@ -376,14 +390,51 @@ async function renderDashboard() {
   $('#app').innerHTML = `
     <header>
       <span class="brand-mark">B</span>
-      <h1>Music Factory <small>Review</small></h1>
-      <span id="stats" class="stats">loading stats…</span>
-      <span id="rollup" class="rollup-pill">…</span>
+      <h1>Boulevard <small>Admin</small></h1>
       <div style="flex:1"></div>
       <span class="who">${escapeHtml(email)}</span>
       <button class="secondary" id="team">Team</button>
       <button class="secondary" id="logout">Sign out</button>
     </header>
+    <div class="layout">
+      <aside class="sidenav">
+        <div class="nav-item" data-section="review"><span class="nav-dot"></span>Review Queue</div>
+        <div class="nav-item" data-section="influencers"><span class="nav-dot"></span>Influencers</div>
+      </aside>
+      <div class="view" id="view"><div class="empty">loading…</div></div>
+    </div>`;
+
+  $('#logout').onclick = async () => {
+    await supabase.auth.signOut();
+    session = null; me = null; renderAuth();
+  };
+  $('#team').onclick = openTeamModal;
+  $$('.nav-item').forEach(it => { it.onclick = () => showSection(it.dataset.section); });
+  showSection('review');
+}
+
+// Switch the active admin section. Clears the review progress poller so it
+// doesn't keep firing against a section that is no longer mounted.
+function showSection(name) {
+  $$('.nav-item').forEach(it => it.classList.toggle('active', it.dataset.section === name));
+  if (window.__boulevardProgressInterval) {
+    clearInterval(window.__boulevardProgressInterval);
+    window.__boulevardProgressInterval = null;
+  }
+  const view = $('#view');
+  if (!view) return;
+  if (name === 'influencers') renderInfluencers(view);
+  else renderReview(view);
+}
+
+// Review Queue — the original Music Factory song-review dashboard.
+async function renderReview(view) {
+  view.innerHTML = `
+    <div class="section-head">
+      <h1 style="font-family:'Fraunces',serif;font-size:17px;font-weight:500;margin:0">Music Factory<small style="font-size:10px;color:var(--gold);letter-spacing:2.4px;text-transform:uppercase;font-weight:600;margin-left:8px">Review</small></h1>
+      <span id="stats" class="stats">loading stats…</span>
+      <span id="rollup" class="rollup-pill">…</span>
+    </div>
     <div class="controls">
       <input id="search" placeholder="search title…" />
       <select id="genre">
@@ -414,18 +465,22 @@ async function renderDashboard() {
     <div class="keyhint"><kbd>A</kbd> approve · <kbd>R</kbd> reject (press twice to confirm) · <kbd>G</kbd> regen · <kbd>Space</kbd> play/pause · <kbd>J</kbd>/<kbd>K</kbd> next/prev</div>
     <main id="grid"><div class="empty">loading…</div></main>`;
 
-  $('#logout').onclick = async () => {
-    await supabase.auth.signOut();
-    session = null; me = null; renderAuth();
-  };
-  $('#team').onclick = openTeamModal;
   $('#refresh').onclick = loadGrid;
   ['search','genre','status','minRating'].forEach(id => $('#'+id).addEventListener('change', loadGrid));
   $('#search').addEventListener('keyup', e => { if (e.key === 'Enter') loadGrid(); });
 
   await Promise.all([loadStats(), loadGenres(), loadGrid(), loadProgress()]);
-  if (!window.__boulevardProgressInterval) {
-    window.__boulevardProgressInterval = setInterval(loadProgress, 30000);
+  window.__boulevardProgressInterval = setInterval(loadProgress, 30000);
+}
+
+// Influencers — campaign module, loaded on demand as a separate ES module.
+async function renderInfluencers(view) {
+  view.innerHTML = `<div class="empty">loading influencer module…</div>`;
+  try {
+    const mod = await import('/admin/influencers.js');
+    mod.mountInfluencers(view, { supabase, toast, me });
+  } catch (e) {
+    view.innerHTML = `<div class="empty">failed to load influencer module: ${escapeHtml(e.message)}</div>`;
   }
 }
 
@@ -611,6 +666,7 @@ function moveFocus(dir) {
 function handleKey(e) {
   if (e.target.matches('input,textarea,select')) return;
   if ($('.modal-backdrop')) return; // don't hijack keys when modal is open
+  if (!$('#grid')) return; // review queue not mounted (e.g. Influencers section)
   const el = focusedCard(); if (!el) return;
   const songId = el.dataset.songId;
   const r = { id: songId, title: el.querySelector('h3')?.textContent || songId };

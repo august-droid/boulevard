@@ -1,6 +1,8 @@
 import { Song, TasteProfile, SessionProfile, Activity, SongStats } from '@/types';
 import { artistRepeatPenalty } from '@/lib/recommendation/artistSpacing';
 import { contextBoost, type ActiveSessionContext } from '@/lib/recommendation/SessionContext';
+import { scoreHabitFit, type HabitContext } from '@/lib/habit/HabitProfile';
+import { scoreIdentityFit, type TasteIdentityProfile } from '@/lib/recommendation/TasteIdentityProfile';
 
 // Rule-based recommendation engine.
 //
@@ -28,6 +30,14 @@ export interface ScoreInput {
    *  complementary layer). Optional: when absent the ranker behaves exactly
    *  as it did before the session engine existed. */
   context?: ActiveSessionContext | null;
+  /** Habit personalization — a SOFT, time-aware boost (HabitProfile.ts).
+   *  Optional: when absent the ranker behaves exactly as before this layer.
+   *  Applied only post-cold-start and damped under an explicit intent. */
+  habit?: HabitContext | null;
+  /** Behavioural taste-identity profile (TasteIdentityProfile.ts). Optional:
+   *  produces a capped identity-fit modifier that rewards identity-compatible
+   *  songs and penalises strong identity mismatches. */
+  identity?: TasteIdentityProfile | null;
 }
 
 const RECENT_PENALTY = 4;     // big hit if we just played this
@@ -124,6 +134,20 @@ export function scoreSong(song: Song, ctx: ScoreInput): number {
     score += Math.max(-SESSION_TAG_CAP, Math.min(SESSION_TAG_CAP, sessionSum));
   }
 
+  // --- HABIT SIGNAL: time-aware soft boost. ---
+  // "What this user usually wants at this hour/day." Applied only AFTER
+  // cold-start — onboarding owns the first 10 songs — and the boost is capped
+  // (±3) well below the session (±6) and contextual (±12) layers. When an
+  // explicit vibe or contextual session is active it is damped to 40%, so a
+  // user who normally listens to chill at night but tapped Gym still gets
+  // Gym: current intent always overrides habit.
+  if (ctx.habit && !coldStart) {
+    let habitBoost = scoreHabitFit(song, ctx.habit);
+    const explicitIntent = !!vibe || (!!ctx.context && ctx.context.mode !== 'default');
+    if (explicitIntent) habitBoost *= 0.4;
+    score += habitBoost;
+  }
+
   // Explicit vibe context dominates regardless of cold-start.
   if (vibe) {
     if (song.activity_fit.includes(vibe)) score += 4;
@@ -206,6 +230,22 @@ export function scoreSong(song: Song, ctx: ScoreInput): number {
   // decay, so it fades smoothly back into long-term taste. Returns 0 when no
   // context is active, leaving everything above this line fully preserved.
   if (ctx.context) score += contextBoost(song, ctx.context);
+
+  // --- IDENTITY SIGNAL: capped identity-fit modifier. ---
+  // "Does this song feel like this user?" — rewards identity-compatible songs
+  // (even across very different genres) and penalises strong identity
+  // mismatches (a childish/bubblegum track for a mature listener). It is
+  // additive + capped (~+4 / −7) so it can prevent "this app doesn't get me"
+  // recommendations WITHOUT overpowering an explicit choice: when the user
+  // explicitly searched / clicked a context, a mismatch penalty is softened.
+  // Safety gating already returned -Infinity above where relevant, so identity
+  // can never resurrect a suppressed song.
+  if (ctx.identity) {
+    const mode = ctx.context?.mode;
+    const discoveryMode = mode === 'discovery_focus';
+    const explicit = !!vibe || (!!mode && mode !== 'default' && mode !== 'discovery_focus');
+    score += scoreIdentityFit(song, ctx.identity, { explicit, discoveryMode });
+  }
 
   // A little noise so deterministic ties don't always resolve the same way.
   score += (Math.random() - 0.5) * EXPLORATION_NOISE;

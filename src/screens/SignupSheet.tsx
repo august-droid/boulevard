@@ -15,9 +15,11 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors, fonts, metals, radii, spacing } from '@/theme';
 import { useAuth } from '@/contexts/AuthContext';
+import type { SignupReason } from '@/contexts/NavigationContext';
 import { HAS_SUPABASE } from '@/lib/supabase';
 import { signInWithProvider, Provider } from '@/lib/auth/socialAuth';
 import { signUpAndUpgrade, signInExisting, sendPasswordReset } from '@/lib/auth/emailAuth';
+import { trackSignUp } from '@/lib/attribution/TikTokPixel';
 import {
   CloseIcon,
   CheckIcon,
@@ -29,6 +31,9 @@ import {
 interface Props {
   visible: boolean;
   onClose: () => void;
+  /** The gated action that triggered the sheet — named in a callout so the
+   *  prompt feels earned ("you need an account to like songs"). */
+  reason?: SignupReason | null;
   /**
    * Hard gate. When true the sheet cannot be dismissed — no close button,
    * no "Maybe later", back/Esc is a no-op. Used by the web app once an
@@ -41,12 +46,23 @@ interface Props {
 type Mode = 'signup' | 'login' | 'forgot';
 
 const BULLETS = [
-  'Your music gets better the more you listen',
-  'Pick up where you left off on any device',
-  'Saved songs, likes and playlists stay safe',
+  'The more you listen, the better your songs get',
+  'You can comment, like, save and share music',
+  'Keep your music taste saved on every device',
 ];
 
-export function SignupSheet({ visible, onClose, mandatory = false }: Props) {
+// The exact thing the user just tried — naming it makes the prompt feel
+// earned instead of random.
+const REASON_ACTION: Record<SignupReason, string> = {
+  like: 'like songs',
+  save: 'save songs to your library',
+  comment: 'post comments',
+  share: 'share music',
+  playlist: 'create playlists',
+  follow: 'follow artists',
+};
+
+export function SignupSheet({ visible, onClose, reason = null, mandatory = false }: Props) {
   const insets = useSafeAreaInsets();
   const auth = useAuth();
 
@@ -86,6 +102,9 @@ export function SignupSheet({ visible, onClose, mandatory = false }: Props) {
     try {
       const r = await signUpAndUpgrade(email.trim(), password);
       if (r.ok) {
+        // New email account created — fire the TikTok conversion event.
+        // Email sign-up resolves inline (no redirect), so this is reliable.
+        trackSignUp('email');
         await auth.markSignedUp();
         if (r.needsEmailConfirmation) {
           setInfo('Check your email to confirm your account.');
@@ -215,13 +234,17 @@ export function SignupSheet({ visible, onClose, mandatory = false }: Props) {
                   : "YOU'RE 5 SONGS IN"}
             </Text>
             <Text style={styles.h1}>
-              {mode === 'forgot' ? 'Reset your password' : 'Become a part of Boulevard Family'}
-            </Text>
-            <Text style={styles.sub}>
               {mode === 'forgot'
-                ? 'We will send you a link to set a new password.'
-                : 'Free to join. Your library and recommendations follow you.'}
+                ? 'Reset your password'
+                : mode === 'login'
+                  ? 'Welcome back'
+                  : 'Your Music Gets Better After You Create An Account'}
             </Text>
+            {mode === 'forgot' && (
+              <Text style={styles.sub}>
+                We will send you a link to set a new password.
+              </Text>
+            )}
 
             {mode !== 'forgot' && (
               <View style={styles.bullets}>
@@ -233,6 +256,16 @@ export function SignupSheet({ visible, onClose, mandatory = false }: Props) {
                     <Text style={styles.bulletText}>{b}</Text>
                   </View>
                 ))}
+              </View>
+            )}
+
+            {/* The exact gated action the user just tried — names it so the
+                prompt reads as a reason, not a random interruption. */}
+            {mode !== 'forgot' && reason && (
+              <View style={styles.reasonNote}>
+                <Text style={styles.reasonText}>
+                  You need a free account to {REASON_ACTION[reason]}.
+                </Text>
               </View>
             )}
 
@@ -450,10 +483,11 @@ const styles = StyleSheet.create({
   },
   h1: {
     color: colors.text,
-    fontSize: fonts.size.display,
+    fontSize: fonts.size.xxl,
     fontWeight: fonts.weight.bold,
     textAlign: 'center',
     letterSpacing: -0.5,
+    lineHeight: 34,
   },
   sub: {
     color: colors.textMuted,
@@ -463,6 +497,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   bullets: { width: '100%', marginTop: spacing.lg, gap: spacing.sm + 2 },
+  // Contextual "you need an account to …" callout — a warm gold panel so it
+  // reads as the reason the sheet appeared.
+  reasonNote: {
+    width: '100%',
+    marginTop: spacing.lg,
+    paddingVertical: 11,
+    paddingHorizontal: spacing.md,
+    borderRadius: radii.md,
+    backgroundColor: 'rgba(200,174,122,0.12)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: metals.gold,
+  },
+  reasonText: {
+    color: metals.goldSolidHi,
+    fontSize: fonts.size.sm,
+    fontWeight: fonts.weight.semibold,
+    textAlign: 'center',
+  },
   bulletRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
   checkBg: {
     width: 22, height: 22, borderRadius: 11,
