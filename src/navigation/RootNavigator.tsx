@@ -57,7 +57,10 @@ export function RootNavigator() {
   const [mountedTabs, setMountedTabs] = useState<Set<ContentTab>>(() => new Set<ContentTab>(['explore']));
   // The full-screen player overlay. Independent of `tab`: opening it does
   // NOT switch or unmount the content tab (or the artist page) underneath.
-  const [playerOpen, setPlayerOpen] = useState(false);
+  // On web the listener lands straight in the player — /listen opens on the
+  // now-playing surface with music armed to start (see PlayerContext). Native
+  // still opens on a content tab.
+  const [playerOpen, setPlayerOpen] = useState(Platform.OS === 'web');
   const [userHasNavigated, setUserHasNavigated] = useState(false);
   const [paywallOpen, setPaywallOpen] = useState(false);
   const [signupOpen, setSignupOpen] = useState(false);
@@ -73,7 +76,10 @@ export function RootNavigator() {
   // Once AuthProvider populates personalizationUnlockedAt from AsyncStorage,
   // route the user to Library if they're already unlocked AND haven't yet
   // manually tapped a tab. Won't fire again after the user touches the nav.
+  // Native only — on web the listener lands in the player and the surface
+  // underneath stays Explore until they navigate there themselves.
   useEffect(() => {
+    if (Platform.OS === 'web') return;
     if (userHasNavigated) return;
     if (auth.personalizationUnlockedAt && tab !== 'library') {
       setTab('library');
@@ -85,6 +91,24 @@ export function RootNavigator() {
       });
     }
   }, [auth.personalizationUnlockedAt, userHasNavigated, tab]);
+
+  // Web — when a sign-in / sign-up completes, land the listener on Explore
+  // and close the launch player overlay. `justSignedIn` covers both logging
+  // into an existing account and creating a new one. Native keeps its own
+  // post-auth flow untouched.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return;
+    if (!auth.justSignedIn) return;
+    setUserHasNavigated(true);
+    setPlayerOpen(false);
+    setMountedTabs((prev) => {
+      if (prev.has('explore')) return prev;
+      const next = new Set(prev);
+      next.add('explore');
+      return next;
+    });
+    setTab('explore');
+  }, [auth.justSignedIn]);
 
   const handleTabChange = (next: Tab) => {
     setUserHasNavigated(true);

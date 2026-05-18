@@ -664,6 +664,11 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
       // off the bundled seed list and the rest of the app goes live.
       setState((s) => ({ ...s, catalog, taste, library }));
 
+      // Web launch autoplay teardown — populated by the cold-start branch
+      // below; invoked from cleanup so the one-shot gesture listener never
+      // outlives this player stack.
+      let disarmWebAutoplay: (() => void) | null = null;
+
       const pendingPlay = pendingPlayRef.current;
       pendingPlayRef.current = null;
 
@@ -690,6 +695,28 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         if (first && preloaderRef.current) {
           preloaderRef.current.preload(first).catch(() => {});
         }
+        // Web: the listener landed straight on /listen. Browsers forbid
+        // audio playback before a user gesture, so true autoplay is
+        // impossible — instead we arm a one-shot listener that starts the
+        // staged song on the first interaction anywhere on the page (a
+        // click, tap or keypress). Armed once per page load: a later
+        // sign-in re-runs setup but must not re-arm it, which would hijack
+        // a tap meant for another control.
+        if (Platform.OS === 'web' && first && !webAutoplayArmedRef.current) {
+          webAutoplayArmedRef.current = true;
+          const stagedSong = first;
+          const startStaged = () => {
+            disarmWebAutoplay?.();
+            void playInternalRef.current?.(stagedSong);
+          };
+          disarmWebAutoplay = () => {
+            disarmWebAutoplay = null;
+            window.removeEventListener('pointerdown', startStaged);
+            window.removeEventListener('keydown', startStaged);
+          };
+          window.addEventListener('pointerdown', startStaged);
+          window.addEventListener('keydown', startStaged);
+        }
       }
 
       // Background catalog hydration: as soon as Suno-generated songs land
@@ -709,6 +736,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
         offFail();
         offHydration();
         catalogHydrator.stop();
+        disarmWebAutoplay?.();
       };
     };
 
@@ -735,6 +763,10 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   // playSpecific() stashes it here when the queue is not ready yet; setup
   // plays it the moment the stack is up, instead of dropping the tap.
   const pendingPlayRef = useRef<Song | null>(null);
+  // Web only — true once the launch autoplay listener has been armed for
+  // this page load. A later sign-in re-runs setup (the effect keys on
+  // userId); the flag stops that re-run from re-arming the listener.
+  const webAutoplayArmedRef = useRef(false);
 
   // ---- Playback ----
 
