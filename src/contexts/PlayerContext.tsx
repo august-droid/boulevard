@@ -99,6 +99,10 @@ interface PlayerActions {
   getSession: () => SessionProfile;
   /** Track a successful native share and apply the +5 share signal. */
   recordShare: () => Promise<void>;
+  /** Log that `song` was reached through search — fires the `searched` user
+   *  event. Playback + search_focus session signals are already handled by
+   *  the subsequent playSpecific / playPlaylist call. */
+  recordSearchHit: (song: Song) => void;
   /** Seek to an absolute position within the current song (in ms). */
   seek: (positionMillis: number) => Promise<void>;
   setVibe: (v: Activity | null) => Promise<void>;
@@ -1095,6 +1099,19 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     await bumpEngagement();
   }, [userId, bumpEngagement, feedOnboarding, registerSessionOutcome]);
 
+  // Fired by the search UI the moment a song is opened from search results.
+  // The `searched` event marks search-sourced plays; the search_focus session
+  // context + the play signals are applied by the following playSpecific call.
+  const recordSearchHit = useCallback((song: Song) => {
+    if (!userId) return;
+    trackerRef.current?.track({
+      user_id: userId,
+      song_id: song.id,
+      event_type: 'searched',
+      vibe_context: stateRef.current.vibe ?? null,
+    });
+  }, [userId]);
+
   const save = useCallback(async () => {
     const cur = stateRef.current.current;
     if (!cur || !userId || !libraryRef.current) return;
@@ -1390,6 +1407,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     save,
     like,
     recordShare,
+    recordSearchHit,
     seek,
     setVibe,
     playSpecific,
@@ -1403,7 +1421,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setSessionContext: activateSessionContext,
     getSessionContextDebug,
   }), [
-    state, togglePlay, skip, previous, toggleShuffle, replay, save, like, recordShare,
+    state, togglePlay, skip, previous, toggleShuffle, replay, save, like, recordShare, recordSearchHit,
     seek, setVibe, playSpecific, playPlaylist, cuePlaylist, playPopular, warmSongs, getSession, buildMoodList,
     dismissFirstListen, activateSessionContext, getSessionContextDebug,
   ]);
