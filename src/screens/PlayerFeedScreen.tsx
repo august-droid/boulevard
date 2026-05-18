@@ -5,7 +5,6 @@ import {
   Pressable,
   Share,
   StyleSheet,
-  Dimensions,
   Platform,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -55,8 +54,6 @@ import { HeartBurst, HeartBurstHandle } from '@/components/HeartBurst';
 import { PlayerSheet, PlayerSheetHandle, PLAYER_SHEET_PEEK } from '@/components/PlayerSheet';
 import { ScrollingTitle } from '@/components/ScrollingTitle';
 import { resolveArtistImage, formatCount } from '@/lib/artists/artistData';
-
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get('window');
 
 // "Now playing" full-bleed view.
 //
@@ -851,10 +848,12 @@ const styles = StyleSheet.create({
   coverClip: {
     overflow: 'hidden',
   },
+  // Fills its container (the Ken-Burns layer / the no-song fallback),
+  // which itself absolute-fills the screen. Uses inset:0 rather than fixed
+  // SCREEN_W/H pixels so a browser resize or a mobile URL-bar collapse
+  // never leaves the cover mis-sized, cropped, or with a black edge.
   cover: {
     ...StyleSheet.absoluteFillObject,
-    width: SCREEN_W,
-    height: SCREEN_H,
   },
 
   swipeZone: {
@@ -864,7 +863,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: SCREEN_H * 0.75,
+    height: '75%',
   },
 
   // Strong dark wash that sits behind the title block + waveform + transport.
@@ -875,7 +874,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    height: SCREEN_H * 0.45,
+    height: '45%',
   },
 
   topBar: {

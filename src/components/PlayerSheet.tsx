@@ -3,7 +3,7 @@ import React, {
 } from 'react';
 import {
   View, Text, Pressable, StyleSheet, TextInput, FlatList, ScrollView,
-  Platform, ActivityIndicator, Keyboard, Dimensions,
+  Platform, ActivityIndicator, Keyboard, useWindowDimensions,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -31,12 +31,9 @@ import { buildLyricView, activeLineIndex, type LyricView } from '@/lib/lyrics/sy
 // deliberately shows no comment bodies — the user forms an opinion of the
 // song first, then opens the sheet when they want the conversation.
 
-const { height: SCREEN_H } = Dimensions.get('window');
 const HEADER_H = 100;                              // grab handle + teaser / tab strip
 /** Visible height of the collapsed sheet. The player reserves room for it. */
 export const PLAYER_SHEET_PEEK = HEADER_H;
-const EXPANDED_H = Math.round(SCREEN_H * 0.62);
-const DRAG_RANGE = EXPANDED_H - HEADER_H;
 const SPRING = { damping: 24, stiffness: 240, mass: 0.9 };
 // One-tap emoji reactions shown above the comment composer.
 const QUICK_REACTIONS = ['🔥', '❤️', '😂', '🙌', '💯', '🎶'];
@@ -72,6 +69,13 @@ export const PlayerSheet = forwardRef<PlayerSheetHandle, Props>(function PlayerS
   const progress = useSharedValue(0);
   const startProgress = useSharedValue(0);
   const kb = useSharedValue(0); // keyboard height — lifts the sheet so the composer clears it
+
+  // Sheet geometry — derived from the LIVE viewport height so a browser
+  // resize or a mobile URL-bar collapse keeps the expanded sheet and its
+  // drag math correct. A module-level Dimensions.get() snapshot would not.
+  const { height: winH } = useWindowDimensions();
+  const EXPANDED_H = Math.round(winH * 0.62);
+  const DRAG_RANGE = EXPANDED_H - HEADER_H;
 
   const [expanded, setExpanded] = useState(false);
   const [tab, setTab] = useState<TabKey>(COMMENTS_ENABLED ? 'comments' : 'lyrics');
