@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, metals, radii, spacing } from '@/theme';
-import { useComments, formatStamp, formatAge, fallbackHandle, avatarColor } from '@/contexts/CommentsContext';
+import { useComments, formatStamp, formatAge, displayHandle, avatarColor } from '@/contexts/CommentsContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAppNav } from '@/contexts/NavigationContext';
 import type { SongComment, UserProfile } from '@/types';
@@ -138,7 +138,7 @@ export function CommentsSheet({ visible, songId, currentPositionMs, onSeek, onCl
     if (requireSignup()) return;
     setReplyTo(target);
     const author = profiles[target.user_id];
-    const handle = author?.username ?? fallbackHandle(target.user_id);
+    const handle = displayHandle(author, target.user_id);
     setDraft(`@${handle} `);
     setTimeout(() => inputRef.current?.focus(), 50);
   }, [profiles, requireSignup]);
@@ -208,7 +208,7 @@ export function CommentsSheet({ visible, songId, currentPositionMs, onSeek, onCl
             {replyTo ? (
               <View style={styles.replyBanner}>
                 <Text style={styles.replyBannerText} numberOfLines={1}>
-                  Replying to {profiles[replyTo.user_id]?.username ?? fallbackHandle(replyTo.user_id)}
+                  Replying to {displayHandle(profiles[replyTo.user_id], replyTo.user_id)}
                 </Text>
                 <Pressable onPress={() => { setReplyTo(null); setDraft(''); }} hitSlop={8}>
                   <Text style={styles.replyBannerCancel}>Cancel</Text>
@@ -324,7 +324,7 @@ interface RowProps {
 
 function CommentRow({ comment, author, replies, authorsByUserId, onSeekTo, onReply, onToggleLike }: RowProps) {
   const [showReplies, setShowReplies] = useState(false);
-  const handle = author?.username ?? fallbackHandle(comment.user_id);
+  const handle = displayHandle(author, comment.user_id);
 
   return (
     <View style={styles.row}>
@@ -376,7 +376,7 @@ function CommentRow({ comment, author, replies, authorsByUserId, onSeekTo, onRep
 }
 
 function ReplyRow({ comment, author, onSeekTo, onToggleLike }: { comment: SongComment; author?: UserProfile; onSeekTo: (ms: number) => void; onToggleLike: (id: string) => Promise<void> }) {
-  const handle = author?.username ?? fallbackHandle(comment.user_id);
+  const handle = displayHandle(author, comment.user_id);
   return (
     <View style={styles.replyRow}>
       <AvatarOrb seed={author?.avatar_seed || comment.user_id} size={28} />

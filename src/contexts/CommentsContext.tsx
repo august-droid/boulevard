@@ -244,6 +244,14 @@ export function fallbackHandle(userId: string): string {
   return `boulevard_${userId.slice(0, 6)}`;
 }
 
+/** Name shown for a comment's author: their real display name first, then a
+ *  chosen @username, then the generated boulevard_ handle. AuthContext mirrors
+ *  the signed-in user's name into user_profiles.display_name, so reading it
+ *  here is what makes a logged-in listener show as themselves. */
+export function displayHandle(profile: UserProfile | undefined, userId: string): string {
+  return profile?.display_name?.trim() || profile?.username?.trim() || fallbackHandle(userId);
+}
+
 // Light-touch sentiment heuristics. The player-feed comment overlay
 // shows only the most-liked positive/neutral comments — never negative
 // ones — so a single 🔥 reaction or a kind line drifts past the artwork

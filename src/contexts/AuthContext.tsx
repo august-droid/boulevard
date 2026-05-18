@@ -191,6 +191,15 @@ function identityFromUser(
   return { email, displayName, avatarUrl };
 }
 
+/** A readable display name from an email's local part — "ava.lin" from
+ *  "ava.lin@gmail.com". Lets an email sign-up that carries no provider
+ *  name still show as themselves on comments, not a boulevard_ handle. */
+function emailHandle(rawEmail: string | null): string | null {
+  if (!rawEmail) return null;
+  const local = rawEmail.split('@')[0]?.trim();
+  return local ? local : null;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userId, setUserId] = useState<string | null>(null);
   const [isAnonymous, setIsAnonymous] = useState(true);
@@ -443,24 +452,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, [userId, billingPremium, trialStartedAt]);
 
-  // Mirror the signed-in user's social identity (display name + photo) into
+  // Mirror the signed-in user's identity (display name + photo) into
   // user_profiles so it shows on their comments instead of a generated
-  // handle. Fire-and-forget, best-effort; the upsert is idempotent.
+  // handle. Provider name first (Google etc.); an email sign-up that
+  // carries no provider name falls back to the email's local part, so the
+  // listener still comments as themselves. Fire-and-forget, best-effort.
   useEffect(() => {
     if (!HAS_SUPABASE || !supabase || !userId) return;
     if (isAnonymous) return;
-    if (!displayName && !avatarUrl) return;
+    const resolvedName = displayName ?? emailHandle(email);
+    if (!resolvedName && !avatarUrl) return;
     void (async () => {
       try {
         const patch: Record<string, unknown> = { user_id: userId };
-        if (displayName) patch.display_name = displayName;
+        if (resolvedName) patch.display_name = resolvedName;
         if (avatarUrl) patch.avatar_url = avatarUrl;
         await supabase!.from('user_profiles').upsert(patch, { onConflict: 'user_id' });
       } catch {
         // Best-effort — comments tolerate a missed mirror.
       }
     })();
-  }, [userId, isAnonymous, displayName, avatarUrl]);
+  }, [userId, isAnonymous, displayName, avatarUrl, email]);
 
   const value = useMemo<AuthValue>(() => {
     const trialActive = (() => {
