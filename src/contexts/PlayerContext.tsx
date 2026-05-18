@@ -39,6 +39,7 @@ import { LibraryStore } from '@/lib/library/LibraryStore';
 import { CompletionLimiter, COMPLETION_THRESHOLD } from '@/lib/limits/CompletionLimiter';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase, HAS_SUPABASE } from '@/lib/supabase';
+import { PlaybackSync, type PlaybackMode } from '@/lib/playback/PlaybackSync';
 
 // PlayerContext is the single source of truth for playback state.
 // Screens subscribe via the `usePlayer` hook; they never touch audio/queue
@@ -151,6 +152,14 @@ interface PlayerActions {
   /** The live behavioural taste-identity profile. Used by Explore worlds to
    *  skew a world away from identity mismatches. Null before the stack is up. */
   getIdentityProfile: () => TasteIdentityProfile | null;
+  /** Boulevard Connect — 'active' when this device owns playback, 'remote'
+   *  when another signed-in device of the same account does. A remote
+   *  device's transport controls send commands to the active device. */
+  playbackMode: PlaybackMode;
+  /** Friendly label of the device that owns playback — shown on remotes. */
+  activeDeviceLabel: string | null;
+  /** Force playback onto THIS device (the "play on this device" control). */
+  takeOverPlayback: () => Promise<void>;
 }
 
 type PlayerValue = PlayerState & PlayerActions;
@@ -335,6 +344,16 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   // position tick (several per second) never re-renders the screens that
   // subscribe to the main player value — Explore tiles, Library rows, etc.
   const [progress, setProgress] = useState<PlayerProgress>({ position: 0, duration: 0 });
+
+  // Boulevard Connect — cross-device playback. `playbackMode` is 'active'
+  // when this device owns audio, 'remote' when another device of the
+  // account does. The ref mirror lets the transport callbacks below decide
+  // synchronously whether to play locally or send a command.
+  const [playbackMode, setPlaybackMode] = useState<PlaybackMode>('active');
+  const [activeDeviceLabel, setActiveDeviceLabel] = useState<string | null>(null);
+  const playbackModeRef = useRef<PlaybackMode>('active');
+  const syncRef = useRef<PlaybackSync | null>(null);
+  if (!syncRef.current) syncRef.current = new PlaybackSync();
   const progressRef = useRef(progress);
   useEffect(() => { progressRef.current = progress; }, [progress]);
 
@@ -707,6 +726,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
           const stagedSong = first;
           const startStaged = () => {
             disarmWebAutoplay?.();
+            // Don't start local audio when another device of this account
+            // owns playback — this device is a remote: it mirrors + controls.
+            if (playbackModeRef.current === 'remote') return;
             void playInternalRef.current?.(stagedSong);
           };
           disarmWebAutoplay = () => {
@@ -1103,6 +1125,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { handleAdvanceRef.current = handleAdvance; }, [handleAdvance]);
 
   const togglePlay = useCallback(async () => {
+    if (playbackModeRef.current === 'remote') { void syncRef.current?.sendCommand({ type: 'toggle' }); return; }
     if (!audioRef.current) return;
     // If the user lands on the staged "last song" and taps play, there's no
     // sound loaded yet — toggle() would no-op. Detect that and start the
@@ -1116,6 +1139,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, [playInternal]);
 
   const skip = useCallback(async () => {
+    if (playbackModeRef.current === 'remote') { void syncRef.current?.sendCommand({ type: 'skip' }); return; }
     // Limit gates first — never disrupt the current song if we can't play
     // anything new anyway.
     if (await checkDailyLimit()) return;
@@ -1156,6 +1180,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   //   • otherwise → play the song before this one from the recent history
   //   • no history → seek to 0
   const previous = useCallback(async () => {
+    if (playbackModeRef.current === 'remote') { void syncRef.current?.sendCommand({ type: 'previous' }); return; }
     const cur = stateRef.current.current;
     if (!cur) return;
     const posMs = progressRef.current.position;
@@ -1377,6 +1402,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     scored.sort((a, b) => b.score - a.score);
     const top = scored.slice(0, 30).map((r) => r.song);
     if (top.length === 0) return;  // catalog was 0 — already guarded above
+    if (playbackModeRef.current === 'remote') { void syncRef.current?.sendCommand({ type: 'play-song', songId: top[0].id }); return; }
 
     audioRef.current?.suspendCurrent();
     recordEndOfSong(true);
@@ -1393,6 +1419,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   // playlist the regular ranker refill kicks back in.
   const playPlaylist = useCallback(async (songs: Song[], context?: PlayContext) => {
     if (!queueRef.current || songs.length === 0) return;
+    if (playbackModeRef.current === 'remote') { void syncRef.current?.sendCommand({ type: 'play-song', songId: songs[0].id }); return; }
     if (await checkDailyLimit()) return;
     if (checkWebGate()) return;
     audioRef.current?.suspendCurrent();
@@ -1435,6 +1462,7 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const playSpecific = useCallback(async (song: Song, context?: PlayContext) => {
+    if (playbackModeRef.current === 'remote') { void syncRef.current?.sendCommand({ type: 'play-song', songId: song.id }); return; }
     if (!queueRef.current) {
       // The player stack is still initializing (catalog + queue not built).
       // Remember the tap so setup honors it the moment the stack is up,
@@ -1474,8 +1502,9 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
   }, [playInternal, recordEndOfSong, checkDailyLimit, checkWebGate, syncSessionFromPlay]);
 
   const seek = useCallback(async (positionMillis: number) => {
-    if (!audioRef.current) return;
     if (!Number.isFinite(positionMillis)) return;
+    if (playbackModeRef.current === 'remote') { void syncRef.current?.sendCommand({ type: 'seek', positionMs: positionMillis }); return; }
+    if (!audioRef.current) return;
     const dur = progressRef.current.duration;
     if (dur <= 0) return;
     const clamped = Math.max(0, Math.min(positionMillis, dur));
@@ -1487,6 +1516,15 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     songStartedAtRef.current = Date.now() - clamped;
     setProgress((p) => ({ ...p, position: clamped }));
   }, []);
+
+  // "Play on this device" — force-claim the Connect session from whatever
+  // device currently holds it, then start the staged song here. The claim
+  // flips this device to 'active', so playInternal plays locally.
+  const takeOverPlayback = useCallback(async () => {
+    await syncRef.current?.takeOver();
+    const cur = stateRef.current.current;
+    if (cur) await playInternal(cur);
+  }, [playInternal]);
 
   const persistTaste = useCallback(async (taste: TasteProfile) => {
     if (!HAS_SUPABASE || !supabase || !userId) return;
@@ -1533,6 +1571,70 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  // ---- Boulevard Connect — cross-device playback wiring -------------------
+
+  // Keep the sync's callbacks pointed at the current playback engine.
+  // Re-runs when a transport method changes — only re-assigns handlers.
+  useEffect(() => {
+    const sync = syncRef.current;
+    if (!sync) return;
+    sync.onMode = (mode, label) => {
+      const wasRemote = playbackModeRef.current === 'remote';
+      playbackModeRef.current = mode;
+      setPlaybackMode(mode);
+      setActiveDeviceLabel(label);
+      if (mode === 'remote') {
+        // Another device of this account owns playback — go silent; from
+        // here this device only mirrors the now-playing surface + controls.
+        audioRef.current?.stop().catch(() => {});
+      } else if (wasRemote) {
+        // Took over a dropped session — become active but paused; the user
+        // presses play to start audio on this device.
+        setState((s) => ({ ...s, isPlaying: false }));
+      }
+    };
+    sync.onCommand = (cmd) => {
+      if (cmd.type === 'toggle') void togglePlay();
+      else if (cmd.type === 'skip') void skip();
+      else if (cmd.type === 'previous') void previous();
+      else if (cmd.type === 'seek') void seek(cmd.positionMs);
+      else if (cmd.type === 'play-song') {
+        const song = stateRef.current.catalog.find((s) => s.id === cmd.songId);
+        if (song) void playSpecific(song);
+      }
+    };
+    sync.onRemoteState = (rs) => {
+      const song = rs.songId
+        ? stateRef.current.catalog.find((s) => s.id === rs.songId) ?? null
+        : null;
+      setState((s) => ({ ...s, current: song, isPlaying: rs.isPlaying }));
+      setProgress((p) => ({
+        position: rs.positionMs,
+        duration: song ? song.duration_seconds * 1000 : p.duration,
+      }));
+    };
+  }, [togglePlay, skip, previous, seek, playSpecific]);
+
+  // Claim or join the playback session for the signed-in user.
+  useEffect(() => {
+    if (!userId) return;
+    const sync = syncRef.current;
+    if (!sync) return;
+    void sync.start(userId, () => ({
+      songId: stateRef.current.current?.id ?? null,
+      isPlaying: stateRef.current.isPlaying,
+      positionMs: progressRef.current.position,
+    }));
+    return () => sync.stop();
+  }, [userId]);
+
+  // Active device → report a song / play-state change up to the session
+  // row at once, so remotes mirror it without waiting for the heartbeat.
+  useEffect(() => {
+    if (playbackModeRef.current !== 'active') return;
+    void syncRef.current?.reportNow();
+  }, [state.current, state.isPlaying]);
+
   const value = useMemo<PlayerValue>(() => ({
     ...state,
     togglePlay,
@@ -1556,10 +1658,14 @@ export function PlayerProvider({ children }: { children: React.ReactNode }) {
     setSessionContext: activateSessionContext,
     getSessionContextDebug,
     getIdentityProfile,
+    playbackMode,
+    activeDeviceLabel,
+    takeOverPlayback,
   }), [
     state, togglePlay, skip, previous, toggleShuffle, replay, save, like, recordShare,
     seek, setVibe, playSpecific, playPlaylist, cuePlaylist, playPopular, warmSongs, getSession, buildMoodList,
     dismissFirstListen, activateSessionContext, getSessionContextDebug, getIdentityProfile,
+    playbackMode, activeDeviceLabel, takeOverPlayback,
   ]);
 
   return (

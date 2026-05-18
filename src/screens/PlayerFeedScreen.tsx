@@ -333,6 +333,25 @@ export function PlayerFeedScreen({ onDismiss }: { onDismiss?: () => void } = {})
           </View>
         </View>
 
+        {/* Boulevard Connect — another device of this account owns playback.
+            The transport below still works (it remote-controls that device);
+            "Play here" moves playback onto this device. */}
+        {player.playbackMode === 'remote' ? (
+          <View style={styles.connectBar}>
+            <View style={styles.connectDot} />
+            <Text style={styles.connectText} numberOfLines={1}>
+              Playing on {player.activeDeviceLabel ?? 'another device'}
+            </Text>
+            <Pressable
+              onPress={() => { void player.takeOverPlayback(); }}
+              style={({ pressed }) => [styles.connectBtn, pressed && { opacity: 0.7 }]}
+              accessibilityLabel="Play on this device"
+            >
+              <Text style={styles.connectBtnText}>Play here</Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         {/* Transport row — playback controls only. Shuffle pins to the left
             edge; prev / play / skip ride as one centered cluster, balanced
             by an equal-width spacer on the right so the big play button
@@ -961,6 +980,45 @@ const styles = StyleSheet.create({
     fontSize: fonts.size.xs,
     fontWeight: fonts.weight.semibold,
     letterSpacing: 0.3,
+  },
+  // Boulevard Connect — shown when another device of the account owns
+  // playback. The transport still works (it controls that device); "Play
+  // here" pulls playback onto this device instead.
+  connectBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 8,
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radii.pill,
+    backgroundColor: 'rgba(20,20,24,0.72)',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: metals.gold,
+  },
+  connectDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: metals.goldSolidHi,
+  },
+  connectText: {
+    color: colors.textMuted,
+    fontSize: fonts.size.xs,
+    fontWeight: fonts.weight.semibold,
+    flexShrink: 1,
+  },
+  connectBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: radii.pill,
+    backgroundColor: metals.goldSolid,
+  },
+  connectBtnText: {
+    color: '#1a1408',
+    fontSize: fonts.size.xs,
+    fontWeight: fonts.weight.bold,
   },
   artistRow: {
     flexDirection: 'row',
